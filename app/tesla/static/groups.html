@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" type="image/png" sizes="32x32" href="/tesla/static/favicon-32.png">
+<link rel="icon" type="image/svg+xml" href="/tesla/static/favicon.svg">
+<link rel="apple-touch-icon" href="/tesla/static/apple-touch-icon.png?v=2">
+  <link rel="manifest" href="/tesla/static/manifest.json">
+<script src="/static/menu-user.js?v=2"></script>
+<script src="/tesla/static/lastpage.js?v=1"></script>
+  <title>行程分组 · My Tesla</title>
+<style>
+/* ---------- 设计令牌: 与行程/充电页一致的 iOS 暗色 ---------- */
+:root {
+  color-scheme: dark;
+  --bg: #000;
+  --surface: #1c1c1e;
+  --surface-2: #2c2c2e;
+  --surface-3: #3a3a3c;
+  --ink-1: #f5f5f7;
+  --ink-2: rgba(235,235,245,.62);
+  --ink-3: rgba(235,235,245,.32);
+  --hairline: rgba(255,255,255,.09);
+  --nav-bg: rgba(10,10,12,.72);
+  --blue: #3987e5;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+html, body { overscroll-behavior-y: none; }   /* 拦掉 Safari 自带的下拉刷新 */
+body {
+  background: var(--bg); color: var(--ink-1);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
+               "Helvetica Neue", system-ui, sans-serif;
+  font-size: 14px; line-height: 1.45;
+  min-height: 100vh; min-height: 100dvh;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+/* 触屏双击控件不再触发整页放大 (manipulation 保留平移/捏合, 只去掉双击缩放) */
+button, a, summary { touch-action: manipulation; }
+
+/* ---------- 顶部导航 (毛玻璃) ---------- */
+header {
+  position: sticky; top: 0; z-index: 50;
+  padding: calc(env(safe-area-inset-top) + 10px) 14px 10px;
+  background: var(--nav-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--hairline);
+}
+.nav-row { display: flex; align-items: baseline; gap: 8px; }
+.nav-row > * { flex-shrink: 0; }
+
+/* 顶栏刷新按钮 (与页签胶囊同款样式) */
+#refresh-btn {
+  align-self: center; display: flex; align-items: center; margin-left: auto;
+  color: var(--ink-1); background: var(--surface-2);
+  padding: 5px 9px; border-radius: 999px;
+}
+#refresh-btn:active { background: var(--surface-3); }
+#refresh-btn.busy svg { animation: refresh-spin .8s linear infinite; }
+@keyframes refresh-spin { to { transform: rotate(360deg); } }
+.nav-menu { position: relative; align-self: center; margin-left: auto; }
+.nav-menu summary {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 12px; color: var(--ink-1); background: var(--surface-2);
+  padding: 4px 10px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+  list-style: none; -webkit-user-select: none; user-select: none;
+}
+.nav-menu summary::-webkit-details-marker { display: none; }
+.nav-menu summary:active { opacity: .7; }
+.nav-menu[open] summary { background: var(--surface-3); }
+.nav-menu .chev { transition: transform .18s; }
+.nav-menu[open] .chev { transform: rotate(180deg); }
+.nav-menu .menu {
+  position: absolute; top: calc(100% + 8px); right: 0; min-width: 128px; z-index: 30;
+  display: flex; flex-direction: column; padding: 5px;
+  background: rgba(44,44,46,.88);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--hairline); border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.5);
+}
+.nav-menu .menu a {
+  font-size: 14px; color: var(--ink-1); text-decoration: none;
+  padding: 9px 12px; border-radius: 10px; white-space: nowrap;
+}
+.nav-menu .menu a.on { color: #7db3f0; }
+.nav-menu .menu a:active { background: var(--surface-3); }
+.nav-menu .menu button {
+  font-size: 14px; color: var(--ink-1); text-align: left;
+  padding: 9px 12px; border-radius: 10px; white-space: nowrap;
+}
+.nav-menu .menu button:active { background: var(--surface-3); }
+.nav-menu .menu .logout-row {
+  color: #e5484d; border-top: 1px solid var(--hairline); margin-top: 5px;
+}
+/* 品牌即入口: My Tesla 本身是下拉按钮, 展开是全部页面 + 退出登录。
+   块要放在 .nav-menu 系列之后 —— 同特异性靠源序取胜。 */
+.brand-menu { margin-left: 0; }
+.brand-menu summary {
+  font-size: 20px; font-weight: 700; letter-spacing: -.3px;
+  background: none; padding: 0; border-radius: 0;
+}
+.brand-menu[open] summary { background: none; }
+.brand-menu .chev { color: var(--ink-3); }
+.brand-menu .menu { left: 0; right: auto; }   /* 面板锚品牌左缘向右展开, 不出屏 */
+.brand-menu + .nav-menu { margin-left: auto; }   /* 品牌居左, 顶栏其余菜单仍靠右 */
+/* 手机: 下拉改顶栏正下方近全宽面板 —— .nav-menu 改 static 让 containing
+   block 上移到全宽的 sticky header, top:calc(100%+8px) 恰好落在 header 底
+   + 8px, left/right 即视口两侧 (与全站各页同款)。 */
+@media (max-width: 479px) {
+  .nav-menu { position: static; }
+  .nav-menu .menu { left: 12px; right: 12px; }
+}
+
+/* ---------- 分组列表 (样式承接行程页分组面板, 面板已删) ---------- */
+.sec-head { display: flex; align-items: baseline; gap: 8px; padding: 16px 16px 4px; }
+.sec-head h2 { font-size: 17px; font-weight: 650; letter-spacing: -.2px; }
+.count-badge { font-size: 12px; color: var(--ink-3); }
+.gp-list { padding: 4px 16px calc(env(safe-area-inset-bottom) + 20px); }
+.gp-item { display: flex; align-items: center; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--hairline); }
+.gp-main { flex: 1; min-width: 0; text-align: left; }
+.gp-name {
+  font-size: 15px; font-weight: 600; color: var(--ink-1);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.gp-meta { font-size: 12px; color: var(--ink-3); margin-top: 3px; }
+.gp-act {
+  flex: none; font-size: 12.5px; color: var(--ink-2); padding: 6px 10px;
+  border-radius: 999px; border: 1px solid var(--hairline);
+}
+.gp-act.arm { color: #ff6961; border-color: rgba(255,105,97,.4); }   // 删除二次确认态
+.gp-input {
+  flex: 1; min-width: 0; font-size: 15px; color: var(--ink-1);
+  padding: 7px 10px; border-radius: 10px;
+  border: 1px solid var(--blue); background: rgba(255,255,255,.06); outline: none;
+}
+.gp-empty { padding: 60px 24px; text-align: center; font-size: 15px; color: var(--ink-2); }
+.gp-empty span { display: block; margin-top: 8px; font-size: 12.5px; color: var(--ink-3); }
+.spin {
+  width: 26px; height: 26px; border-radius: 50%; margin: 40px auto 0;
+  border: 3px solid rgba(255,255,255,.18); border-top-color: var(--blue);
+  animation: rot .8s linear infinite;
+}
+@keyframes rot { to { transform: rotate(360deg); } }
+.err-box { margin: 40px 24px; text-align: center; font-size: 13px; color: var(--ink-2); }
+.err-box .retry {
+  margin-top: 14px; padding: 7px 20px; border-radius: 999px; font-size: 13px;
+  border: 1px solid var(--hairline); color: var(--ink-1);
+}
+
+/* ---------- 轻提示 ---------- */
+#toast {
+  position: fixed; top: calc(env(safe-area-inset-top) + 60px); left: 50%;
+  transform: translateX(-50%) translateY(-8px); z-index: 99;
+  max-width: 80vw; font-size: 13px; color: #fff; text-align: center;
+  background: rgba(10,10,12,.85);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border-radius: 999px; padding: 9px 16px;
+  opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none;
+}
+#toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast[hidden] { display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav-row">
+    <details class="nav-menu brand-menu" id="brand-menu">
+      <summary>My Tesla<svg class="chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+      <div class="menu">
+        <a href="/tesla/charging">充电记录</a>
+        <a href="/tesla/stats">充电统计</a>
+        <a href="/tesla/chargemap">充电地图</a>
+        <a href="/tesla/map">足迹地图</a>
+        <a href="/tesla/trips">行程列表</a>
+        <a class="on" href="/tesla/groups">行程分组</a>
+        <a href="/tesla/live">当前驾驶</a>
+        <a href="/tesla/settings">软件设置</a>
+        <a href="/tesla/changelog">更新日志</a>
+        <button class="logout-row" id="logout" title="退出登录">退出登录</button>
+      </div>
+    </details>
+    <button id="refresh-btn" aria-label="刷新分组"><svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true"><path d="M12 7a5 5 0 1 1-1.46-3.54" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 1.6v2.4H9.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
+</header>
+
+<main>
+  <div class="sec-head">
+    <h2>行程分组</h2>
+    <span class="count-badge" id="count-badge"></span>
+  </div>
+  <div class="spin" id="gp-spin"></div>
+  <div class="gp-list" id="gp-list"></div>
+  <div class="gp-empty" id="gp-empty" hidden>还没有分组<span>在行程列表长按多选行程后点「存为分组」</span></div>
+  <div class="err-box" id="errbox" hidden>
+    <p id="errmsg">分组加载失败</p>
+    <button class="retry" id="retry">重试</button>
+  </div>
+</main>
+
+<div id="toast" hidden></div>
+
+<script src="/tesla/static/groups.js?v=1"></script>
+</body>
+</html>

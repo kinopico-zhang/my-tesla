@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # 后端测试: 三平台 × 多版本矩阵。测试不依赖真实数据库 —— conftest 给
+  # 每个用例注入独立的 SQLite 文件库, TestClient 不触发 lifespan, 永不
+  # 触碰 docker/PostgreSQL (NAS 之外的环境可跑)。
+  python-tests:
+    name: pytest (${{ matrix.os }}, py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-22.04, windows-latest, windows-2022,
+             macos-latest, macos-14]
+        python-version: ["3.13"]
+        include:
+          - os: ubuntu-latest
+            python-version: "3.14"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      # 不带 --cov: 与本地 run_tests.sh 对齐 (覆盖率门槛配置保留给手动验证)
+      - run: python -m pytest tests -q
+
+  # 后端静态检查: pylint (app 严检 / tests 放宽仪式告警) + mypy 严格
+  python-lint:
+    name: pylint + mypy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - run: python -m pylint app
+      - run: python -m pylint tests --disable=W0613,W0212,R0801,C0415
+      - run: python -m mypy
+
+  # 前端: ESLint / tsc --checkJs / node --test 三平台全跑;
+  # c8 覆盖率门禁 (95%) 固定在 Linux —— Windows 的路径归一化历史上有坑,
+  # 覆盖率本身与平台无关。
+  frontend:
+    name: frontend (${{ matrix.os }}, node ${{ matrix.node-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node-version: [22]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - run: npm ci
+      - run: npx --no-install eslint app/tesla/static app/static tests/js
+      - run: npx --no-install tsc -p tsconfig.json
+      - run: node --test tests/js/
+      - name: coverage gate (95%)
+        if: runner.os == 'Linux'
+        run: >-
+          npx --no-install c8
+          --include app/tesla/static/gcj02.js
+          --include app/tesla/static/trackutil.js
+          --include app/tesla/static/format.js
+          --include app/tesla/static/trip-playback.js
+          --include app/tesla/static/lastpage.js
+          --check-coverage --lines 95 --branches 95 --functions 95
+          --reporter text node --test tests/js/

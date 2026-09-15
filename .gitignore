@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.session_secret
+.env
+data/
+.pytest_cache/
+.mypy_cache/
+uv.lock
+.coverage
+node_modules/
+coverage/
+.pytest-tmp/

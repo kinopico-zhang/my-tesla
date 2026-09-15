@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" type="image/png" sizes="32x32" href="/tesla/static/favicon-32.png">
+<link rel="icon" type="image/svg+xml" href="/tesla/static/favicon.svg">
+<link rel="apple-touch-icon" href="/tesla/static/apple-touch-icon.png?v=2">
+  <link rel="manifest" href="/tesla/static/manifest.json">
+<script src="/static/menu-user.js?v=2"></script>
+<script src="/tesla/static/lastpage.js?v=1"></script>
+  <title>充电记录 · My Tesla</title>
+<style>
+/* ---------- 设计令牌: iOS 暗色 + dataviz 校验系列色 ----------
+   系列色集 #1fa349 #3987e5 #c98500 #9085e9 #d95926 (槽序 绿-蓝-黄-紫-橙)
+   已通过 dataviz 六项校验 (暗色, 表面 #1c1c1e): 亮度带/彩度/CVD 分离/
+   常态视觉下限/对比度全部通过。实体对应: 绿=SOC, 蓝=功率·电量, 黄=费用,
+   紫=电压, 橙=电流。文字一律用文本色, 不用系列色。 */
+:root {
+  color-scheme: dark;
+  --bg: #000;
+  --surface: #1c1c1e;
+  --surface-2: #2c2c2e;
+  --surface-3: #3a3a3c;
+  --ink-1: #f5f5f7;
+  --ink-2: rgba(235,235,245,.62);
+  --ink-3: rgba(235,235,245,.32);
+  --hairline: rgba(255,255,255,.09);
+  --nav-bg: rgba(10,10,12,.72);
+  --green: #1fa349;    /* SOC */
+  --grid: #2c2c2a;     /* 图表网格线 (细实线) */
+  --chart-ink: #c3c2b7;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }  /* hidden 属性必须压过 class 的 display 规则 */
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--bg); color: var(--ink-1);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
+               "Helvetica Neue", system-ui, sans-serif;
+  font-size: 14px; line-height: 1.45;
+  min-height: 100vh; min-height: 100dvh;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+/* 触屏双击控件不再触发整页放大 (manipulation 保留平移/捏合, 只去掉双击缩放) */
+button, a, summary { touch-action: manipulation; }
+
+/* ---------- 顶部导航 (毛玻璃) ---------- */
+header {
+  position: sticky; top: 0; z-index: 50;
+  padding: calc(env(safe-area-inset-top) + 10px) 14px 10px;
+  background: var(--nav-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--hairline);
+}
+/* 顶栏一行: 全部 nowrap + 不许压缩换行 (窄屏字号收一档);
+   车名 pill 兜底吸收挤压 (省略号), 更窄 (≤359px) 干脆让位隐藏 */
+.nav-row { display: flex; align-items: baseline; gap: 8px; }
+.nav-row > * { flex-shrink: 0; }
+
+/* 顶栏刷新按钮 (与页签胶囊同款样式) */
+#refresh-btn {
+  align-self: center; display: flex; align-items: center; margin-left: 0;
+  color: var(--ink-1); background: var(--surface-2);
+  padding: 5px 9px; border-radius: 999px;
+}
+#refresh-btn:active { background: var(--surface-3); }
+#refresh-btn.busy svg { animation: refresh-spin .8s linear infinite; }
+@keyframes refresh-spin { to { transform: rotate(360deg); } }
+.car-pill {
+  font-size: 11px; color: var(--ink-2); font-weight: 500; flex-shrink: 1; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+@media (max-width: 359px) { .car-pill { display: none; } }
+/* 页面切换: 充电记录 / 足迹地图 */
+/* ---------- 页签菜单 (收起式) ---------- */
+.nav-menu { position: relative; align-self: center; margin-left: auto; }
+.nav-menu summary {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 12px; color: var(--ink-1); background: var(--surface-2);
+  padding: 4px 10px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+  list-style: none; -webkit-user-select: none; user-select: none;
+}
+.nav-menu summary::-webkit-details-marker { display: none; }
+.nav-menu summary:active { opacity: .7; }
+.nav-menu[open] summary { background: var(--surface-3); }
+.nav-menu .chev { transition: transform .18s; }
+.nav-menu[open] .chev { transform: rotate(180deg); }
+.nav-menu .menu {
+  position: absolute; top: calc(100% + 8px); right: 0; min-width: 128px; z-index: 30;
+  display: flex; flex-direction: column; padding: 5px;
+  background: rgba(44,44,46,.88);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--hairline); border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.5);
+}
+.nav-menu .menu a {
+  font-size: 14px; color: var(--ink-1); text-decoration: none;
+  padding: 9px 12px; border-radius: 10px; white-space: nowrap;
+}
+.nav-menu .menu a:active { background: var(--surface-3); }
+.nav-menu .menu a.on { color: #7db3f0; }
+.nav-menu + .nav-menu { margin-left: 0; }   /* 顶栏两个菜单靠右并排, 只有第一个吃 auto 边距 */
+/* 品牌即入口: My Tesla 本身是下拉按钮, 展开是全部页面 + 退出登录。
+   块要放在 .nav-menu 系列之后 —— 同特异性靠源序取胜, 放前面会被盖掉
+   (实测放 h1 原位时 margin-left:auto 没被压掉, 品牌被顶到行中间)。 */
+.brand-menu { margin-left: 0; }
+.brand-menu summary {
+  font-size: 20px; font-weight: 700; letter-spacing: -.3px;
+  background: none; padding: 0; border-radius: 0;
+}
+.brand-menu[open] summary { background: none; }
+.brand-menu .chev { color: var(--ink-3); }
+.brand-menu .menu { left: 0; right: auto; }   /* 面板锚品牌左缘向右展开, 不出屏 */
+.nav-menu .menu .logout-row {
+  color: #e5484d; border-top: 1px solid var(--hairline); margin-top: 5px;
+}
+.brand-menu + .nav-menu { margin-left: auto; }   /* 品牌居左, 顶栏其余菜单仍靠右 */
+.nav-menu .menu button {
+  font-size: 14px; color: var(--ink-1); text-align: left;
+  padding: 9px 12px; border-radius: 10px; white-space: nowrap;
+}
+.nav-menu .menu button.on { color: #7db3f0; }
+.nav-menu .menu button:active { background: var(--surface-3); }
+/* 地点省市区级联 (行程页同款): 菜单限高滚动 (区县可能有十几项), 返回行/面包屑/层级行 */
+.nav-menu .menu.loc-menu { max-height: min(420px, 62vh); overflow-y: auto; min-width: 176px; }
+.nav-menu .menu .loc-crumb { font-size: 11px; color: var(--ink-3); padding: 4px 12px 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-menu .menu button.loc-back { color: var(--ink-2); font-size: 13px; padding: 5px 12px 8px; }
+.nav-menu .menu button.loc-row { display: flex; align-items: baseline; gap: 8px; }
+.nav-menu .menu button.loc-row .nm { overflow: hidden; text-overflow: ellipsis; }
+.nav-menu .menu button.loc-row .cnt { color: var(--ink-3); font-size: 12px;
+  margin-left: auto; white-space: nowrap; flex-shrink: 0; }
+.nav-menu .menu button.on .cnt { color: #7db3f0; }
+/* 时间菜单的自定义日历: 月历网格, 同一个日历连点两次 (第一下起点, 第二下终点) */
+.time-menu .tm-custom { border-top: 1px solid var(--hairline); margin-top: 5px; padding-top: 5px; }
+.time-menu .menu { max-height: calc(100vh - 130px); overflow-y: auto; }  /* 矮屏展开日历时兜底滚动 */
+.tm-dates { padding: 6px 8px 3px; }
+.tm-cal-top { display: flex; align-items: center; gap: 4px; padding: 0 2px 5px; }
+.tm-cal-top b { flex: 1; text-align: center; font-size: 13px; font-weight: 600; }
+.tm-cal-top button { min-width: 28px; height: 26px; border-radius: 7px; color: var(--ink-2); }
+.tm-cal-top button:disabled { opacity: .3; }
+.tm-cal-top button:active { background: var(--surface-3); }
+.tm-week, .tm-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.tm-week i { font-style: normal; text-align: center; font-size: 11px; color: var(--ink-3); padding: 2px 0 4px; }
+.tm-cal { padding-bottom: 4px; }
+.tm-cal button { min-width: 34px; height: 34px; border-radius: 9px; font-size: 13px; color: var(--ink-1); }
+.tm-cal button:active { background: var(--surface-3); }
+.tm-cal button.today { color: #7db3f0; font-weight: 600; }
+.tm-cal button.mid { background: rgba(57,135,229,.16); border-radius: 0; }
+.tm-cal button.on { background: #3987e5; color: #fff; font-weight: 600; }
+.tm-foot { display: flex; align-items: center; gap: 8px; padding: 6px 2px 2px; }
+.tm-foot span { flex: 1; min-width: 0; font-size: 12px; color: var(--ink-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tm-dates #tm-apply {
+  flex: none; background: #3987e5; color: #fff;
+  border-radius: 8px; font-size: 12.5px; font-weight: 600; padding: 7px 14px;
+}
+/* 筛选: 一行, 在所有图表之上 (同一数据切片); 下拉不能被横向滚动裁掉 → 不用 overflow */
+.filters { display: flex; gap: 8px; margin-top: 10px; }
+/* 手机: 筛选行放不下就自己横滑 (下拉此时锚在全宽 header 上, 不受横滑容器
+   裁剪; 桌面下拉锚在胶囊内不能加), 不把整个页面带着滑 */
+@media (max-width: 479px) {
+  .filters { overflow-x: auto; scrollbar-width: none; }
+  .filters::-webkit-scrollbar { display: none; }
+}
+.filters .nav-menu { margin-left: 0; }              /* 不吃顶栏的靠右边距 */
+.filters .nav-menu .menu { left: 0; right: auto; }  /* 下拉锚左, 行首也不出屏 */
+/* 手机: 下拉改顶栏正下方近全宽面板 —— 自定义日历一行要 ~300px, 挂在胶囊
+   右缘必出屏 (390px 时面板左缘 -64px, 起始日期半格在屏幕外)。
+   .nav-menu 改 static 让 containing block 上移到全宽的 sticky header,
+   top:calc(100%+8px) 恰好落在 header 底 + 8px, left/right 即视口两侧。 */
+@media (max-width: 479px) {
+  .nav-menu { position: static; }
+  .nav-menu .menu, .filters .nav-menu .menu { left: 12px; right: 12px; }
+}
+.filt .fl { max-width: 34vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chips { display: flex; gap: 7px; flex: none; align-items: center; }
+.chip {
+  padding: 5px 11px; border-radius: 999px; font-size: 12.5px; white-space: nowrap;
+  color: var(--ink-2); border: 1px solid var(--hairline); transition: all .18s;
+}
+.chip.on { background: rgba(57,135,229,.20); color: #7db3f0; border-color: rgba(57,135,229,.35); }
+
+main { max-width: 760px; margin: 0 auto; }
+
+/* 迷你分段钮 (详情弹层的 功率/电压/电流 切换; 统计图表卡已挪充电统计页) */
+.mini-seg { display: flex; background: rgba(118,118,128,.24); border-radius: 8px; padding: 2px; }
+.mini-seg button { padding: 3px 9px; border-radius: 6px; font-size: 11px; color: var(--ink-2); }
+.mini-seg button.on { background: #636366; color: #fff; }
+
+/* ---------- 瀑布流 ---------- */
+.sec-head { display: flex; align-items: baseline; gap: 8px; padding: 16px 16px 4px; }
+.sec-head h2 { font-size: 17px; font-weight: 650; letter-spacing: -.2px; }
+.count-badge { font-size: 12px; color: var(--ink-3); }
+/* 单列列表 (与行程页一致, 手机优先) */
+#masonry { display: flex; flex-direction: column; gap: 8px; padding: 8px 14px 10px; transition: opacity .25s; }
+#masonry.dim { opacity: .45; pointer-events: none; }
+.card-s {
+  background: var(--surface); border-radius: 16px; border: 1px solid var(--hairline);
+  padding: 10px 12px; cursor: pointer; overflow: hidden;
+  transition: transform .15s, background .15s;
+}
+.card-s:active { transform: scale(.975); background: #232326; }
+@media (hover: hover) { .card-s:hover { border-color: rgba(255,255,255,.2); } }
+.cs-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.cs-date { font-size: 11.5px; color: var(--ink-2); white-space: nowrap; }
+.tag {
+  display: inline-flex; align-items: center; gap: 3px; flex: none;
+  font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+}
+.tag-fast { color: #f0b13d; background: rgba(237,161,0,.14); }
+.tag-slow { color: #7db3f0; background: rgba(57,135,229,.14); }
+/* SOC 轴: 量程固定 0-100%, 标签钉在真实百分比位置 (左标签左缘=充电起点, 右标签右缘=终点);
+   不做 space-between 贴边 —— 那样读起来像轴随数据自适应 */
+.soc-axis { position: relative; height: 18px; margin-top: 2px; }
+.soc-axis .trk { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; border-radius: 3px; background: var(--surface-2); }
+.soc-axis .trk i { position: absolute; top: 0; bottom: 0; background: var(--green); border-radius: 3px; }
+.sa-lb { position: absolute; bottom: 8px; font-size: 10px; line-height: 1; color: var(--ink-3); white-space: nowrap; }
+.cs-loc {
+  font-size: 14.5px; font-weight: 600; line-height: 1.32; margin: 5px 0 6px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.cs-main { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-top: 4px; }
+.cs-energy { font-size: 20px; font-weight: 650; letter-spacing: -.4px; }
+.cs-energy small { font-size: 11.5px; font-weight: 500; color: var(--ink-2); margin-left: 3px; letter-spacing: 0; }
+.cs-sub { font-size: 11px; color: var(--ink-3); margin-top: 4px; }
+
+/* ---------- 加载态 ---------- */
+.tail { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 18px 0 40px; }
+.tail[hidden] { display: none; }
+.spin {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 2px solid var(--surface-3); border-top-color: #9a9aa0;
+  animation: rot .8s linear infinite;
+}
+@keyframes rot { to { transform: rotate(360deg); } }
+.endnote { font-size: 12px; color: var(--ink-3); }
+.empty {
+  text-align: center; color: var(--ink-3); padding: 60px 20px; font-size: 14px;
+}
+.err-box { text-align: center; padding: 40px 20px; }
+.err-box p { color: var(--ink-2); margin-bottom: 14px; font-size: 13.5px; }
+.retry {
+  padding: 8px 22px; border-radius: 12px; background: var(--surface-2);
+  color: var(--ink-1); font-weight: 600; font-size: 13.5px;
+}
+
+/* ---------- 详情 Sheet (iOS 底部弹层) ---------- */
+.sheet-backdrop {
+  position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.55);
+  opacity: 0; pointer-events: none; transition: opacity .3s;
+}
+.sheet-backdrop.on { opacity: 1; pointer-events: auto; }
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 100;
+  margin: 0 auto; max-width: 640px; max-height: 92vh; max-height: 92dvh;
+  background: var(--surface); border-radius: 20px 20px 0 0;
+  border: 1px solid var(--hairline); border-bottom: 0;
+  display: flex; flex-direction: column;
+  transform: translateY(105%);
+  transition: transform .38s cubic-bezier(.32,.72,0,1);
+  box-shadow: 0 -12px 48px rgba(0,0,0,.5);
+}
+.sheet.on { transform: translateY(0); }
+.sheet-grab-zone { padding: 7px 0 3px; touch-action: none; cursor: pointer;
+                    -webkit-user-select: none; user-select: none; }
+.sheet-grab { width: 36px; height: 5px; border-radius: 3px; background: #48484a; margin: 0 auto; }
+.sheet-head { position: relative; padding: 6px 18px 13px; border-bottom: 1px solid var(--hairline); }
+.sheet-head h3 { font-size: 17px; font-weight: 700; padding-right: 36px; letter-spacing: -.2px; }
+.sheet-head .sh-loc { font-size: 13px; color: var(--ink-2); margin-top: 2px; padding-right: 36px; }
+.sheet-head .sh-row { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
+.sheet-close {
+  position: absolute; top: 4px; right: 12px; width: 30px; height: 30px;
+  border-radius: 50%; background: rgba(255,255,255,.09);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: var(--ink-2);
+}
+.sheet-body { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 14px 16px calc(30px + env(safe-area-inset-bottom)); }
+.st-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.st { background: #232326; border-radius: 12px; padding: 9px 12px; }
+.st .lb { font-size: 11px; color: var(--ink-2); }
+.st .val { font-size: 16.5px; font-weight: 650; margin-top: 2px; letter-spacing: -.2px; white-space: nowrap; }
+.st .val small { font-size: 11px; font-weight: 500; color: var(--ink-2); }
+.sh-chart-title { font-size: 13px; font-weight: 650; margin: 16px 0 6px; display: flex; justify-content: space-between; align-items: center; }
+.sh-chart-title:first-child { margin-top: 2px; }
+#chart-soc { height: 168px; }
+#chart-pw { height: 188px; }
+.sh-addr { font-size: 11.5px; color: var(--ink-3); margin-top: 14px; line-height: 1.5; }
+/* 导航到充电站: 详情顶部通栏, 拉起手机里装了的地图 App */
+.nav-go {
+  display: block; width: 100%; padding: 11px 0; margin-bottom: 10px;
+  border-radius: 12px; font-size: 14.5px; font-weight: 650;
+  color: #7db3f0; background: rgba(125,179,240,.14);
+}
+.nav-go:active { background: rgba(125,179,240,.26); }
+.sheet .spin { margin: 40px auto; display: block; }
+
+/* ---------- 费用编辑弹窗 (iOS alert 风格) ---------- */
+.alert-backdrop {
+  position: fixed; inset: 0; z-index: 120; background: rgba(0,0,0,.45);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  opacity: 0; pointer-events: none; transition: opacity .22s;
+}
+.alert-backdrop.on { opacity: 1; pointer-events: auto; }
+.alert {
+  width: min(300px, 86vw); border-radius: 14px; overflow: hidden; text-align: center;
+  background: rgba(44,44,46,.94);
+  -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+  border: 1px solid var(--hairline);
+  transform: scale(1.05); transition: transform .22s;
+}
+.alert-backdrop.on .alert { transform: scale(1); }
+.al-title { padding: 17px 16px 2px; font-size: 16px; font-weight: 650; }
+.al-msg { padding: 3px 16px 12px; font-size: 12px; color: var(--ink-2); line-height: 1.4; }
+.al-field {
+  display: flex; align-items: center; gap: 4px; margin: 0 16px 6px;
+  background: rgba(118,118,128,.24); border-radius: 10px; padding: 9px 12px;
+}
+.al-field .cur { color: var(--ink-2); font-size: 15px; }
+.al-field input {
+  flex: 1; min-width: 0; border: 0; outline: 0; background: none;
+  color: var(--ink-1); font-size: 17px; font-weight: 600;
+  text-align: center; caret-color: #3987e5;
+}
+.al-field input.shake { animation: shake .35s; }
+@keyframes shake {
+  20% { transform: translateX(-7px); } 40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); } 80% { transform: translateX(3px); }
+}
+.al-err { min-height: 16px; font-size: 12px; color: #ff6961; padding: 0 16px; }
+.al-clear {
+  display: block; width: 100%; padding: 9px 0 11px;
+  font-size: 12.5px; color: #ff6961;
+}
+.al-btns { display: flex; border-top: 1px solid var(--hairline); }
+.al-btn { flex: 1; padding: 13px 0; font-size: 15.5px; color: var(--ink-1); }
+.al-btn + .al-btn { border-left: 1px solid var(--hairline); }
+/* 导航选单: 地图 App 一行一个, 点一个只拉一个 */
+.nav-hint { padding: 3px 16px 0; font-size: 11px; color: var(--ink-3); text-align: center; }
+.nav-apps { margin: 10px 16px 16px; border-radius: 10px; overflow: hidden; }
+.nav-apps button {
+  display: block; width: 100%; padding: 12px 0;
+  font-size: 15px; color: #7db3f0;
+  -webkit-touch-callout: none; user-select: none;   /* 长按隐藏别被系统长按菜单打断 */
+}
+.nav-apps button + button, .nav-restore + button, button + .nav-restore { border-top: 1px solid var(--hairline); }
+.nav-restore { padding: 2px 0 8px; }
+.nav-restore button {
+  display: inline-block; width: auto; padding: 5px 12px; margin: 5px 6px 0 8px;
+  font-size: 12px; border: 1px solid var(--hairline); border-radius: 14px; color: var(--ink-2);
+}
+.nav-apps button:active { background: rgba(255,255,255,.06); }
+.al-strong { font-weight: 650; color: #7db3f0; }
+.al-btn:active, .al-clear:active { background: rgba(255,255,255,.06); }
+
+/* 卡片费用 (与电量同行, 靠右, 可点编辑) */
+.cs-cost {
+  display: flex; align-items: baseline; flex: none;
+  font-size: 13px; font-weight: 600; color: var(--ink-1);
+}
+.cs-cost:active { opacity: .55; }
+.cs-cost .pp { font-size: 11.5px; font-weight: 500; color: var(--ink-2); margin-left: 7px; }
+.cs-cost .edit-ic { margin-left: 5px; font-size: 11px; font-weight: 400; color: var(--ink-3); }
+.cs-cost.none {   /* 没记费用: 红色实心 pill 醒目提醒 (记完变回正常费用) */
+  width: fit-content; font-size: 11.5px; font-weight: 650; color: #fff;
+  background: #e5484d; border: 0; border-radius: 999px; padding: 4.5px 11px;
+}
+/* Sheet 费用块 (可点编辑) */
+.st-cost { cursor: pointer; }
+.st-cost .val.red { color: #e5484d; }   /* 没记费用: 红字提醒 */
+.st-cost:active { background: #2a2a2e; }
+.st-cost .lb::after { content: " ✎"; font-size: 10px; color: var(--ink-3); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav-row">
+    <details class="nav-menu brand-menu" id="brand-menu">
+      <summary>My Tesla<svg class="chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+      <div class="menu">
+        <a class="on" href="/tesla/charging">充电记录</a>
+        <a href="/tesla/stats">充电统计</a>
+        <a href="/tesla/chargemap">充电地图</a>
+        <a href="/tesla/map">足迹地图</a>
+        <a href="/tesla/trips">行程列表</a>
+        <a href="/tesla/groups">行程分组</a>
+        <a href="/tesla/live">当前驾驶</a>
+        <a href="/tesla/settings">软件设置</a>
+        <a href="/tesla/changelog">更新日志</a>
+        <button class="logout-row" id="logout" title="退出登录">退出登录</button>
+      </div>
+    </details>
+    <span class="car-pill" id="car-pill">Tesla</span>
+    <details class="nav-menu time-menu" id="time-menu">
+      <summary><span id="time-lb">全部</span><svg class="chev" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+      <div class="menu" id="time-opts">
+        <button data-v="24h">最近 24 小时</button>
+        <button data-v="7d">最近一周</button>
+        <button data-v="30d">最近一个月</button>
+        <button data-v="180d">最近半年</button>
+        <button data-v="1y">最近一年</button>
+        <button data-v="all" class="on">全部</button>
+        <div class="tm-custom">
+          <button data-v="custom">自定义…</button>
+          <div class="tm-dates" id="tm-dates" hidden>
+            <div class="tm-cal-top">
+              <button id="tm-prev" aria-label="上个月">‹</button>
+              <b id="tm-ym"></b>
+              <button id="tm-next" aria-label="下个月">›</button>
+            </div>
+            <div class="tm-week"><i>一</i><i>二</i><i>三</i><i>四</i><i>五</i><i>六</i><i>日</i></div>
+            <div class="tm-cal" id="tm-cal"></div>
+            <div class="tm-foot"><span id="tm-sel"></span><button id="tm-apply">确定</button></div>
+          </div>
+        </div>
+      </div>
+    </details>
+    <button id="refresh-btn" aria-label="刷新列表"><svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true"><path d="M12 7a5 5 0 1 1-1.46-3.54" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 1.6v2.4H9.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
+  <div class="filters">
+    <details class="nav-menu filt" id="type-menu">
+      <summary><span class="fl" id="type-lb">类型: 全部</span><svg class="chev" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+      <div class="menu" id="type-opts">
+        <button data-v="all" class="on">全部</button>
+        <button data-v="fast">⚡ 快充</button>
+        <button data-v="slow">🔌 慢充</button>
+      </div>
+    </details>
+    <details class="nav-menu filt" id="loc-menu">
+      <summary><span class="fl" id="loc-lb">地点: 全部</span><svg class="chev" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+      <div class="menu loc-menu" id="loc-opts"></div>
+    </details>
+    <details class="nav-menu filt" id="cost-menu">
+      <summary><span class="fl" id="cost-lb">费用: 全部</span><svg class="chev" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+      <div class="menu" id="cost-opts">
+        <button data-v="all" class="on">全部</button>
+        <button data-v="recorded">已记录费用</button>
+        <button data-v="missing">未记录费用</button>
+      </div>
+    </details>
+  </div>
+</header>
+
+<main>
+  <div class="sec-head">
+    <h2>充电记录</h2>
+    <span class="count-badge" id="count-badge"></span>
+  </div>
+  <div id="masonry"></div>
+
+  <div class="tail" id="tail" hidden>
+    <div class="spin" id="loader-spin" hidden></div>
+    <div class="endnote" id="endnote" hidden>· 已经到底啦 ·</div>
+    <div class="empty" id="empty" hidden>该筛选条件下没有充电记录</div>
+    <div class="err-box" id="errbox" hidden>
+      <p id="errmsg">加载失败</p>
+      <button class="retry" id="retry">重试</button>
+    </div>
+  </div>
+</main>
+
+<div class="sheet-backdrop" id="backdrop"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-grab-zone" id="grab-zone"><div class="sheet-grab"></div></div>
+  <div class="sheet-head">
+    <h3 id="sh-date"></h3>
+    <div class="sh-loc" id="sh-loc"></div>
+    <div class="sh-row" id="sh-row"></div>
+    <button class="sheet-close" id="sheet-close">✕</button>
+  </div>
+  <div class="sheet-body" id="sheet-body"></div>
+</div>
+
+<div class="alert-backdrop" id="nav-bd" hidden>
+  <div class="alert" role="dialog" aria-label="选择地图应用">
+    <div class="al-title">导航到充电站</div>
+    <div class="nav-hint">长按可隐藏没装的地图, ＋ 可恢复</div>
+    <div class="nav-apps" id="nav-apps">
+      <button data-app="amap">高德地图</button>
+      <button data-app="baidu">百度地图</button>
+      <button data-app="tencent">腾讯地图</button>
+      <button data-app="apple">苹果地图</button>
+    </div>
+    <div class="al-btns"><button class="al-btn" id="nav-cancel">取消</button></div>
+  </div>
+</div>
+
+<div class="alert-backdrop" id="alert-bd" hidden>
+  <div class="alert" role="dialog" aria-label="编辑充电费用">
+    <div class="al-title">充电费用</div>
+    <div class="al-msg" id="al-msg"></div>
+    <div class="al-field"><span class="cur">¥</span><input id="al-input" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off"></div>
+    <div class="al-err" id="al-err"></div>
+    <button class="al-clear" id="al-clear" hidden>清除费用记录</button>
+    <div class="al-btns">
+      <button class="al-btn" id="al-cancel">取消</button>
+      <button class="al-btn al-strong" id="al-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<script src="/tesla/static/gcj02.js?v=1"></script>
+<script src="/tesla/static/echarts.min.js"></script>
+<script src="/tesla/static/format.js?v=1"></script>
+<script src="/tesla/static/index.js?v=2"></script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+# 跨平台检出一致 (CI 三平台跑同一份测试); shell 脚本必须 LF
+* text=auto eol=lf
+# 图标是字节精确的 (测试断言像素), 不能被换行转换碰
+*.png binary
