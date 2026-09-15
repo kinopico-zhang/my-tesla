@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" type="image/png" sizes="32x32" href="/tesla/static/favicon-32.png">
+<link rel="icon" type="image/svg+xml" href="/tesla/static/favicon.svg">
+<link rel="apple-touch-icon" href="/tesla/static/apple-touch-icon.png?v=2">
+  <link rel="manifest" href="/tesla/static/manifest.json">
+<script src="/static/menu-user.js?v=2"></script>
+<script src="/tesla/static/lastpage.js?v=1"></script>
+  <title>软件设置 · My Tesla</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #000;
+  --surface: #1c1c1e;
+  --surface-2: #2c2c2e;
+  --surface-3: #3a3a3c;
+  --ink-1: #f5f5f7;
+  --ink-2: rgba(235,235,245,.62);
+  --ink-3: rgba(235,235,245,.32);
+  --hairline: rgba(255,255,255,.09);
+  --nav-bg: rgba(10,10,12,.72);
+  --blue: #3987e5;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--bg); color: var(--ink-1);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
+               "Helvetica Neue", system-ui, sans-serif;
+  font-size: 14px; line-height: 1.45;
+  min-height: 100vh; min-height: 100dvh;
+  display: flex; flex-direction: column;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+/* 触屏双击控件不再触发整页放大 (manipulation 保留平移/捏合, 只去掉双击缩放) */
+button, a, summary { touch-action: manipulation; }
+
+/* ---------- 顶部导航 (毛玻璃, 与其他页一致) ---------- */
+header {
+  padding: calc(env(safe-area-inset-top) + 10px) 14px 10px;
+  background: var(--nav-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--hairline);
+  z-index: 50;
+}
+.nav-row { display: flex; align-items: baseline; gap: 8px; }
+.nav-row > * { flex-shrink: 0; }
+
+/* 顶栏刷新按钮 (与页签胶囊同款样式) */
+#refresh-btn {
+  align-self: center; display: flex; align-items: center; margin-left: auto;
+  color: var(--ink-1); background: var(--surface-2);
+  padding: 5px 9px; border-radius: 999px;
+}
+#refresh-btn:active { background: var(--surface-3); }
+#refresh-btn.busy svg { animation: refresh-spin .8s linear infinite; }
+@keyframes refresh-spin { to { transform: rotate(360deg); } }
+.nav-menu { position: relative; align-self: center; margin-left: auto; }
+.nav-menu summary {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 12px; color: var(--ink-1); background: var(--surface-2);
+  padding: 4px 10px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+  list-style: none; -webkit-user-select: none; user-select: none;
+}
+.nav-menu summary::-webkit-details-marker { display: none; }
+.nav-menu summary:active { opacity: .7; }
+.nav-menu[open] summary { background: var(--surface-3); }
+.nav-menu .chev { transition: transform .18s; }
+.nav-menu[open] .chev { transform: rotate(180deg); }
+.nav-menu .menu {
+  position: absolute; top: calc(100% + 8px); right: 0; min-width: 128px; z-index: 30;
+  display: flex; flex-direction: column; padding: 5px;
+  background: rgba(44,44,46,.88);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--hairline); border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.5);
+}
+.nav-menu .menu a {
+  font-size: 14px; color: var(--ink-1); text-decoration: none;
+  padding: 9px 12px; border-radius: 10px; white-space: nowrap;
+}
+.nav-menu .menu a:active { background: var(--surface-3); }
+.nav-menu .menu a.on { color: #7db3f0; }
+.brand-menu { margin-left: 0; }
+.brand-menu summary {
+  font-size: 20px; font-weight: 700; letter-spacing: -.3px;
+  background: none; padding: 0; border-radius: 0;
+}
+.brand-menu[open] summary { background: none; }
+.brand-menu .chev { color: var(--ink-3); }
+.brand-menu .menu { left: 0; right: auto; }
+.nav-menu .menu .logout-row {
+  color: #e5484d; border-top: 1px solid var(--hairline); margin-top: 5px;
+}
+.nav-menu .menu button {
+  font-size: 14px; color: var(--ink-1); text-align: left;
+  padding: 9px 12px; border-radius: 10px; white-space: nowrap;
+}
+/* 手机: 下拉改顶栏正下方近全宽面板 (与全站各页同款)。header 本身没有
+   定位, .nav-menu 改 static 后要补 relative 当 .menu 的 containing block。 */
+@media (max-width: 479px) {
+  header { position: relative; }
+  .nav-menu { position: static; }
+  .nav-menu .menu { left: 12px; right: 12px; }
+}
+
+/* ---------- 设置卡片 ---------- */
+main {
+  flex: 1; width: 100%; max-width: 560px; margin: 0 auto;
+  padding: 16px 16px calc(env(safe-area-inset-bottom) + 32px);
+  display: flex; flex-direction: column; gap: 16px;
+}
+.card {
+  background: var(--surface); border: 1px solid var(--hairline);
+  border-radius: 16px; padding: 16px;
+}
+.card h2 { font-size: 16px; font-weight: 650; letter-spacing: -.2px; }
+.hint { font-size: 12px; color: var(--ink-3); margin: 4px 0 14px; }
+.hint b { color: var(--ink-2); font-weight: 500; }
+label { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+label span { font-size: 12px; color: var(--ink-2); }
+.row2 { display: flex; gap: 10px; }
+.row2 label { flex: 1; }
+input, select {
+  font: inherit; color: var(--ink-1); width: 100%;
+  background: rgba(255,255,255,.06); border: 1px solid var(--hairline);
+  border-radius: 10px; padding: 9px 12px; outline: none;
+}
+input:focus, select:focus { border-color: var(--blue); }
+input::placeholder { color: var(--ink-3); }
+.primary {
+  background: var(--blue); color: #fff; font-size: 14px; font-weight: 600;
+  padding: 10px 18px; border-radius: 999px; margin-top: 4px;
+}
+.primary:active { transform: scale(.97); }
+.primary:disabled { opacity: .4; }
+
+/* ---------- 驾驶员列表 ---------- */
+.drv-add { display: flex; gap: 8px; margin-bottom: 12px; }
+.drv-add input { flex: 1; }
+.drv-add button {
+  flex: none; color: #7db3f0; font-weight: 600; font-size: 13.5px;
+  padding: 0 14px; border-radius: 999px;
+  border: 1px solid rgba(57,135,229,.35);
+}
+.drv-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 11px 0; border-bottom: 1px solid var(--hairline);
+}
+.drv-row:last-child { border-bottom: 0; }
+.drv-name { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; }
+.drv-badge {
+  font-size: 10.5px; color: #7db3f0; border: 1px solid rgba(57,135,229,.4);
+  border-radius: 999px; padding: 2px 8px; margin-left: 6px;
+}
+.drv-act {
+  flex: none; font-size: 12.5px; color: var(--ink-2);
+  padding: 6px 10px; border-radius: 999px; border: 1px solid var(--hairline);
+}
+.drv-act.set-def { color: #7db3f0; }
+.drv-act.del { color: #e5695f; }
+.drv-empty { padding: 18px 0 6px; font-size: 13px; color: var(--ink-3); text-align: center; }
+
+/* ---------- 轻提示 ---------- */
+#toast {
+  position: fixed; top: calc(env(safe-area-inset-top) + 60px); left: 50%;
+  transform: translateX(-50%) translateY(-8px); z-index: 99;
+  max-width: 80vw; font-size: 13px; color: #fff; text-align: center;
+  background: rgba(10,10,12,.85);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border-radius: 999px; padding: 9px 16px;
+  opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none;
+}
+#toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.err { color: #ffb3ad; }
+.about-link { display: flex; align-items: center; justify-content: space-between;
+  text-decoration: none; color: var(--ink-1); font-size: 15px; padding: 4px 2px; }
+.about-link:active { opacity: .6; }
+.about-link .chev { color: var(--ink-3); font-size: 17px; line-height: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav-row">
+    <details class="nav-menu brand-menu" id="brand-menu">
+      <summary>My Tesla<svg class="chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+      <div class="menu">
+        <a href="/tesla/charging">充电记录</a>
+        <a href="/tesla/stats">充电统计</a>
+        <a href="/tesla/chargemap">充电地图</a>
+        <a href="/tesla/map">足迹地图</a>
+        <a href="/tesla/trips">行程列表</a>
+        <a href="/tesla/groups">行程分组</a>
+        <a href="/tesla/live">当前驾驶</a>
+        <a class="on" href="/tesla/settings">软件设置</a>
+        <a href="/tesla/changelog">更新日志</a>
+        <button class="logout-row" id="logout" title="退出登录">退出登录</button>
+      </div>
+    </details>
+    <button id="refresh-btn" aria-label="刷新设置"><svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true"><path d="M12 7a5 5 0 1 1-1.46-3.54" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 1.6v2.4H9.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    <h2>TeslaMate 数据库</h2>
+    <p class="hint">行程/充电数据来源的 PostgreSQL。改动后立即换库重连并实测, 连不上自动回滚; 建议填固定 IP/主机名。留空 = 保持现值。</p>
+    <label><span>主机地址</span><input id="tm-host" autocomplete="off" spellcheck="false"></label>
+    <div class="row2">
+      <label><span>端口</span><input id="tm-port" inputmode="numeric" autocomplete="off"></label>
+      <label><span>数据库名</span><input id="tm-name" autocomplete="off" spellcheck="false"></label>
+    </div>
+    <div class="row2">
+      <label><span>用户</span><input id="tm-user" autocomplete="off" spellcheck="false"></label>
+      <label><span>密码</span><input id="tm-pass" type="password" autocomplete="new-password" placeholder=""></label>
+    </div>
+    <button class="primary" id="tm-save">保存并连接</button>
+  </section>
+
+  <section class="card">
+    <h2>高德地图</h2>
+    <p class="hint">Web 端 JS Key (地图/轨迹/断档补路都用它)。当前 Key: <b id="amap-now">未设置</b>。留空 = 保持现值。</p>
+    <label><span>Key</span><input id="amap-key" placeholder="留空保持现值" autocomplete="off" spellcheck="false"></label>
+    <label><span>安全码</span><input id="amap-code" type="password" placeholder="留空保持现值" autocomplete="new-password"></label>
+    <label><span>地图样式</span>
+      <select id="amap-style">
+        <option value="amap://styles/dark">幻影黑 (纯黑)</option>
+        <option value="amap://styles/darkblue">极夜蓝 (深色 · 偏蓝)</option>
+        <option value="amap://styles/normal">标准 (浅色)</option>
+        <option value="amap://styles/light">月光银</option>
+        <option value="amap://styles/grey">雅士灰</option>
+        <option value="amap://styles/whitesmoke">远山黛</option>
+        <option value="amap://styles/blue">靛青蓝</option>
+        <option value="custom">自定义…</option>
+      </select>
+    </label>
+    <label id="amap-style-custom-row" hidden><span>样式地址</span>
+      <input id="amap-style-custom" placeholder="amap://styles/你的样式ID" autocomplete="off" spellcheck="false">
+    </label>
+    <p class="hint">默认<b>幻影黑</b> —— 纯黑底色和深色 App 最搭。深色样式也有地名: 标注依赖样式数据异步加载, 首次打开过一两秒才出现 (页面会自动补画), 网络慢时更久。想调别的配色: 换上面的预设, 或到高德开放平台「个性化地图」自建样式 (底色字号都能调), 把样式 ID 填到「自定义」。改样式后刷新地图页生效。</p>
+    <button class="primary" id="amap-save">保存</button>
+  </section>
+
+  <section class="card">
+    <h2>驾驶员</h2>
+    <p class="hint">用于给行程标注驾驶员; 未标注的行程按<b>默认驾驶员</b>显示。</p>
+    <div class="drv-add">
+      <input id="drv-name" maxlength="30" placeholder="驾驶员名字" autocomplete="off">
+      <button id="drv-add">添加</button>
+    </div>
+    <div id="drv-list"></div>
+    <div class="drv-empty" id="drv-empty" hidden>还没有驾驶员 — 添加后可在行程里标注谁开的</div>
+  </section>
+  <section class="card">
+    <h2>账号</h2>
+    <p class="hint">当前登录: <b id="me-name">…</b>。改名称全站立即生效; 改密码只影响之后登录, 本设备不掉线。</p>
+    <div class="drv-add">
+      <input id="me-name-input" maxlength="20" placeholder="新名称 (2~20 个字符)" autocomplete="off">
+      <button id="me-name-save">改名称</button>
+    </div>
+    <label><span>当前密码</span><input id="me-old-pass" type="password" autocomplete="current-password"></label>
+    <div class="row2">
+      <label><span>新密码</span><input id="me-new-pass" type="password" autocomplete="new-password" minlength="6"></label>
+      <label><span>确认</span><input id="me-new-pass2" type="password" autocomplete="new-password" minlength="6"></label>
+    </div>
+    <button class="primary" id="me-pass-save">改密码</button>
+  </section>
+  <section class="card">
+    <h2>关于</h2>
+    <a class="about-link" href="/tesla/changelog">更新日志<span class="chev">›</span></a>
+  </section>
+</main>
+
+<div id="toast" hidden></div>
+
+<script src="/tesla/static/settings.js?v=1"></script>
+</body>
+</html>

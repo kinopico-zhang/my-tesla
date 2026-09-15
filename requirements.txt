@@ -1,0 +1,5 @@
+fastapi
+uvicorn[standard]
+psycopg[pool,binary]
+sqlalchemy>=2.0
+tzdata

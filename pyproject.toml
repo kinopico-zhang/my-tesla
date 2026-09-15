@@ -1,0 +1,78 @@
+[project]
+name = "my-tesla"
+version = "1.0.0"
+description = "My Tesla — TeslaMate 数据展示 (充电 / 足迹 / 行程)"
+requires-python = ">=3.13"
+
+# ---------------------------------------------------------------- mypy
+[tool.mypy]
+# 全库严格模式: DB 行 → SQLAlchemy 实体 → Pydantic 模型 → JSON 端到端有类型。
+# app 严格 / tests 非严格 (见 overrides); SQLAlchemy 2.0 / Pydantic v2 自带类型标注。
+python_version = "3.13"   # 服务固定跑本 venv 的 3.13 (Path.walk 等 3.12+ API)
+strict = true
+files = ["app", "tests"]
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+# 测试层放宽: 测试函数/桩的 fixture 形参标注是纯仪式 (pytest 注入), 无安全增益;
+# 逐模块 strict=false 在 mypy 2.x 不完整展开, 这里显式列出放宽的检查项
+module = "tests.*"
+strict = false
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+
+[[tool.mypy.overrides]]
+# repository 按域拆模块后 __init__ 是集中重导出的门面 (调用方免于关心
+# 名字住在哪个域): 关掉再导出的显式性检查
+module = ["app.tesla.repository", "app.tesla.repository.*"]
+implicit_reexport = true
+
+# ---------------------------------------------------------------- pylint
+[tool.pylint.main]
+# 从仓库根运行时让 pylint 找到 app 包 (conftest 里是运行时 sys.path 注入)
+init-hook = 'import sys; sys.path.insert(0, ".")'
+# FastAPI 路由函数天然多参数 (查询参数 + Depends 依赖), 默认 5 不够;
+# 查询条件包成参数对象 (SessionFilter 这类) 属性数同步放宽
+max-args = 10
+max-positional-arguments = 10
+max-attributes = 10
+# 数据密集的查询/组装函数局部变量多
+max-locals = 18
+# repository 聚合全部查询 (TeslaMate 只读 + 自有库: 补路/分组/设置), 不拆模块
+max-module-lines = 1600
+max-statements = 60
+max-branches = 14
+
+[tool.pylint.basic]
+# 测试函数不需要 docstring (pytest 惯例; 默认已豁免 _ 开头的私有名)
+no-docstring-rgx = "^(_|test_)"
+
+[tool.pylint."messages control"]
+disable = [
+    "too-few-public-methods",  # ORM 模型 / Pydantic 模型 / 持有者类天生方法少
+]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+
+# ---------------------------------------------------------------- coverage
+[tool.coverage.run]
+# 只统计 app 包 (tests 自身不计入); 分支覆盖: 一行的 if/else 两边都走到才算过
+source = ["app"]
+branch = true
+
+[tool.coverage.report]
+# 覆盖率门槛配置保留备用: 2026-09-15 起常规跑分不带 --cov
+# (NAS 上拖时间); 要验覆盖率时手动
+#   .venv/bin/python -m pytest tests -q --cov=app
+fail_under = 95
+show_missing = true
+skip_covered = false
+
+[tool.pylint.typecheck]
+# SQLAlchemy 2.0 的泛型订阅 (sessionmaker[Session]) 与动态构造器 (func.count 等)
+# 是运行时合法的, pylint 静态推断不了 → 按官方常见配置豁免这两个模块
+ignored-modules = ["sqlalchemy", "sqlalchemy.orm"]
+ignored-classes = ["sqlalchemy.orm.session.sessionmaker"]
