@@ -106,11 +106,17 @@ def _charge_rows(session: Session, date_range: DateRange | None,
     """按日期区间与地址关键字取充电过程 (不排序不分页, 交由调用方)。"""
     conds: list[ColumnElement[bool]] = _range_conditions(ChargingProcess.start_date, date_range)
     if q:
-        haystack = func.concat(
-            func.coalesce(Geofence.name, ""), " ",
-            func.coalesce(Address.name, ""), " ",
-            func.coalesce(Address.city, ""), " ",
-            func.coalesce(Address.display_name, ""))
+        # 拼接走 .concat() 运算符而非 func.concat(): 后者按 SQL 函数原样渲染,
+        # SQLite 3.44 才有内建 concat() (ubuntu-22.04 的 3.37 直接 no such
+        # function), .concat() 在 SQLite/PostgreSQL 编译成 ||, MySQL 才是
+        # concat()。四个字段都 coalesce 过, || 不会把整串带成 NULL。
+        haystack = (func.coalesce(Geofence.name, "")
+                    .concat(" ")
+                    .concat(func.coalesce(Address.name, ""))
+                    .concat(" ")
+                    .concat(func.coalesce(Address.city, ""))
+                    .concat(" ")
+                    .concat(func.coalesce(Address.display_name, "")))
         conds.append(func.lower(haystack).like(f"%{q.lower()}%"))
     stmt = (select(ChargingProcess, Address, Geofence)
             .join(Address, Address.id == ChargingProcess.address_id, isouter=True)

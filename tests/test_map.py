@@ -83,7 +83,7 @@ def test_tracks_cold_cache_queries_everything(auth, db, tmp_path, monkeypatch):
     assert d["tracks"][0]["pts"] == [[114.05, 22.55], [114.06, 22.56]]
     assert seen["after"] == -1                    # 无缓存 → 全量
     # 结果落盘 (带算法版本号)
-    cache = json.loads((tmp_path / "tracks_cache.json").read_text())
+    cache = json.loads((tmp_path / "tracks_cache.json").read_text(encoding="utf-8"))
     assert cache["max_id"] == 5
     assert cache["v"] == tracks_cache.CACHE_VERSION
     assert cache["tracks"][0]["id"] == 5
@@ -134,7 +134,7 @@ def test_tracks_old_cache_version_triggers_full_rebuild(
     monkeypatch.setattr(repository, "query_tracks", spy)
     assert auth.get("/tesla/map/api/tracks").json()["count"] == 1
     assert seen["after"] == -1                    # 无视磁盘 max_id, 全量重建
-    cache = json.loads((tmp_path / "tracks_cache.json").read_text())
+    cache = json.loads((tmp_path / "tracks_cache.json").read_text(encoding="utf-8"))
     assert cache["v"] == tracks_cache.CACHE_VERSION   # 重建后写入新版本号
 
 
@@ -153,7 +153,7 @@ def test_tracks_incremental_append(auth, db, tmp_path, monkeypatch):
     d = auth.get("/tesla/map/api/tracks").json()
     assert seen["after"] == 5                    # 只查 id > 5 的新行程
     assert [t["id"] for t in d["tracks"]] == [5, 8]   # 按日期排序
-    cache = json.loads((tmp_path / "tracks_cache.json").read_text())
+    cache = json.loads((tmp_path / "tracks_cache.json").read_text(encoding="utf-8"))
     assert cache["max_id"] == 8
     assert len(cache["tracks"]) == 2
 

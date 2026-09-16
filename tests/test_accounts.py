@@ -198,7 +198,7 @@ def test_invite_copy_ios_safari_fallbacks():
     复制落空: 旧版对 textarea 用 Range 选 —— 它没有 DOM 子节点选不中,
     还没 focus、元素移出视口); 拷贝整条路被拒时拉系统分享面板兜底,
     链接一定送得出去。"""
-    js = (Path(m.__file__).parent / "static" / "accounts.js").read_text()
+    js = (Path(m.__file__).parent / "static" / "accounts.js").read_text(encoding="utf-8")
     assert "navigator.clipboard && window.isSecureContext" in js
     assert "ta.focus({ preventScroll: true })" in js   # iOS: 聚焦后选区才建立
     assert "ta.setSelectionRange(0, text.length)" in js
@@ -213,9 +213,9 @@ def test_admin_badge_outside_name_cell():
     overflow:hidden (长名省略号), inline 徽章的下半 (含下边框) 会伸出行盒
     被裁掉 (2026-09-13 用户抓到「椭圆框只有上半」)。"""
     base = Path(m.__file__).parent / "static"
-    js = (base / "accounts.js").read_text()
+    js = (base / "accounts.js").read_text(encoding="utf-8")
     assert '<div class="usr-name">${esc(u.name)}</div>' in js   # 名字格先闭合
     assert 'usr-badge">管理员</span>` : "")' in js              # 徽章是行级片段
     assert "${esc(u.name)}<span" not in js                      # 不许塞回名字格
-    html = (base / "accounts.html").read_text()
+    html = (base / "accounts.html").read_text(encoding="utf-8")
     assert "flex: none; font-size: 10.5px; line-height: 1" in html  # 自立行高
