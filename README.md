@@ -1,6 +1,9 @@
 # My Tesla
 
 [![CI](https://github.com/kinopico-zhang/my-tesla/actions/workflows/ci.yml/badge.svg)](https://github.com/kinopico-zhang/my-tesla/actions/workflows/ci.yml)
+![OS](https://img.shields.io/badge/OS-Linux%20%7C%20Windows%20%7C%20macOS-0078D6)
+![Python](https://img.shields.io/badge/Python-3.13%20%7C%203.14-3776AB?logo=python&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-22-339933?logo=nodedotjs&logoColor=white)
 
 读取 NAS 上 `teslamate_cn` (TeslaMate) 的 PostgreSQL 数据, 用手机友好的
 iOS 风格页面展示充电与行驶数据: 充电记录瀑布流 + 充电曲线、充电统计、
