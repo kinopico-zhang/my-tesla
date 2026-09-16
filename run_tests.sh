@@ -38,10 +38,10 @@ if [ -d node_modules ]; then
     --include 'app/tesla/static/format.js' --include 'app/tesla/static/trip-playback.js' \
     --include 'app/tesla/static/lastpage.js' \
     --check-coverage --lines 95 --branches 95 --functions 95 \
-    --reporter text node --test tests/js/ || rc=1
+    --reporter text node --test tests/js/*.test.mjs || rc=1
 else
   echo "跳过前端静态检查与覆盖率门禁 (本机无 node_modules; CI 会跑全量)" >&2
-  node --test tests/js/ || rc=1
+  node --test tests/js/*.test.mjs || rc=1
 fi
 
 exit $rc
