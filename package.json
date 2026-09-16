@@ -9,8 +9,8 @@
   "scripts": {
     "lint": "eslint app/tesla/static app/static tests/js",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "node --test tests/js/",
-    "coverage": "c8 --include app/tesla/static/gcj02.js --include app/tesla/static/trackutil.js --include app/tesla/static/format.js --include app/tesla/static/trip-playback.js --include app/tesla/static/lastpage.js --check-coverage --lines 95 --branches 95 --functions 95 --reporter text node --test tests/js/",
+    "test": "node --test tests/js/*.test.mjs",
+    "coverage": "c8 --include app/tesla/static/gcj02.js --include app/tesla/static/trackutil.js --include app/tesla/static/format.js --include app/tesla/static/trip-playback.js --include app/tesla/static/lastpage.js --check-coverage --lines 95 --branches 95 --functions 95 --reporter text node --test tests/js/*.test.mjs",
     "check": "npm run lint && npm run typecheck && npm run test && npm run coverage"
   },
   "devDependencies": {

@@ -53,6 +53,9 @@ def isolate(tmp_path, monkeypatch):
     monkeypatch.setattr(authentication, "_login_fails", {})
     tracks_cache.reset()
     monkeypatch.setenv("MAP_CACHE_FILE", str(tmp_path / "tracks_cache.json"))
+    # TeslaMate 地址固定走环境变量短路: build_db_url 永不落到 docker inspect
+    # (有真容器的机器上测试会静默依赖本机 docker, CI 无 docker 直接炸)
+    monkeypatch.setenv("TMDB_HOST", "127.0.0.1")
     yield
     database.dispose_engine()
     database.dispose_own_engine()
