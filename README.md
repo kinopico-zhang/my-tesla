@@ -1,5 +1,7 @@
 # My Tesla
 
+[![CI](https://github.com/kinopico-zhang/my-tesla/actions/workflows/ci.yml/badge.svg)](https://github.com/kinopico-zhang/my-tesla/actions/workflows/ci.yml)
+
 读取 NAS 上 `teslamate_cn` (TeslaMate) 的 PostgreSQL 数据, 用手机友好的
 iOS 风格页面展示充电与行驶数据: 充电记录瀑布流 + 充电曲线、充电统计、
 充电地图热力图、足迹地图轨迹回放、行程列表与合并播放、当前驾驶实时页。
