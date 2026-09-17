@@ -1,21 +1,23 @@
 #!/bin/sh
 # 运行全部测试与检查 (提交前全绿):
-#   后端: pylint / mypy / pytest (2026-09-15 起不跑覆盖率, NAS 上太拖时间;
-#         JS 纯模块仍有 c8 门禁)
+#   后端: pylint (app 严检 / tests 放宽仪式代码) / mypy /
+#         pytest (JS 纯逻辑模块另有 c8 门禁, 不带覆盖率跑 python)
 #   前端: ESLint (页面脚本+测试) / tsc --checkJS (纯逻辑模块) /
-#         node --test + c8 覆盖率门禁 95% (gcj02 / trackutil / format /
-#         trip-playback / lastpage)
-# 前端工具链要 node_modules (npm ci 安装); 本机没装时跳过静态检查与
-# c8 门禁 (CI 会全量跑), node --test 照跑。
+#         stylelint (CSS) / html-validate (页面) /
+#         node --test + c8 覆盖率门禁 95%
+# 前端工具链版本锁在 package.json。独立 clone 先 `npm install` 自建
+# node_modules; 从 My Home 组合仓的 apps/ 下跑时自动软链组合仓根的那份
+# (本机与容器 /repo/apps/my-tesla 的相对路径二合一)。QNAP 宿主 node 缺
+# ICU 数据, 静态检查在调试容器 mytesla-debug 里跑 (容器把组合仓挂在
+# /repo); 别的机器有本地 node_modules 就直接宿主跑。
 cd "$(dirname "$0")" || exit 1
 rc=0
 
-# pytest 的 tmp_path 优先放内存 (/dev/shm 3.8G tmpfs): 测试的 SQLite 种子库
-# 全在内存里跑, 不用跟机械盘上的媒体服务抢 IO —— 那是全量测试最大的拖累。
-# /tmp 只有 64M 不够一轮 (会 ENOSPC); /dev/shm 重启即清, 没有就退回仓库目录。
+# pytest 的 tmp_path 优先放内存 (/dev/shm): 测试的 SQLite 种子库全在
+# 内存里跑, 不跟机械盘抢 IO; 没有就退回仓库目录。
 if [ -d /dev/shm ] && [ -w /dev/shm ]; then
-  mkdir -p /dev/shm/my-tesla-pytest
-  export TMPDIR=/dev/shm/my-tesla-pytest
+  mkdir -p /dev/shm/mytesla-pytest
+  export TMPDIR=/dev/shm/mytesla-pytest
 else
   mkdir -p .pytest-tmp
   export TMPDIR="$PWD/.pytest-tmp"
@@ -29,19 +31,42 @@ fi
 
 .venv/bin/python -m pytest tests -q || rc=1
 
-# 前端: npx --no-install 只认本仓库 node_modules (不悄悄下载)
-if [ -d node_modules ]; then
-  npx --no-install eslint app/tesla/static app/static tests/js || rc=1
-  npx --no-install tsc -p tsconfig.json || rc=1
-  npx --no-install c8 \
-    --include 'app/tesla/static/gcj02.js' --include 'app/tesla/static/trackutil.js' \
-    --include 'app/tesla/static/format.js' --include 'app/tesla/static/trip-playback.js' \
-    --include 'app/tesla/static/lastpage.js' \
-    --check-coverage --lines 95 --branches 95 --functions 95 \
-    --reporter text node --test tests/js/*.test.mjs || rc=1
-else
-  echo "跳过前端静态检查与覆盖率门禁 (本机无 node_modules; CI 会跑全量)" >&2
-  node --test tests/js/*.test.mjs || rc=1
+# 前端工具链: 组合仓内跑 (apps/<name> 下) 时软链组合仓根的 node_modules,
+# 相对路径统一; 独立 clone 由 npm install 自建
+if [ ! -e node_modules ] && [ -d ../../node_modules/eslint ]; then
+  ln -s ../../node_modules node_modules
 fi
+if [ ! -d node_modules/eslint ]; then
+  echo "跳过前端检查: 没有 node_modules (npm install 后再跑)" >&2
+  exit $rc
+fi
+
+FRONT="node node_modules/eslint/bin/eslint.js app/home/static app/tesla/static/js tests/js \
+   && node node_modules/typescript/bin/tsc -p tsconfig.json \
+   && node node_modules/stylelint/bin/stylelint.mjs 'app/*/static/css/*.css' \
+   && node node_modules/html-validate/bin/html-validate.mjs 'app/*/static/*.html'"
+
+DOCKER=/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker
+if $DOCKER exec mytesla-debug true 2>/dev/null; then
+  # QNAP 部署: 宿主 node 缺 ICU, 工具链在调试容器里跑 (本仓 = /repo/apps/my-tesla,
+  # 软链的 node_modules 在容器内解析到 /repo/node_modules)
+  if ! $DOCKER exec mytesla-debug sh -c "cd /repo/apps/my-tesla && $FRONT"; then
+    echo "前端静态检查失败 (或调试容器 mytesla-debug 未运行)" >&2
+    rc=1
+  fi
+else
+  sh -c "$FRONT" || rc=1
+fi
+
+# 单元测试 + 覆盖率门禁: 只统计纯逻辑模块 (页面脚本由 E2E 覆盖)
+node node_modules/c8/bin/c8.js \
+  --include 'app/tesla/static/js/gcj02.js' \
+  --include 'app/tesla/static/js/trackutil.js' \
+  --include 'app/tesla/static/js/track-animation.js' \
+  --include 'app/tesla/static/js/format.js' \
+  --include 'app/tesla/static/js/trip-playback.js' \
+  --include 'app/tesla/static/js/lastpage.js' \
+  --check-coverage --lines 95 --branches 95 --functions 95 \
+  --reporter text node --test tests/js/*.test.mjs || rc=1
 
 exit $rc

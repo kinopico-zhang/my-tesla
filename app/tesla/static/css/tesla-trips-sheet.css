@@ -1,0 +1,146 @@
+/* tesla-trips-sheet — trips 页样式。拆自 trips.html 的内联 <style> (结构化重构, 内容逐字节未动)。 */
+/* ---------- 轨迹弹层 (底部 sheet) ---------- */
+.backdrop {
+  position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.4);
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.backdrop.show { opacity: 1; pointer-events: auto; }
+/* 多选底栏: 固定底部 (弹层 z=91 更高, 开合并弹层时被盖住) */
+.selbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 80;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px calc(env(safe-area-inset-bottom) + 10px);
+  background: rgba(28,28,30,.94);
+  -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid var(--hairline);
+}
+.selbar[hidden] { display: none; }
+.sel-info {
+  flex: 1; min-width: 0; font-size: 13px; color: var(--ink-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sel-info b { color: var(--ink-1); font-weight: 650; }
+.sel-info #sel-cap { color: #e08a2e; }   /* 划选超上限: 提示为什么按钮置灰 */
+.sel-go {
+  flex: none; background: var(--blue); color: #fff; font-size: 13.5px; font-weight: 600;
+  padding: 9px 16px; border-radius: 999px;
+}
+.sel-go:disabled { opacity: .4; }
+.sel-go:active { transform: scale(.96); }
+.sel-all { flex: none; font-size: 13px; color: var(--blue); font-weight: 600; padding: 9px 4px; }
+.sel-all:disabled { opacity: .4; }
+.sel-cancel { flex: none; font-size: 13px; color: var(--ink-2); padding: 9px 4px; }
+.sel-row, .gp-row { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
+.selbar.naming .sel-row { display: none; }
+.gp-row { display: none; }
+.selbar.naming .gp-row { display: flex; }
+.gp-row input {
+  flex: 1; min-width: 0; font-size: 14px; color: var(--ink-1);
+  padding: 8px 12px; border-radius: 10px;
+  border: 1px solid var(--hairline); background: rgba(255,255,255,.06); outline: none;
+}
+.gp-row input:focus { border-color: var(--blue); }
+/* 手机窄屏: 选中信息独占一行, 按钮行换到下面 */
+@media (max-width: 479px) {
+  .sel-row { flex-wrap: wrap; gap: 8px 10px; }
+  .sel-info { flex-basis: 100%; }
+}
+
+
+/* 顶栏刷新按钮 (列表重载唯一入口, 与页签胶囊同款样式) */
+#refresh-btn {
+  align-self: center; display: flex; align-items: center; margin-left: 0;
+  color: var(--ink-1); background: var(--surface-2);
+  padding: 5px 9px; border-radius: 999px;
+}
+#refresh-btn:active { background: var(--surface-3); }
+#refresh-btn.busy svg { animation: refresh-spin .8s linear infinite; }
+@keyframes refresh-spin { to { transform: rotate(360deg); } }
+body.selecting #refresh-btn { display: none; }
+
+/* ---------- 轻提示 ---------- */
+#toast {
+  position: fixed; top: calc(env(safe-area-inset-top) + 60px); left: 50%;
+  transform: translateX(-50%) translateY(-8px); z-index: 99;
+  max-width: 80vw; font-size: 13px; color: #fff; text-align: center;
+  background: rgba(10,10,12,.85);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border-radius: 999px; padding: 9px 16px;
+  opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none;
+}
+#toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast[hidden] { display: none; }
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 91;
+  height: 82vh; height: 82dvh;
+  display: flex; flex-direction: column;
+  background: var(--surface-2); border-radius: 20px 20px 0 0;
+  padding: 10px 16px calc(env(safe-area-inset-bottom) + 12px);
+  transform: translateY(105%); transition: transform .28s cubic-bezier(.32,.72,.33,1);
+}
+.sheet.show { transform: translateY(0); }
+/* 手柄改成整行命中区 (5px 的胶囊本体根本点不中), 胶囊用 ::before 画 */
+.grab { flex: none; padding: 7px 0 3px; margin-bottom: 8px; cursor: pointer;
+        touch-action: none; -webkit-user-select: none; user-select: none; }
+.grab::before { content: ""; display: block; width: 38px; height: 5px;
+                border-radius: 3px; background: var(--hairline); margin: 0 auto; }
+.sh-head { flex: none; display: flex; align-items: baseline; gap: 10px; padding: 0 4px 10px; }
+.sh-title { font-size: 17px; font-weight: 700; }
+.sh-sub { font-size: 12px; color: var(--ink-3); min-width: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sh-drv { flex: none; display: flex; align-items: center; gap: 8px; padding: 0 4px 8px; }
+#sh-drv-pick { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.sh-drv .lb { font-size: 11px; color: var(--ink-2); flex: none; }
+.sh-drv select {
+  font: inherit; font-size: 12.5px; color: var(--ink-1);
+  background: var(--surface); border: 1px solid var(--hairline);
+  border-radius: 999px; padding: 5px 10px; outline: none; max-width: 62%;
+}
+.sh-toll {
+  margin-left: auto; flex: none; font-size: 12.5px; color: #7db3f0;
+  background: rgba(57,135,229,.14); padding: 4px 10px; border-radius: 999px;
+  white-space: nowrap; max-width: 52%; overflow: hidden; text-overflow: ellipsis;
+}
+.sh-cells {   /* 单行横滑: 放不下就滑, 不折行挤地图 (里程/时长/车速/功耗 实时格排前) */
+  flex: none; display: flex; gap: 8px; padding-bottom: 10px;
+  overflow-x: auto; scrollbar-width: none;
+}
+.sh-cells::-webkit-scrollbar { display: none; }
+.sh-cell { flex: none; background: var(--surface); border-radius: 12px; padding: 8px 12px; }
+.sh-cell .lb { font-size: 11px; color: var(--ink-2); }
+.sh-cell .val { font-size: 17px; font-weight: 650; margin-top: 2px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sh-cell .val small { font-size: 11px; color: var(--ink-2); font-weight: 500; }
+/* 实时数字位数变化 (0.0→4.9→12.3 / 0:00→1:02:45 / 回收 -12.3) 不许在横滑条里
+   挤动邻居格: 数字进定宽盒右对齐 (ch = 一个 tabular 数字宽), 变长只向左长 */
+.sh-cell .val .n { display: inline-block; text-align: right; }
+#sh-km .n, #sh-kwh .n { min-width: 4.5ch; }
+#sh-dur .n { min-width: 7ch; }
+#sh-spd .n { min-width: 3ch; }
+#sh-pw .n { min-width: 5ch; }    /* 可负 (动能回收 "-12.3") */
+#sh-avg .n { min-width: 4ch; }   /* 播放初期每公里成本高, 平均值可冲 4 位 */
+.trip-map-wrap {   /* 底部让位浮层播放条 (62px = 胶囊高50+距底16+净距8 − 弹层底padding12):
+  跟车的动态轨迹不再被控制条压住, AMap logo 也完整露出 */
+  position: relative; flex: 1; min-height: 0; margin-bottom: 62px;
+  border-radius: 14px; overflow: hidden; background: var(--surface);
+}
+#trip-map {   /* 环形前瞻: 容器四周扩出 (上下 ±320, 左右 ±160, 与 MAP_RING_* 一致),
+  wrap overflow 裁掉, 可视区不变 —— 引擎按容器矩形取瓦, 播放中四周瓦片提前
+  4~13 秒进缓存 (随速档下视野米宽与镜头扫速同比例缩放, 领先量近似恒定),
+  地名/道路不迟到, 边播边下天然成立 (流式分组播放也靠它)。代价: 渲染像素
+  ~4× (现代手机 GPU 无压力)。配套: setFitView 避让边距补环宽 (FIT_AVOID),
+  高德 logo 推回可视区, 版权文字隐藏 */
+  position: absolute; width: calc(100% + 320px); height: calc(100% + 640px);
+  left: -160px; top: -320px;
+}
+#trip-map .amap-logo {
+  /* logo 贴容器左缘 (dbg81 实测 left:4px), 平移环带偏移量 (对称补偿
+     #trip-map 的 -160/-320) 推回可视区 */
+  transform: translate(160px, -320px);
+}
+#trip-map .amap-copyright { display: none !important; }   /* 版权文字按需求去掉 */
+.trip-msg {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+  font-size: 13px; color: var(--ink-2); background: var(--surface);
+  z-index: 10; text-align: center; padding: 0 30px;
+}
+.trip-msg .spin { margin: 0 auto; }

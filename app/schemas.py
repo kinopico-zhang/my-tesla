@@ -1,7 +1,7 @@
-"""账号与更新日志的接口模型。
+"""My Home 共享层的接口模型 (账号 + 更新日志)。
 
-应用业务模型在 app/tesla/schemas.py; `from` 是 Python 关键字,
-字段名用 from_ + alias="from"。
+各应用自己的模型在各自包内 (app/tesla/schemas/ 等); `from` 是
+Python 关键字, 字段名用 from_ + alias="from"。
 """
 from datetime import datetime
 

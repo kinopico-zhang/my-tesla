@@ -6,7 +6,7 @@
 from datetime import datetime
 
 from app.tesla.models import Address, Geofence
-from tests.conftest import seed_charge, seed_charging
+from tests.seed_factories import seed_charge, seed_charging
 
 PAGES = ["/tesla/charging", "/tesla/stats", "/tesla/chargemap", "/tesla/map",
          "/tesla/trips", "/tesla/groups", "/tesla/live", "/tesla/settings"]
@@ -92,15 +92,19 @@ def test_map_locations_empty(auth, db):
 def test_chargemap_page_skeleton(auth):
     """充电地图页: 全屏热力图 + 三视图切换 + 颜色梯度图例 + 点击就近取点弹详情。"""
     html = auth.get("/tesla/chargemap").text
-    html += auth.get("/tesla/static/chargemap.js?v=1").text
+    # 脚本/样式拆去了 js/ 与 css/ (结构化重构): 断言用的片段全拼接进来查
+    for name in ("css/tesla-chargemap-page.css", "css/tesla-chargemap-map.css",
+                 "js/chargemap-page.js", "js/chargemap-heatmap.js",
+                 "js/chargemap-time-filters.js"):
+        html += auth.get(f"/tesla/static/{name}").text
     for frag in [
         "<title>充电地图 · My Tesla</title>",
         '<a class="on" href="/tesla/chargemap">充电地图</a>',
         'id="map"',
         'id="view-seg"',
-        '<button data-v="energy" class="on">充电电量</button>',
-        '<button data-v="sessions">充电次数</button>',
-        '<button data-v="cost">充电费用</button>',
+        '<button type="button" data-v="energy" class="on">充电电量</button>',
+        '<button type="button" data-v="sessions">充电次数</button>',
+        '<button type="button" data-v="cost">充电费用</button>',
         'id="st-places"', 'id="st-sessions"', 'id="st-energy"',   # 汇总行
         'id="legend"', 'id="lg-mode"', 'id="lg-ramp"', 'id="lg-row"',   # 热力图例
         'id="sh-name"', 'id="sh-sessions"', 'id="sh-fast"',
@@ -129,7 +133,7 @@ def test_chargemap_link_in_all_nav_menus(auth):
     for path in PAGES:
         html = auth.get(path).text
         assert 'href="/tesla/chargemap">充电地图</a>' in html, path   # 含 on 态
-    lastpage = auth.get("/tesla/static/lastpage.js?v=1").text
+    lastpage = auth.get("/tesla/static/js/lastpage.js?v=1").text
     assert '"/tesla/chargemap", "/tesla/map"' in lastpage
     login_js = auth.get("/static/login.js?v=1").text
     assert "stats|chargemap|map" in login_js

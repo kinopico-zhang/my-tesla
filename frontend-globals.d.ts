@@ -11,6 +11,7 @@ interface Navigator {
 interface Window {
   GCJ02: object;
   TrackUtil: object;
+  TrackAnimation: object;   // track-animation.js (播放节拍/描画路径)
   FormatUtil: object;     // format.js (三页共用格式化)
   TripPlayback: object;   // trip-playback.js (行程播放纯逻辑)
 }

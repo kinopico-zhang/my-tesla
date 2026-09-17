@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v=1">
+  <link rel="manifest" href="/static/manifest.json">
+  <title>账号管理 · My Tesla</title>
+<link rel="stylesheet" href="/static/css/accounts-page.css?v=1">
+</head>
+<body>
+
+<header>
+  <div class="nav-row">
+    <details class="nav-menu brand-menu" id="brand-menu">
+      <summary>My Tesla<svg class="chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+      <div class="menu">
+        <a href="/tesla/charging">My Tesla</a>
+        <a class="on" href="/accounts">账号管理</a>
+        <button type="button" class="logout-row" id="logout" title="退出登录">退出登录</button>
+      </div>
+    </details>
+    <button type="button" id="refresh-btn" aria-label="刷新账号"><svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true"><path d="M12 7a5 5 0 1 1-1.46-3.54" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 1.6v2.4H9.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
+</header>
+
+<main>
+  <div class="denied" id="denied" hidden>账号管理需要管理员权限</div>
+
+  <section class="card" id="users-card" hidden>
+    <h2>账号</h2>
+    <p class="hint">家里每个人都用自己的账号登录, 数据按账号记账/标注。邀请注册的账号拥有除账号管理外的全部功能。</p>
+    <div id="user-list"></div>
+  </section>
+
+  <section class="card" id="invite-card" hidden>
+    <h2>发注册邀请</h2>
+    <p class="hint">生成一次性邀请链接发给家人; 注册后自动登录, 无需再发密码。</p>
+    <div class="days-row" id="days-row">
+      <button type="button" data-days="1" class="on">1 天</button>
+      <button type="button" data-days="7">7 天</button>
+      <button type="button" data-days="30">30 天</button>
+    </div>
+    <button type="button" class="primary" id="invite-make">生成邀请链接</button>
+  </section>
+
+  <section class="card" id="list-card" hidden>
+    <h2>邀请记录</h2>
+    <p class="hint">一次性链接: 注册过 / 过期 / 撤销后都不能再用。</p>
+    <div id="invite-list"></div>
+    <div class="inv-empty" id="invite-empty" hidden>还没有发过邀请</div>
+  </section>
+</main>
+
+<div id="toast" hidden></div>
+
+<script src="/static/menu-user.js?v=2"></script>
+<script src="/static/link-delivery.js?v=1"></script>
+<script src="/static/accounts.js?v=1"></script>
+</body>
+</html>

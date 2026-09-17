@@ -2,17 +2,14 @@
 
 不逐提交记版本 (一个版本可以同时含多个修复和多个功能); 版本号 x.y.z ——
 x 大改版 · y 新功能 · z 问题修复, 新批次加在最上面 (新→老)。
-只记 My Tesla 自己的版本线 (2026-09-15 起独立成库; 早年搭在 My Home
-伞形应用里的历史条目照录, 是真实发生过的事)。
+只记 My Tesla 自己的版本线; My Music / My Money 的变化在各自应用的
+日志页看 (2026-09-14 起各自独立)。
 """
 from typing import Final
 
 from .schemas import ChangelogItem, ChangelogVersion
 
 VERSIONS: Final[list[ChangelogVersion]] = [
-    ChangelogVersion(version="2.7.0", date="2026-09-15", items=[
-        ChangelogItem(kind="改进", text="My Tesla 独立成自己的应用: 账号、登录、充电、足迹全部在一个应用里, 打开直达充电记录页"),
-    ]),
     ChangelogVersion(version="2.6.0", date="2026-09-15", items=[
         ChangelogItem(kind="新增", text="左上角的菜单顶部现在显示当前登录的是谁 (管理员带标记), 换账号、看家人有没有登录一目了然;"
                                        " 三个应用的菜单都一样"),

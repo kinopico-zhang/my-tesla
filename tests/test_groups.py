@@ -3,12 +3,14 @@
 
 
 def test_groups_page_served(auth):
-    """分组页: 列表骨架 (转圈/列表/空态/错误重试) + 页签菜单 + 轻提示。"""
+    """分组页: 列表骨架 (转圈/列表/空态/错误重试) + 页签菜单 + 轻提示。
+    样式拆去了 css/tesla-groups.css (结构化重构): 顶栏片段断言把它拼进 html。"""
     html = auth.get("/tesla/groups").text
+    html += auth.get("/tesla/static/css/tesla-groups.css?v=1").text
     for frag in ['<h2>行程分组</h2>', 'id="count-badge"', 'id="gp-spin"',
                  'id="gp-list"', 'id="gp-empty"', 'id="errbox"', 'id="retry"',
                  'id="toast"', 'id="logout"', 'id="brand-menu"',
-                 '<script src="/tesla/static/groups.js?v=1"></script>',
+                 '<script src="/tesla/static/js/groups.js?v=1"></script>',
                  '在行程列表长按多选行程后点「存为分组」']:
         assert frag in html, f"分组页缺少 {frag}"
     # 页签菜单: 自己高亮, 行程页入口在 (分组管理搬来这, 行程页只留创建)
@@ -26,7 +28,7 @@ def test_groups_page_served(auth):
 def test_groups_page_interactions(auth):
     """分组页脚本: 打开跳行程页深链合并播放, 改名行内编辑, 删除二次确认。
     行内重渲染会脱链事件目标 —— 委托先判 isConnected (与行程页同一坑)。"""
-    js = auth.get("/tesla/static/groups.js?v=1").text
+    js = auth.get("/tesla/static/js/groups.js?v=1").text
     for frag in ['"/tesla/trips/api/groups"', "function rowHTML(",
                  "function render()", "async function load()",
                  '"/tesla/trips?ids=" + item.dataset.ids',

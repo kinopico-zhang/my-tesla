@@ -1,0 +1,126 @@
+/* tesla-charging-sheet — index 页样式。拆自 index.html 的内联 <style> (结构化重构, 内容逐字节未动)。 */
+/* ---------- 详情 Sheet (iOS 底部弹层) ---------- */
+.sheet-backdrop {
+  position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.55);
+  opacity: 0; pointer-events: none; transition: opacity .3s;
+}
+.sheet-backdrop.on { opacity: 1; pointer-events: auto; }
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 100;
+  margin: 0 auto; max-width: 640px; max-height: 92vh; max-height: 92dvh;
+  background: var(--surface); border-radius: 20px 20px 0 0;
+  border: 1px solid var(--hairline); border-bottom: 0;
+  display: flex; flex-direction: column;
+  transform: translateY(105%);
+  transition: transform .38s cubic-bezier(.32,.72,0,1);
+  box-shadow: 0 -12px 48px rgba(0,0,0,.5);
+}
+.sheet.on { transform: translateY(0); }
+.sheet-grab-zone { padding: 7px 0 3px; touch-action: none; cursor: pointer;
+                    -webkit-user-select: none; user-select: none; }
+.sheet-grab { width: 36px; height: 5px; border-radius: 3px; background: #48484a; margin: 0 auto; }
+.sheet-head { position: relative; padding: 6px 18px 13px; border-bottom: 1px solid var(--hairline); }
+.sheet-head h3 { font-size: 17px; font-weight: 700; padding-right: 36px; letter-spacing: -.2px; }
+.sheet-head .sh-loc { font-size: 13px; color: var(--ink-2); margin-top: 2px; padding-right: 36px; }
+.sheet-head .sh-row { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
+.sheet-close {
+  position: absolute; top: 4px; right: 12px; width: 30px; height: 30px;
+  border-radius: 50%; background: rgba(255,255,255,.09);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: var(--ink-2);
+}
+.sheet-body { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 14px 16px calc(30px + env(safe-area-inset-bottom)); }
+.st-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.st { background: #232326; border-radius: 12px; padding: 9px 12px; }
+.st .lb { font-size: 11px; color: var(--ink-2); }
+.st .val { font-size: 16.5px; font-weight: 650; margin-top: 2px; letter-spacing: -.2px; white-space: nowrap; }
+.st .val small { font-size: 11px; font-weight: 500; color: var(--ink-2); }
+.sh-chart-title { font-size: 13px; font-weight: 650; margin: 16px 0 6px; display: flex; justify-content: space-between; align-items: center; }
+.sh-chart-title:first-child { margin-top: 2px; }
+#chart-soc { height: 168px; }
+#chart-pw { height: 188px; }
+.sh-addr { font-size: 11.5px; color: var(--ink-3); margin-top: 14px; line-height: 1.5; }
+/* 导航到充电站: 详情顶部通栏, 拉起手机里装了的地图 App */
+.nav-go {
+  display: block; width: 100%; padding: 11px 0; margin-bottom: 10px;
+  border-radius: 12px; font-size: 14.5px; font-weight: 650;
+  color: #7db3f0; background: rgba(125,179,240,.14);
+}
+.nav-go:active { background: rgba(125,179,240,.26); }
+.sheet .spin { margin: 40px auto; display: block; }
+
+/* ---------- 费用编辑弹窗 (iOS alert 风格) ---------- */
+.alert-backdrop {
+  position: fixed; inset: 0; z-index: 120; background: rgba(0,0,0,.45);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  opacity: 0; pointer-events: none; transition: opacity .22s;
+}
+.alert-backdrop.on { opacity: 1; pointer-events: auto; }
+.alert {
+  width: min(300px, 86vw); border-radius: 14px; overflow: hidden; text-align: center;
+  background: rgba(44,44,46,.94);
+  -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+  border: 1px solid var(--hairline);
+  transform: scale(1.05); transition: transform .22s;
+}
+.alert-backdrop.on .alert { transform: scale(1); }
+.al-title { padding: 17px 16px 2px; font-size: 16px; font-weight: 650; }
+.al-msg { padding: 3px 16px 12px; font-size: 12px; color: var(--ink-2); line-height: 1.4; }
+.al-field {
+  display: flex; align-items: center; gap: 4px; margin: 0 16px 6px;
+  background: rgba(118,118,128,.24); border-radius: 10px; padding: 9px 12px;
+}
+.al-field .cur { color: var(--ink-2); font-size: 15px; }
+.al-field input {
+  flex: 1; min-width: 0; border: 0; outline: 0; background: none;
+  color: var(--ink-1); font-size: 17px; font-weight: 600;
+  text-align: center; caret-color: #3987e5;
+}
+.al-field input.shake { animation: shake .35s; }
+@keyframes shake {
+  20% { transform: translateX(-7px); } 40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); } 80% { transform: translateX(3px); }
+}
+.al-err { min-height: 16px; font-size: 12px; color: #ff6961; padding: 0 16px; }
+.al-clear {
+  display: block; width: 100%; padding: 9px 0 11px;
+  font-size: 12.5px; color: #ff6961;
+}
+.al-btns { display: flex; border-top: 1px solid var(--hairline); }
+.al-btn { flex: 1; padding: 13px 0; font-size: 15.5px; color: var(--ink-1); }
+.al-btn + .al-btn { border-left: 1px solid var(--hairline); }
+/* 导航选单: 地图 App 一行一个, 点一个只拉一个 */
+.nav-hint { padding: 3px 16px 0; font-size: 11px; color: var(--ink-3); text-align: center; }
+.nav-apps { margin: 10px 16px 16px; border-radius: 10px; overflow: hidden; }
+.nav-apps button {
+  display: block; width: 100%; padding: 12px 0;
+  font-size: 15px; color: #7db3f0;
+  -webkit-touch-callout: none; user-select: none;   /* 长按隐藏别被系统长按菜单打断 */
+}
+.nav-apps button + button, .nav-restore + button, button + .nav-restore { border-top: 1px solid var(--hairline); }
+.nav-restore { padding: 2px 0 8px; }
+.nav-restore button {
+  display: inline-block; width: auto; padding: 5px 12px; margin: 5px 6px 0 8px;
+  font-size: 12px; border: 1px solid var(--hairline); border-radius: 14px; color: var(--ink-2);
+}
+.nav-apps button:active { background: rgba(255,255,255,.06); }
+.al-strong { font-weight: 650; color: #7db3f0; }
+.al-btn:active, .al-clear:active { background: rgba(255,255,255,.06); }
+
+/* 卡片费用 (与电量同行, 靠右, 可点编辑) */
+.cs-cost {
+  display: flex; align-items: baseline; flex: none;
+  font-size: 13px; font-weight: 600; color: var(--ink-1);
+}
+.cs-cost:active { opacity: .55; }
+.cs-cost .pp { font-size: 11.5px; font-weight: 500; color: var(--ink-2); margin-left: 7px; }
+.cs-cost .edit-ic { margin-left: 5px; font-size: 11px; font-weight: 400; color: var(--ink-3); }
+.cs-cost.none {   /* 没记费用: 红色实心 pill 醒目提醒 (记完变回正常费用) */
+  width: fit-content; font-size: 11.5px; font-weight: 650; color: #fff;
+  background: #e5484d; border: 0; border-radius: 999px; padding: 4.5px 11px;
+}
+/* Sheet 费用块 (可点编辑) */
+.st-cost { cursor: pointer; }
+.st-cost .val.red { color: #e5484d; }   /* 没记费用: 红字提醒 */
+.st-cost:active { background: #2a2a2e; }
+.st-cost .lb::after { content: " ✎"; font-size: 10px; color: var(--ink-3); }

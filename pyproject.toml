@@ -1,5 +1,5 @@
 [project]
-name = "my-tesla"
+name = "mytesla"
 version = "1.0.0"
 description = "My Tesla — TeslaMate 数据展示 (充电 / 足迹 / 行程)"
 requires-python = ">=3.13"
@@ -8,7 +8,7 @@ requires-python = ">=3.13"
 [tool.mypy]
 # 全库严格模式: DB 行 → SQLAlchemy 实体 → Pydantic 模型 → JSON 端到端有类型。
 # app 严格 / tests 非严格 (见 overrides); SQLAlchemy 2.0 / Pydantic v2 自带类型标注。
-python_version = "3.13"   # 服务固定跑本 venv 的 3.13 (Path.walk 等 3.12+ API)
+python_version = "3.13"   # 服务固定跑部署机的 3.13 (Path.walk 等 3.12+ API)
 strict = true
 files = ["app", "tests"]
 plugins = ["pydantic.mypy"]
@@ -39,8 +39,8 @@ max-positional-arguments = 10
 max-attributes = 10
 # 数据密集的查询/组装函数局部变量多
 max-locals = 18
-# repository 聚合全部查询 (TeslaMate 只读 + 自有库: 补路/分组/设置), 不拆模块
-max-module-lines = 1600
+# 全仓硬上限: 文件按逻辑拆分, 超 200 行就必须再拆 (与组合仓同一规矩)
+max-module-lines = 200
 max-statements = 60
 max-branches = 14
 
@@ -64,9 +64,8 @@ source = ["app"]
 branch = true
 
 [tool.coverage.report]
-# 覆盖率门槛配置保留备用: 2026-09-15 起常规跑分不带 --cov
-# (NAS 上拖时间); 要验覆盖率时手动
-#   .venv/bin/python -m pytest tests -q --cov=app
+# 覆盖率门槛配置保留备用: 常规 run_tests.sh 不带 --cov (NAS 上拖时间);
+# 要验覆盖率时手动   .venv/bin/python -m pytest tests -q --cov=app
 fail_under = 95
 show_missing = true
 skip_covered = false

@@ -12,7 +12,7 @@ from app import (authentication, config, database)  # pylint: disable=wrong-impo
 from app.tesla import repository, settings_store, tracks_cache  # pylint: disable=wrong-import-position
 import app.main as main_module  # pylint: disable=wrong-import-position
 from app.tesla.models import Driver  # pylint: disable=wrong-import-position
-from tests.conftest import seed_drive  # pylint: disable=wrong-import-position
+from tests.seed_factories import seed_drive  # pylint: disable=wrong-import-position
 
 
 # ---------------------------------------------------------------- 密钥与限速
@@ -47,7 +47,8 @@ def test_resolve_db_host_env_inspect_and_failure(monkeypatch):
                         lambda *_a, **_k: "172.17.0.2\n")
     assert database.resolve_db_host() == "172.17.0.2"
     monkeypatch.setattr(subprocess_module, "check_output", lambda *_a, **_k: "")
-    monkeypatch.setattr(database, "DOCKER_BIN_CANDIDATES", ["/bin/false"])
+    monkeypatch.setattr(database.teslamate_engine, "DOCKER_BIN_CANDIDATES",
+                        ["/bin/false"])
     with pytest.raises(RuntimeError, match="TMDB_HOST"):
         database.resolve_db_host()
 

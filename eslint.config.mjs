@@ -1,7 +1,9 @@
-// ESLint 9 扁平配置 —— 前端门禁 (与后端 pylint/mypy 对齐, 由 run_tests.sh 与 CI 调用)。
-// node_modules 不进 git (CI 用 npm ci 安装); 注意: `...js.configs.recommended`
-// 只带 name/rules 等键, 块内若再写 `rules:` 会整体覆盖展开结果
-// (recommended 悄悄失效过), 必须 `...js.configs.recommended.rules`。
+// ESLint 9 扁平配置 —— 前端门禁 (与后端 pylint/mypy 对齐, 由 run_tests.sh 调用)。
+// 独立仓口径: 账号层页面 (app/home/static) + Tesla 应用 (app/tesla/static/js,
+// 纯逻辑 UMD 模块与页面脚本都住 js/ 子目录, 跨模块引用走全局, 头部自带
+// /* global */ 与 /* exported */ 注释)。
+// 注意: `...js.configs.recommended` 只带 name/rules 等键, 块内若再写 `rules:`
+// 会整体覆盖展开结果 (recommended 悄悄失效过), 必须 `...js.configs.recommended.rules`。
 import js from "@eslint/js";
 import globals from "globals";
 
@@ -18,32 +20,48 @@ const pageScript = {
 };
 
 export default [
-  // 不检查: 高德/echarts 第三方压缩包、venv、数据目录
-  { ignores: ["app/tesla/static/echarts.min.js", ".venv/**", "data/**", "node_modules/**"] },
+  // 不检查: 压缩的第三方库 / venv / 数据目录 / node_modules (组合仓内是软链)
+  { ignores: ["app/tesla/static/echarts.min.js", ".venv/**", "data/**",
+              "node_modules/**"] },
 
-  // Tesla 应用 (app/tesla/static): 按脚本分层声明跨文件全局 (定义者与
-  // 使用者分开, 避免同文件 no-redeclare)。加载顺序: 纯逻辑 UMD 模块
-  // (gcj02/trackutil/format/trip-playback) → 页面脚本; 行程页再多一层
-  // trips-list (列表/筛选) 在 trips (弹层/播放) 之前。
+  // 账号层 (app/home/static): 登录/注册/账号管理页面脚本 (经典脚本,
+  // 按 html 里的顺序加载; 跨模块引用走全局, 头部自带 /* global */ 注释)
   {
-    files: ["app/tesla/static/gcj02.js",
-            "app/tesla/static/trackutil.js",
-            "app/tesla/static/format.js",
-            "app/tesla/static/trip-playback.js"],
+    files: ["app/home/static/*.js"],
+    ...pageScript,
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "script",
+      globals: { ...globals.browser },
+    },
+  },
+
+  // Tesla 应用 (app/tesla/static/js): 纯逻辑 UMD 模块 (gcj02/trackutil/
+  // track-animation/format/trip-playback/lastpage) 与页面脚本都住 js/ 子目录
+  // (结构化重构: 大页面脚本按逻辑拆成见名知意的小文件, 经典脚本按各自
+  // html 里的顺序加载)。跨模块引用走全局, 每个文件头部自带 /* global */
+  // (用到别处定义的) 与 /* exported */ (本文件定义、别处用的) 注释 ——
+  // 配置里不再按文件列举。加载层级见各 html: UMD 纯逻辑 → 页面脚本;
+  // 行程页 trips-list (列表/筛选) 在 trips (弹层/播放) 之前。
+  {
+    files: ["app/tesla/static/js/*.js"],
     ...pageScript,
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "script",
       globals: {
         ...globals.browser,
-        module: "readonly",        // UMD 尾巴: node 测试路径走 module.exports
-        require: "readonly",       // trip-playback.js 依赖同目录 trackutil.js
+        module: "readonly",               // UMD 尾巴: node 测试路径走 module.exports
+        require: "readonly",              // UMD 模块间依赖 (track-animation/trip-playback)
+        AMap: "readonly",                 // 高德 JS API 全局命名空间
+        _AMapSecurityConfig: "writable",  // 高德安全密钥配置 (页面赋值)
+        echarts: "readonly",              // echarts.min.js (static 根, 第三方) 先于页面脚本加载
       },
     },
   },
   {
     // gcj02 参考实现的常量 (PI/EE) 本就超出 double 精度, 逐位照抄别四舍五入
-    files: ["app/tesla/static/gcj02.js"],
+    files: ["app/tesla/static/js/gcj02.js"],
     ...pageScript,
     languageOptions: {
       ecmaVersion: 2022,
@@ -51,113 +69,6 @@ export default [
       globals: { ...globals.browser, module: "readonly" },
     },
     rules: { ...pageScript.rules, "no-loss-of-precision": "off" },
-  },
-  {
-    files: ["app/tesla/static/lastpage.js",
-            "app/tesla/static/groups.js",
-            "app/tesla/static/settings.js"],
-    ...pageScript,
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: "script",
-      globals: { ...globals.browser },
-    },
-  },
-  {
-    files: ["app/tesla/static/map.js",
-            "app/tesla/static/chargemap.js",
-            "app/tesla/static/live.js"],
-    ...pageScript,
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: "script",
-      globals: {
-        ...globals.browser,
-        AMap: "readonly",                 // 高德 JS API 全局命名空间
-        _AMapSecurityConfig: "writable",  // 高德安全密钥配置 (页面赋值)
-        GCJ02: "readonly",                // gcj02.js 先加载
-        TrackUtil: "readonly",            // trackutil.js 先加载 (map/live)
-      },
-    },
-  },
-  {
-    files: ["app/tesla/static/index.js"],
-    ...pageScript,
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: "script",
-      globals: {
-        ...globals.browser,
-        FormatUtil: "readonly",     // format.js 先加载 (顶部解构)
-        GCJ02: "readonly",
-        echarts: "readonly",        // echarts.min.js 先于页面脚本加载
-      },
-    },
-  },
-  {
-    files: ["app/tesla/static/stats.js"],
-    ...pageScript,
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: "script",
-      globals: {
-        ...globals.browser,
-        FormatUtil: "readonly",
-        echarts: "readonly",
-      },
-    },
-  },
-  {
-    files: ["app/tesla/static/trips-list.js"],
-    ...pageScript,
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: "script",
-      globals: {
-        ...globals.browser,
-        FormatUtil: "readonly",
-        // trips.js 后于本脚本加载: 这些是弹层入口, 事件回调触发时早已就绪
-        openTrip: "readonly", openMerged: "readonly",
-      },
-    },
-  },
-  {
-    files: ["app/tesla/static/trips.js"],
-    ...pageScript,
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: "script",
-      globals: {
-        ...globals.browser,
-        AMap: "readonly",
-        _AMapSecurityConfig: "writable",
-        GCJ02: "readonly",
-        TrackUtil: "readonly",      // trackutil.js 先加载
-        TripPlayback: "readonly",   // trip-playback.js 先加载
-        FormatUtil: "readonly",     // format.js 先加载
-        // trips-list.js 先于本脚本加载 (经典脚本, 顶层声明进全局):
-        // 列表状态与渲染函数, 弹层在事件回调里引用
-        state: "readonly", items: "readonly", listEl: "readonly",
-        trackCache: "readonly", renderCard: "readonly",
-        listURL: "readonly", toast: "readonly", esc: "readonly",
-        $: "readonly", getJSON: "readonly", postJSON: "readonly",
-        loadMore: "readonly", urlTripKey: "readonly",   // 地址栏深链 (trips-list)
-        // trips-list.js 顶部解构声明的格式化名, 本页直接沿用 (不重复声明)
-        fmtCardDate: "readonly", fmtDur: "readonly", num: "readonly",
-        driversCache: "writable",      // let 声明的共享缓存, 本页也写 (拉驾驶员表)
-      },
-    },
-  },
-
-  // 账号层 (app/static): 登录/注册/账号管理的页面脚本
-  {
-    files: ["app/static/*.js"],
-    ...pageScript,
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: "script",
-      globals: { ...globals.browser },
-    },
   },
 
   // 前端单元测试 (node:test, ESM)

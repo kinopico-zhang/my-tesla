@@ -54,9 +54,9 @@ jobs:
       - run: python -m pylint tests --disable=W0613,W0212,R0801,C0415
       - run: python -m mypy
 
-  # 前端: ESLint / tsc --checkJs / node --test 三平台全跑;
-  # c8 覆盖率门禁 (95%) 固定在 Linux —— Windows 的路径归一化历史上有坑,
-  # 覆盖率本身与平台无关。
+  # 前端: ESLint / tsc --checkJs / stylelint / html-validate / node --test
+  # 三平台全跑; c8 覆盖率门禁 (95%) 固定在 Linux —— Windows 的路径归一化
+  # 历史上有坑, 覆盖率本身与平台无关。
   frontend:
     name: frontend (${{ matrix.os }}, node ${{ matrix.node-version }})
     runs-on: ${{ matrix.os }}
@@ -75,17 +75,22 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
       - run: npm ci
-      - run: npx --no-install eslint app/tesla/static app/static tests/js
+      # 结构化重构后纯逻辑与页面脚本都住 js/ 子目录 (echarts.min.js 在
+      # eslint.config.mjs 的 ignores 里); 账号层页面在 app/home/static
+      - run: npx --no-install eslint app/home/static app/tesla/static/js tests/js
       - run: npx --no-install tsc -p tsconfig.json
+      - run: npx --no-install stylelint "app/*/static/css/*.css"
+      - run: npx --no-install html-validate "app/*/static/*.html"
       - run: node --test tests/js/*.test.mjs
       - name: coverage gate (95%)
         if: runner.os == 'Linux'
         run: >-
           npx --no-install c8
-          --include app/tesla/static/gcj02.js
-          --include app/tesla/static/trackutil.js
-          --include app/tesla/static/format.js
-          --include app/tesla/static/trip-playback.js
-          --include app/tesla/static/lastpage.js
+          --include app/tesla/static/js/gcj02.js
+          --include app/tesla/static/js/trackutil.js
+          --include app/tesla/static/js/track-animation.js
+          --include app/tesla/static/js/format.js
+          --include app/tesla/static/js/trip-playback.js
+          --include app/tesla/static/js/lastpage.js
           --check-coverage --lines 95 --branches 95 --functions 95
           --reporter text node --test tests/js/*.test.mjs

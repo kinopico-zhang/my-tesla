@@ -1,4 +1,4 @@
-.venv/
+.venv
 __pycache__/
 *.pyc
 .DS_Store
@@ -6,9 +6,7 @@ __pycache__/
 .env
 data/
 .pytest_cache/
-.mypy_cache/
-uv.lock
 .coverage
-node_modules/
+node_modules
 coverage/
 .pytest-tmp/

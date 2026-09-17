@@ -1,0 +1,57 @@
+/* tesla-charging-cards — index 页样式。拆自 index.html 的内联 <style> (结构化重构, 内容逐字节未动)。 */
+/* ---------- 瀑布流 ---------- */
+.sec-head { display: flex; align-items: baseline; gap: 8px; padding: 16px 16px 4px; }
+.sec-head h2 { font-size: 17px; font-weight: 650; letter-spacing: -.2px; }
+.count-badge { font-size: 12px; color: var(--ink-3); }
+/* 单列列表 (与行程页一致, 手机优先) */
+#masonry { display: flex; flex-direction: column; gap: 8px; padding: 8px 14px 10px; transition: opacity .25s; }
+#masonry.dim { opacity: .45; pointer-events: none; }
+.card-s {
+  background: var(--surface); border-radius: 16px; border: 1px solid var(--hairline);
+  padding: 10px 12px; cursor: pointer; overflow: hidden;
+  transition: transform .15s, background .15s;
+}
+.card-s:active { transform: scale(.975); background: #232326; }
+@media (hover: hover) { .card-s:hover { border-color: rgba(255,255,255,.2); } }
+.cs-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.cs-date { font-size: 11.5px; color: var(--ink-2); white-space: nowrap; }
+.tag {
+  display: inline-flex; align-items: center; gap: 3px; flex: none;
+  font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+}
+.tag-fast { color: #f0b13d; background: rgba(237,161,0,.14); }
+.tag-slow { color: #7db3f0; background: rgba(57,135,229,.14); }
+/* SOC 轴: 量程固定 0-100%, 标签钉在真实百分比位置 (左标签左缘=充电起点, 右标签右缘=终点);
+   不做 space-between 贴边 —— 那样读起来像轴随数据自适应 */
+.soc-axis { position: relative; height: 18px; margin-top: 2px; }
+.soc-axis .trk { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; border-radius: 3px; background: var(--surface-2); }
+.soc-axis .trk i { position: absolute; top: 0; bottom: 0; background: var(--green); border-radius: 3px; }
+.sa-lb { position: absolute; bottom: 8px; font-size: 10px; line-height: 1; color: var(--ink-3); white-space: nowrap; }
+.cs-loc {
+  font-size: 14.5px; font-weight: 600; line-height: 1.32; margin: 5px 0 6px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.cs-main { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-top: 4px; }
+.cs-energy { font-size: 20px; font-weight: 650; letter-spacing: -.4px; }
+.cs-energy small { font-size: 11.5px; font-weight: 500; color: var(--ink-2); margin-left: 3px; letter-spacing: 0; }
+.cs-sub { font-size: 11px; color: var(--ink-3); margin-top: 4px; }
+
+/* ---------- 加载态 ---------- */
+.tail { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 18px 0 40px; }
+.tail[hidden] { display: none; }
+.spin {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 2px solid var(--surface-3); border-top-color: #9a9aa0;
+  animation: rot .8s linear infinite;
+}
+@keyframes rot { to { transform: rotate(360deg); } }
+.endnote { font-size: 12px; color: var(--ink-3); }
+.empty {
+  text-align: center; color: var(--ink-3); padding: 60px 20px; font-size: 14px;
+}
+.err-box { text-align: center; padding: 40px 20px; }
+.err-box p { color: var(--ink-2); margin-bottom: 14px; font-size: 13.5px; }
+.retry {
+  padding: 8px 22px; border-radius: 12px; background: var(--surface-2);
+  color: var(--ink-1); font-weight: 600; font-size: 13.5px;
+}
