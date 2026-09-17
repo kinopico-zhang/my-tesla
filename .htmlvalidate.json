@@ -1,0 +1,14 @@
+{
+  "extends": ["html-validate:recommended"],
+  "elements": [
+    "html5",
+    {
+      "img": {
+        "attributes": {
+          "src": { "required": false },
+          "alt": { "required": true }
+        }
+      }
+    }
+  ]
+}

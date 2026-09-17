@@ -1,0 +1,111 @@
+/* tesla-live-driving — live 页样式。拆自 live.html 的内联 <style> (结构化重构, 内容逐字节未动)。 */
+/* ---------- 驾驶视图 ---------- */
+#live { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
+
+.hero {
+  background: var(--surface); border: 1px solid var(--hairline); border-radius: 18px;
+  padding: 14px 18px; display: flex; align-items: center; gap: 16px;
+}
+.hero-speed { flex: 1; min-width: 0; }
+.hero-speed .lb { font-size: 12px; color: var(--ink-2); }
+.hero-speed .num {
+  font-size: 54px; font-weight: 700; letter-spacing: -2px; line-height: 1.05;
+  font-variant-numeric: tabular-nums; margin-top: 2px;
+  display: flex; align-items: baseline; white-space: nowrap;
+  /* flex 不换行: 窄屏/系统页缩放挤压时单位绝不下坠到第二行 (用户真机踩坑) */
+}
+.hero-speed .num small { font-size: 15px; font-weight: 500; color: var(--ink-2);
+  letter-spacing: 0; margin-left: 4px; }
+/* 右列可收缩 (出发行时一行省略号), 不再死宽抢速度区的空间 */
+.hero-side { flex-shrink: 1; min-width: 0; text-align: right; display: grid; gap: 4px; }
+.hero-side .lb { font-size: 11px; color: var(--ink-2); }
+.hero-side .elapsed { font-size: 24px; font-weight: 650; letter-spacing: -.5px;
+  font-variant-numeric: tabular-nums; }
+.hero-side .sub { font-size: 12px; color: var(--ink-2);
+  font-variant-numeric: tabular-nums; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 实时数字位数变化 (9→62→105 / 59:59→1:00:00 / 9%→100%) 不许推动布局:
+   tabular 数字 + 定宽盒 (ch = 一个数字宽), 数字在盒内右对齐, 变长只向左长 */
+#lv-speed { display: inline-block; min-width: 3ch; text-align: right; }
+#lv-elapsed { min-width: 7ch; }
+#lv-soc { display: inline-block; min-width: 5ch; text-align: right; }   /* % 不受 tabular 管, 100% ≈ 4.7ch */
+#lv-range { display: inline-block; min-width: 3ch; text-align: right; }
+.tile .val .n, #lv-sub .n { display: inline-block; text-align: right; }
+#lv-km .n, #lv-kwh .n { min-width: 4.5ch; }
+#lv-avg .n, #lv-vmax .n, #lv-sub .n { min-width: 3ch; }
+
+.batt-card {
+  background: var(--surface); border: 1px solid var(--hairline); border-radius: 18px;
+  padding: 11px 16px; display: flex; align-items: center; gap: 12px;
+}
+.batt { position: relative; width: 46px; height: 22px; flex: none;
+  border: 1.5px solid var(--ink-3); border-radius: 6px; padding: 2px; }
+.batt::after {   /* 电池正极凸点 */
+  content: ""; position: absolute; right: -5px; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 9px; background: var(--ink-3); border-radius: 0 2px 2px 0;
+}
+.batt i { display: block; width: 0; height: 100%; border-radius: 3px; background: #32d74b;
+  transition: width .5s, background .5s; }
+.batt-card b { font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.batt-card .batt-range { font-size: 13px; color: var(--ink-2); }
+.batt-card .batt-range b { font-size: 13px; color: var(--ink-1); font-weight: 600; }
+
+.tiles { display: flex; flex-wrap: wrap; gap: 10px; }
+.tile {   /* 2×2: 四格一行在窄屏/页缩放下放不下会溢出圆角框 (用户真机踩坑) */
+  flex: 1 1 calc(50% - 5px); min-width: 0; background: var(--surface);
+  border: 1px solid var(--hairline); border-radius: 14px; padding: 9px 8px;
+  text-align: center;
+}
+.tile .lb { font-size: 11px; color: var(--ink-2); white-space: nowrap; }
+.tile .val { font-size: 17px; font-weight: 650; letter-spacing: -.3px; margin-top: 2px;
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tile .val small { font-size: 10.5px; font-weight: 500; color: var(--ink-2); margin-left: 2px; }
+
+.map-wrap {
+  position: relative; flex: 1; min-height: 0;
+  border-radius: 16px; overflow: hidden; border: 1px solid var(--hairline);
+  background: var(--surface);
+}
+#map { position: absolute; inset: 0; touch-action: none; }
+#map .amap-copyright { display: none !important; }   /* "©…auto navi" 版权文字按需求去掉 */
+.map-fallback {   /* 高德不可用: 统计照常, 只在地图位放提示 */
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 8px;
+  color: var(--ink-2); font-size: 13px; padding: 20px; text-align: center;
+}
+.stale-hint {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 30;
+  padding: 6px 14px; border-radius: 999px;
+  background: rgba(28,28,30,.85);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--hairline);
+  font-size: 12px; color: var(--ink-2); white-space: nowrap;
+  pointer-events: none;
+}
+/* 车辆位置: 蓝点 + 扩散脉冲 (在开的人一眼看到自己在哪) */
+.car-dot { position: relative; width: 18px; height: 18px; }
+.car-dot::before {
+  content: ""; position: absolute; inset: -8px; border-radius: 50%;
+  background: rgba(57,135,229,.4); animation: pulse 1.8s ease-out infinite;
+}
+.car-dot::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: #3987e5; border: 2.5px solid #fff;
+  box-shadow: 0 1px 5px rgba(0,0,0,.55);
+}
+@keyframes pulse { 0% { transform: scale(.55); opacity: .9; }
+                   100% { transform: scale(2.3); opacity: 0; } }
+
+/* ---------- 空态 / 结束态 ---------- */
+.state-view { flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 6px; padding: 24px; text-align: center; }
+.state-view .big { font-size: 44px; line-height: 1.2; }
+.state-view h2 { font-size: 18px; font-weight: 700; }
+.state-view p { font-size: 13px; color: var(--ink-2); max-width: 300px; }
+.state-view .cta {
+  margin-top: 14px; padding: 10px 28px; border-radius: 999px;
+  background: var(--blue); color: #fff; font-size: 14px; font-weight: 600;
+  text-decoration: none; display: inline-block;
+}
+.state-view .cta:active { opacity: .8; }

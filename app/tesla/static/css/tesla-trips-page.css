@@ -1,0 +1,151 @@
+/* tesla-trips-page — trips 页样式。拆自 trips.html 的内联 <style> (结构化重构, 内容逐字节未动)。 */
+/* ---------- 设计令牌: 与充电/地图页一致的 iOS 暗色 ---------- */
+:root {
+  color-scheme: dark;
+  --bg: #000;
+  --surface: #1c1c1e;
+  --surface-2: #2c2c2e;
+  --surface-3: #3a3a3c;
+  --ink-1: #f5f5f7;
+  --ink-2: rgba(235,235,245,.62);
+  --ink-3: rgba(235,235,245,.32);
+  --hairline: rgba(255,255,255,.09);
+  --nav-bg: rgba(10,10,12,.72);
+  --blue: #3987e5;       /* 轨迹线色 (与地图页一致) */
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+html, body { overscroll-behavior-y: none; }   /* 拦掉 Safari 自带的下拉刷新 (刷新只走顶栏按钮) */
+body {
+  background: var(--bg); color: var(--ink-1);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
+               "Helvetica Neue", system-ui, sans-serif;
+  font-size: 14px; line-height: 1.45;
+  min-height: 100vh; min-height: 100dvh;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+/* 触屏双击控件不再触发整页放大 (manipulation 保留平移/捏合, 只去掉双击缩放) */
+button, a, summary { touch-action: manipulation; }
+
+/* ---------- 顶部导航 (毛玻璃) ---------- */
+header {
+  position: sticky; top: 0; z-index: 50;
+  padding: calc(env(safe-area-inset-top) + 10px) 14px 10px;
+  background: var(--nav-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--hairline);
+}
+/* 顶栏一行: 全部 nowrap + 不许压缩换行 (窄屏字号收一档) */
+.nav-row { display: flex; align-items: baseline; gap: 8px; }
+.nav-row > * { flex-shrink: 0; }
+
+/* ---------- 页签菜单 (收起式) ---------- */
+.nav-menu { position: relative; align-self: center; margin-left: auto; }
+.nav-menu summary {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 12px; color: var(--ink-1); background: var(--surface-2);
+  padding: 4px 10px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+  list-style: none; -webkit-user-select: none; user-select: none;
+}
+.nav-menu summary::-webkit-details-marker { display: none; }
+.nav-menu summary:active { opacity: .7; }
+.nav-menu[open] summary { background: var(--surface-3); }
+.nav-menu .chev { transition: transform .18s; }
+.nav-menu[open] .chev { transform: rotate(180deg); }
+.nav-menu .menu {
+  position: absolute; top: calc(100% + 8px); right: 0; min-width: 128px; z-index: 30;
+  display: flex; flex-direction: column; padding: 5px;
+  background: rgba(44,44,46,.88);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--hairline); border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.5);
+}
+.nav-menu .menu a {
+  font-size: 14px; color: var(--ink-1); text-decoration: none;
+  padding: 9px 12px; border-radius: 10px; white-space: nowrap;
+}
+.nav-menu .menu a:active { background: var(--surface-3); }
+.nav-menu .menu a.on { color: #7db3f0; }
+.nav-menu + .nav-menu { margin-left: 0; }   /* 顶栏两个菜单靠右并排, 只有第一个吃 auto 边距 */
+/* 品牌即入口: My Tesla 本身是下拉按钮, 展开是全部页面 + 退出登录。
+   块要放在 .nav-menu 系列之后 —— 同特异性靠源序取胜, 放前面会被盖掉
+   (实测放 h1 原位时 margin-left:auto 没被压掉, 品牌被顶到行中间)。 */
+.brand-menu { margin-left: 0; }
+.brand-menu summary {
+  font-size: 20px; font-weight: 700; letter-spacing: -.3px;
+  background: none; padding: 0; border-radius: 0;
+}
+.brand-menu[open] summary { background: none; }
+.brand-menu .chev { color: var(--ink-3); }
+.brand-menu .menu { left: 0; right: auto; }   /* 面板锚品牌左缘向右展开, 不出屏 */
+.nav-menu .menu .logout-row {
+  color: #e5484d; border-top: 1px solid var(--hairline); margin-top: 5px;
+}
+.brand-menu + .nav-menu { margin-left: auto; }   /* 品牌居左, 顶栏其余菜单仍靠右 */
+.nav-menu .menu button {
+  font-size: 14px; color: var(--ink-1); text-align: left;
+  padding: 9px 12px; border-radius: 10px; white-space: nowrap;
+}
+.nav-menu .menu button.on { color: #7db3f0; }
+.nav-menu .menu button:active { background: var(--surface-3); }
+/* 筛选栏 (顶栏下方): 行程独有筛选, 下拉不能被横向滚动裁掉 */
+.filters { display: flex; gap: 8px; margin-top: 10px; }
+/* 手机: 筛选行放不下就自己横滑 (下拉此时锚在全宽 header 上, 不受横滑容器
+   裁剪; 桌面下拉锚在胶囊内不能加), 不把整个页面带着滑 */
+@media (max-width: 479px) {
+  .filters { overflow-x: auto; scrollbar-width: none; }
+  .filters::-webkit-scrollbar { display: none; }
+}
+.filters .nav-menu { margin-left: 0; }              /* 不吃顶栏的靠右边距 */
+.filters .nav-menu .menu { left: 0; right: auto; }  /* 下拉锚左, 行首也不出屏 */
+/* 手机: 下拉改顶栏正下方近全宽面板 —— 自定义日历一行要 ~300px, 挂在胶囊
+   右缘必出屏 (390px 时面板左缘 -64px, 起始日期半格在屏幕外)。
+   .nav-menu 改 static 让 containing block 上移到全宽的 sticky header,
+   top:calc(100%+8px) 恰好落在 header 底 + 8px, left/right 即视口两侧。 */
+@media (max-width: 479px) {
+  .nav-menu { position: static; }
+  .nav-menu .menu, .filters .nav-menu .menu { left: 12px; right: 12px; }
+}
+.filt .fl { max-width: 30vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 起终点省市区级联: 菜单限高滚动 (区县可能有十几项), 返回行/面包屑/层级行 */
+.nav-menu .menu.loc-menu { max-height: min(420px, 62vh); overflow-y: auto; min-width: 176px; }
+.nav-menu .menu .loc-crumb { font-size: 11px; color: var(--ink-3); padding: 4px 12px 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-menu .menu button.loc-back { color: var(--ink-2); font-size: 13px; padding: 5px 12px 8px; }
+.nav-menu .menu button.loc-row { display: flex; align-items: baseline; gap: 8px; }
+.nav-menu .menu button.loc-row .nm { overflow: hidden; text-overflow: ellipsis; }
+.nav-menu .menu button.loc-row .cnt { color: var(--ink-3); font-size: 12px;
+  margin-left: auto; white-space: nowrap; flex-shrink: 0; }
+.nav-menu .menu button.on .cnt { color: #7db3f0; }
+/* 时间菜单的自定义日历: 月历网格, 同一个日历连点两次 (第一下起点, 第二下终点) */
+.time-menu .tm-custom { border-top: 1px solid var(--hairline); margin-top: 5px; padding-top: 5px; }
+.time-menu .menu { max-height: calc(100vh - 130px); overflow-y: auto; }  /* 矮屏展开日历时兜底滚动 */
+.tm-dates { padding: 6px 8px 3px; }
+.tm-cal-top { display: flex; align-items: center; gap: 4px; padding: 0 2px 5px; }
+.tm-cal-top b { flex: 1; text-align: center; font-size: 13px; font-weight: 600; }
+.tm-cal-top button { min-width: 28px; height: 26px; border-radius: 7px; color: var(--ink-2); }
+.tm-cal-top button:disabled { opacity: .3; }
+.tm-cal-top button:active { background: var(--surface-3); }
+.tm-week, .tm-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.tm-week i { font-style: normal; text-align: center; font-size: 11px; color: var(--ink-3); padding: 2px 0 4px; }
+.tm-cal { padding-bottom: 4px; }
+.tm-cal button { min-width: 34px; height: 34px; border-radius: 9px; font-size: 13px; color: var(--ink-1); }
+.tm-cal button:active { background: var(--surface-3); }
+.tm-cal button.today { color: #7db3f0; font-weight: 600; }
+.tm-cal button.mid { background: rgba(57,135,229,.16); border-radius: 0; }
+.tm-cal button.on { background: #3987e5; color: #fff; font-weight: 600; }
+.tm-foot { display: flex; align-items: center; gap: 8px; padding: 6px 2px 2px; }
+.tm-foot span { flex: 1; min-width: 0; font-size: 12px; color: var(--ink-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tm-dates #tm-apply {
+  flex: none; background: #3987e5; color: #fff;
+  border-radius: 8px; font-size: 12.5px; font-weight: 600; padding: 7px 14px;
+}
+
+main { max-width: 760px; margin: 0 auto; }
+.sec-head { display: flex; align-items: baseline; gap: 8px; padding: 16px 16px 4px; }
+.sec-head h2 { font-size: 17px; font-weight: 650; letter-spacing: -.2px; }
+.count-badge { font-size: 12px; color: var(--ink-3); }

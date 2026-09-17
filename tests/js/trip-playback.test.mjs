@@ -6,13 +6,13 @@ import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 
 const require = createRequire(import.meta.url);
-const TripPlayback = require("../../app/tesla/static/trip-playback.js");
+const TripPlayback = require("../../app/tesla/static/js/trip-playback.js");
 const {
   speedZoom, clampZoomBias, windowMeanSpeed, hysteresisZoom, easeZoomStep,
   animDurMs, energyWeightKm, energyStep, energyCurve, fracValue, splitSegments,
 } = TripPlayback;
 
-const TrackUtil = require("../../app/tesla/static/trackutil.js");
+const TrackUtil = require("../../app/tesla/static/js/trackutil.js");
 const M = 0.00001;   // ~1.1m, 城市打点步长
 
 /* ---------------- 随速变焦 ---------------- */
@@ -143,7 +143,7 @@ test("splitSegments: 空段列表回落整体 splitGaps", () => {
 /* ---------------- UMD 挂载 ---------------- */
 test("UMD 浏览器分支: 依赖 root.TrackUtil, 挂 window.TripPlayback", () => {
   const src = readFileSync(
-    new URL("../../app/tesla/static/trip-playback.js", import.meta.url), "utf8");
+    new URL("../../app/tesla/static/js/trip-playback.js", import.meta.url), "utf8");
   const sandbox = { self: { TrackUtil } };   // vm 上下文无 module → 浏览器分支
   const ctx = vm.createContext(sandbox);
   vm.runInContext(src, ctx);

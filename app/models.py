@@ -1,6 +1,7 @@
-"""账号库表 (data/users.db): 账号 + 注册邀请。
+"""账号库表 (data/users.db): 账号 + 注册邀请 (My Home 全家共享)。
 
-业务表 (TeslaMate 映射 + My Tesla 自有表) 在 app/tesla/models.py。
+业务表 (TeslaMate 映射 + My Tesla 自有表) 在 app/tesla/models/,
+记账/曲库各自包内。
 """
 
 from datetime import datetime
@@ -13,10 +14,10 @@ class UsersBase(DeclarativeBase):
 
 
 class User(UsersBase):
-    """账号: uuid 由后端生成 (对用户不可见, 改名不变, 会话都认它)。
+    """账号: uuid 由后端生成 (对用户不可见, 改名不变, 会话与记账都认它)。
 
     名称/密码本人可自助改; is_admin = 账号管理权限 (邀请注册/用户列表),
-    业务功能所有账号都有。"""
+    业务功能 (含记账) 所有账号都有。"""
 
     __tablename__ = "users"
 

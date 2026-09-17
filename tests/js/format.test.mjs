@@ -6,7 +6,7 @@ import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 
 const require = createRequire(import.meta.url);
-const FormatUtil = require("../../app/tesla/static/format.js");
+const FormatUtil = require("../../app/tesla/static/js/format.js");
 const { pad, parseLocal, fmtCardDate, fmtTime, fmtDur, fmtDurLive, num } = FormatUtil;
 
 test("pad: 个位补零, 两位原样", () => {
@@ -69,7 +69,7 @@ test("num: null → —, 位数裁剪且去尾零", () => {
 
 test("UMD 浏览器分支: 挂 window.FormatUtil (vm 沙箱, module 未定义)", () => {
   const src = readFileSync(
-    new URL("../../app/tesla/static/format.js", import.meta.url), "utf8");
+    new URL("../../app/tesla/static/js/format.js", import.meta.url), "utf8");
   const sandbox = { self: {} };   // vm 上下文自带 JS 内建, 不带 module → 走浏览器分支
   const ctx = vm.createContext(sandbox);
   vm.runInContext(src, ctx);

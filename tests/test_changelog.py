@@ -15,7 +15,7 @@ def test_versions_newest_first_and_wellformed():
     """新→老; 每版字段齐全, 文案是用户视角的一句话 (不夹技术黑话)。"""
     vs = changelog.entries()
     assert [v.version for v in vs] == [
-        "2.7.0", "2.6.0", "2.5.1", "2.5.0", "2.4.0", "2.3.0", "2.2.0", "2.1.0",
+        "2.6.0", "2.5.1", "2.5.0", "2.4.0", "2.3.0", "2.2.0", "2.1.0",
         "2.0.0", "1.1.0", "1.0.0"]
     assert vs[0].date == "2026-09-15" and vs[-1].date == "2026-09-08"
     for v in vs:
@@ -41,13 +41,15 @@ def test_changelog_entries_endpoint(auth):
         assert e["date"] == v.date
         assert e["items"] == [{"kind": it.kind, "text": it.text}
                               for it in v.items]
-    assert es[0]["items"][0]["kind"] == "改进"
+    assert es[0]["items"][0]["kind"] == "新增"
 
 
 # ---------------------------------------------------------------- 页面
 def test_changelog_page_skeleton(auth):
     """更新日志页: 版本块 (徽标/日期 + 逐条改动行, 类型胶囊)。"""
     html = auth.get("/tesla/changelog").text
+    # 类型胶囊的样式拆去了 css/tesla-changelog.css (结构化重构), 拼进来查
+    html += auth.get("/tesla/static/css/tesla-changelog.css?v=1").text
     html += auth.get("/static/changelog-page.js?v=1").text
     for frag in [
         "<title>更新日志 · My Tesla</title>",
@@ -80,7 +82,15 @@ def test_changelog_link_in_all_nav_menus(auth):
 
 def test_changelog_in_lastpage_and_login_whitelist(auth):
     """上次停留页/登录回跳白名单收录 (子页可停留, 直链可回跳)。"""
-    lastpage = auth.get("/tesla/static/lastpage.js?v=1").text
+    lastpage = auth.get("/tesla/static/js/lastpage.js?v=1").text
     assert '"/tesla/settings", "/tesla/changelog"]' in lastpage
     login_js = auth.get("/static/login.js?v=1").text
     assert "live|settings|changelog)" in login_js
+
+
+def test_music_items_moved_out_of_tesla_changelog():
+    """My Music 的批次拆去听歌应用自己的日志, 这里不再出现。"""
+    texts = " ".join(it.text for v in changelog.entries() for it in v.items)
+    assert "My Music" not in texts
+    assert "听歌" not in texts
+    assert "歌词" not in texts

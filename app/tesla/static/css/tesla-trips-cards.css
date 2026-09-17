@@ -1,0 +1,75 @@
+/* tesla-trips-cards — trips 页样式。拆自 trips.html 的内联 <style> (结构化重构, 内容逐字节未动)。 */
+/* ---------- 行程列表 (单列) ---------- */
+#list { display: flex; flex-direction: column; gap: 10px; padding: 8px 14px 10px; }
+@media (max-width: 719px) { #list { padding: 8px 12px 10px; } }
+
+/* ---------- 行程卡片 ---------- */
+.card-t {
+  background: var(--surface); border-radius: 16px; border: 1px solid var(--hairline);
+  padding: 12px 13px; cursor: pointer; overflow: hidden;
+  transition: transform .15s, background .15s;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+.card-t:active { transform: scale(.975); background: #232326; }
+@media (hover: hover) { .card-t:hover { border-color: rgba(255,255,255,.2); } }
+.ct-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.ct-date { font-size: 11.5px; color: var(--ink-2); white-space: nowrap; }
+.ct-arrow {
+  flex: none; font-size: 10.5px; font-weight: 600; color: #7db3f0;
+  background: rgba(57,135,229,.14); padding: 2px 8px; border-radius: 999px;
+}
+.ct-drv {
+  flex: none; font-size: 10.5px; color: var(--ink-2);
+  background: rgba(255,255,255,.08); padding: 2.5px 9px; border-radius: 999px;
+  max-width: 42%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ct-drv.def {   /* 默认驾驶员兜底 (没人标过): 弱一档, 和显式标注区分 */
+  color: var(--ink-3); background: none; border: 1px solid var(--hairline);
+  padding: 1.5px 8px;   /* 补偿 1px 边框, 高度对齐无框 pill */
+}
+/* 多选模式: 卡片右上角 → 查看轨迹 换成选圈 */
+.card-t .pick { display: none; }
+body.selecting .ct-arrow { display: none; }
+body.selecting .card-t .pick {
+  display: inline-block; flex: none; width: 22px; height: 22px;
+  border-radius: 50%; border: 1.5px solid rgba(255,255,255,.25); box-sizing: border-box;
+}
+body.selecting .card-t.picked { border-color: rgba(57,135,229,.55); background: #20242b; }
+body.selecting .card-t.picked .pick { border-color: var(--blue); background: var(--blue); }
+body.selecting .card-t.picked .pick::after {
+  content: ""; display: block; width: 9px; height: 5px; margin: 5px auto 0;
+  border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg);
+}
+.ct-cells { display: flex; gap: 8px; margin: 9px 0 1px; }
+.ct-cell { flex: 1; min-width: 0; background: var(--surface); border-radius: 10px; padding: 7px 10px; }
+.ct-cell .lb { font-size: 10px; color: var(--ink-3); }
+.ct-cell .val { font-size: 17px; font-weight: 650; letter-spacing: -.3px; margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ct-cell .val small { font-size: 10.5px; color: var(--ink-2); font-weight: 500; }
+.ct-addr { margin-top: 8px; display: flex; flex-direction: column; gap: 3px; }
+.ct-addr .line {
+  font-size: 12px; color: var(--ink-2); display: flex; gap: 6px; align-items: baseline;
+}
+.ct-addr .dot { flex: none; width: 6px; height: 6px; border-radius: 50%; align-self: center; }
+.ct-addr .from .dot { background: var(--green, #1fa349); }
+.ct-addr .to .dot { background: #d95926; }
+.ct-addr .txt {
+  -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+  display: -webkit-box; min-width: 0;
+}
+.ct-sub { font-size: 11.5px; color: var(--ink-3); margin-top: 8px; }
+
+/* ---------- 尾部状态 ---------- */
+.tail { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 18px 0 40px; }
+.spin {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 2.5px solid var(--surface-3); border-top-color: var(--ink-2);
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.endnote, .empty { font-size: 12px; color: var(--ink-3); }
+.err-box { display: flex; flex-direction: column; align-items: center; gap: 10px; font-size: 13px; color: #ff9f9f; }
+.retry {
+  font-size: 13px; padding: 7px 22px; border-radius: 999px;
+  border: 1px solid var(--hairline); color: var(--ink-1);
+}

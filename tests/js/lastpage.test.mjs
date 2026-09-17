@@ -58,7 +58,7 @@ function runPage(opts = {}) {
   const require = createRequire(import.meta.url);
   const module_path = path.join(
     path.dirname(fileURLToPath(import.meta.url)), "..", "..",
-    "app", "tesla", "static", "lastpage.js");
+    "app", "tesla", "static", "js", "lastpage.js");
   delete require.cache[require.resolve(module_path)];   // 每个用例重跑一遍 IIFE
   const teardown = () => {
     for (const [name, desc] of Object.entries(saved)) {

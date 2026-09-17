@@ -1,0 +1,185 @@
+/* tesla-stats — stats 页样式。拆自 stats.html 的内联 <style> (结构化重构, 内容逐字节未动)。 */
+:root {
+  color-scheme: dark;
+  --bg: #000;
+  --surface: #1c1c1e;
+  --surface-2: #2c2c2e;
+  --surface-3: #3a3a3c;
+  --ink-1: #f5f5f7;
+  --ink-2: rgba(235,235,245,.62);
+  --ink-3: rgba(235,235,245,.32);
+  --hairline: rgba(255,255,255,.09);
+  --nav-bg: rgba(10,10,12,.72);
+  --blue: #3987e5;
+  --grid: #2c2c2a;
+  --chart-ink: #c3c2b7;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--bg); color: var(--ink-1);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
+               "Helvetica Neue", system-ui, sans-serif;
+  font-size: 14px; line-height: 1.45;
+  min-height: 100vh; min-height: 100dvh;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+/* 触屏双击控件不再触发整页放大 (manipulation 保留平移/捏合, 只去掉双击缩放) */
+button, a, summary { touch-action: manipulation; }
+
+/* ---------- 顶部导航 (毛玻璃, 与其他页一致) ---------- */
+header {
+  position: sticky; top: 0; z-index: 50;
+  padding: calc(env(safe-area-inset-top) + 10px) 14px 10px;
+  background: var(--nav-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--hairline);
+}
+.nav-row { display: flex; align-items: baseline; gap: 8px; }
+.nav-row > * { flex-shrink: 0; }
+
+/* 顶栏刷新按钮 (与页签胶囊同款样式) */
+#refresh-btn {
+  align-self: center; display: flex; align-items: center; margin-left: 0;
+  color: var(--ink-1); background: var(--surface-2);
+  padding: 5px 9px; border-radius: 999px;
+}
+#refresh-btn:active { background: var(--surface-3); }
+#refresh-btn.busy svg { animation: refresh-spin .8s linear infinite; }
+@keyframes refresh-spin { to { transform: rotate(360deg); } }
+.nav-menu { position: relative; align-self: center; margin-left: auto; }
+.nav-menu summary {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 12px; color: var(--ink-1); background: var(--surface-2);
+  padding: 4px 10px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+  list-style: none; -webkit-user-select: none; user-select: none;
+}
+.nav-menu summary::-webkit-details-marker { display: none; }
+.nav-menu summary:active { opacity: .7; }
+.nav-menu[open] summary { background: var(--surface-3); }
+.nav-menu .chev { transition: transform .18s; }
+.nav-menu[open] .chev { transform: rotate(180deg); }
+.nav-menu .menu {
+  position: absolute; top: calc(100% + 8px); right: 0; min-width: 128px; z-index: 30;
+  display: flex; flex-direction: column; padding: 5px;
+  background: rgba(44,44,46,.88);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--hairline); border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.5);
+}
+.nav-menu .menu a {
+  font-size: 14px; color: var(--ink-1); text-decoration: none;
+  padding: 9px 12px; border-radius: 10px; white-space: nowrap;
+}
+.nav-menu .menu a:active { background: var(--surface-3); }
+.nav-menu .menu a.on { color: #7db3f0; }
+.brand-menu { margin-left: 0; }
+.brand-menu summary {
+  font-size: 20px; font-weight: 700; letter-spacing: -.3px;
+  background: none; padding: 0; border-radius: 0;
+}
+.brand-menu[open] summary { background: none; }
+.brand-menu .chev { color: var(--ink-3); }
+.brand-menu .menu { left: 0; right: auto; }   /* 面板锚品牌左缘向右展开, 不出屏 */
+.nav-menu .menu .logout-row {
+  color: #e5484d; border-top: 1px solid var(--hairline); margin-top: 5px;
+}
+.brand-menu + .nav-menu { margin-left: auto; }
+.nav-menu .menu button {
+  font-size: 14px; color: var(--ink-1); text-align: left;
+  padding: 9px 12px; border-radius: 10px; white-space: nowrap;
+}
+.nav-menu .menu button.on { color: #7db3f0; }
+.nav-menu .menu button:active { background: var(--surface-3); }
+/* 手机: 下拉改顶栏正下方近全宽面板 (同其他页) */
+@media (max-width: 479px) {
+  header { position: relative; }
+  .nav-menu { position: static; }
+  .nav-menu .menu { left: 12px; right: 12px; }
+}
+
+/* 时间菜单的自定义日历: 月历网格, 同一个日历连点两次 (第一下起点, 第二下终点) */
+.time-menu .tm-custom { border-top: 1px solid var(--hairline); margin-top: 5px; padding-top: 5px; }
+.time-menu .menu { max-height: calc(100vh - 130px); overflow-y: auto; }  /* 矮屏展开日历时兜底滚动 */
+.tm-dates { padding: 6px 8px 3px; }
+.tm-cal-top { display: flex; align-items: center; gap: 4px; padding: 0 2px 5px; }
+.tm-cal-top b { flex: 1; text-align: center; font-size: 13px; font-weight: 600; }
+.tm-cal-top button { min-width: 28px; height: 26px; border-radius: 7px; color: var(--ink-2); }
+.tm-cal-top button:disabled { opacity: .3; }
+.tm-cal-top button:active { background: var(--surface-3); }
+.tm-week, .tm-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.tm-week i { font-style: normal; text-align: center; font-size: 11px; color: var(--ink-3); padding: 2px 0 4px; }
+.tm-cal { padding-bottom: 4px; }
+.tm-cal button { min-width: 34px; height: 34px; border-radius: 9px; font-size: 13px; color: var(--ink-1); }
+.tm-cal button:active { background: var(--surface-3); }
+.tm-cal button.today { color: #7db3f0; font-weight: 600; }
+.tm-cal button.mid { background: rgba(57,135,229,.16); border-radius: 0; }
+.tm-cal button.on { background: #3987e5; color: #fff; font-weight: 600; }
+.tm-foot { display: flex; align-items: center; gap: 8px; padding: 6px 2px 2px; }
+.tm-foot span { flex: 1; min-width: 0; font-size: 12px; color: var(--ink-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tm-dates #tm-apply {
+  flex: none; background: #3987e5; color: #fff;
+  border-radius: 8px; font-size: 12.5px; font-weight: 600; padding: 7px 14px;
+}
+main { max-width: 920px; margin: 0 auto; padding-bottom: 40px; }
+
+/* ---------- 统计卡片横滑行 ---------- */
+.snap-row {
+  display: flex; gap: 10px; overflow-x: auto;
+  scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+  padding: 12px 14px 6px; scrollbar-width: none;
+}
+.snap-row::-webkit-scrollbar { display: none; }
+.snap-row > * { scroll-snap-align: start; flex: none; }
+.stat {
+  min-width: 148px; background: var(--surface); border-radius: 16px;
+  padding: 12px 14px; border: 1px solid var(--hairline);
+}
+.stat .lb { font-size: 12px; color: var(--ink-2); }
+.stat .val { font-size: 25px; font-weight: 650; letter-spacing: -.5px; margin-top: 3px; }
+.stat .val small { font-size: 12px; font-weight: 500; color: var(--ink-2); margin-left: 3px; letter-spacing: 0; }
+.stat .sub { font-size: 11px; color: var(--ink-3); margin-top: 3px; }
+
+/* ---------- 图表卡片: 手机单列纵排, 宽屏两列 ---------- */
+.charts-grid { display: grid; grid-template-columns: 1fr; gap: 10px; padding: 8px 14px 4px; }
+@media (min-width: 720px) { .charts-grid { grid-template-columns: 1fr 1fr; } }
+.chart-card {
+  background: var(--surface); border-radius: 16px; border: 1px solid var(--hairline);
+  padding: 13px 10px 10px 14px; min-width: 0;
+}
+.chart-card .cc-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 8px 0; }
+.chart-card .cc-title { font-size: 14px; font-weight: 650; }
+.chart-card .cc-sub { font-size: 11px; color: var(--ink-3); margin-top: 1px; }
+.mini-seg { display: flex; background: rgba(118,118,128,.24); border-radius: 8px; padding: 2px; }
+.mini-seg button { padding: 3px 9px; border-radius: 6px; font-size: 11px; color: var(--ink-2); }
+.mini-seg button.on { background: #636366; color: #fff; }
+.chart-box { height: 232px; }
+#chart-monthly-cost { height: 118px; }  /* 月费用图矮版 (原内联样式) */
+.chart-table { font-size: 12px; max-height: 232px; overflow-y: auto; }
+.chart-table table { width: 100%; border-collapse: collapse; }
+.chart-table th, .chart-table td { text-align: right; padding: 5px 8px; font-variant-numeric: tabular-nums; }
+.chart-table th { color: var(--ink-3); font-weight: 500; position: sticky; top: 0; background: var(--surface); }
+.chart-table td:first-child, .chart-table th:first-child { text-align: left; padding-left: 4px; }
+.chart-table tbody tr + tr { border-top: 1px solid var(--grid); }
+.chart-table td { color: var(--chart-ink); }
+
+/* ---------- 加载/错误 ---------- */
+.tail { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 18px 0 40px; }
+.spin {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 2px solid var(--surface-3); border-top-color: #9a9aa0;
+  animation: rot .8s linear infinite;
+}
+@keyframes rot { to { transform: rotate(360deg); } }
+.err-box { text-align: center; padding: 40px 20px; }
+.err-box p { color: var(--ink-2); margin-bottom: 14px; font-size: 13.5px; }
+.retry {
+  padding: 8px 22px; border-radius: 12px; background: var(--surface-2);
+  color: var(--ink-1); font-weight: 600; font-size: 13.5px;
+}
+#charts-grid.dim { opacity: .45; pointer-events: none; }
+#charts-grid { transition: opacity .25s; }

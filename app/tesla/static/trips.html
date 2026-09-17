@@ -11,455 +11,12 @@
 <link rel="apple-touch-icon" href="/tesla/static/apple-touch-icon.png?v=2">
   <link rel="manifest" href="/tesla/static/manifest.json">
 <script src="/static/menu-user.js?v=2"></script>
-<script src="/tesla/static/lastpage.js?v=1"></script>
+<script src="/tesla/static/js/lastpage.js?v=1"></script>
   <title>行程列表 · My Tesla</title>
-<style>
-/* ---------- 设计令牌: 与充电/地图页一致的 iOS 暗色 ---------- */
-:root {
-  color-scheme: dark;
-  --bg: #000;
-  --surface: #1c1c1e;
-  --surface-2: #2c2c2e;
-  --surface-3: #3a3a3c;
-  --ink-1: #f5f5f7;
-  --ink-2: rgba(235,235,245,.62);
-  --ink-3: rgba(235,235,245,.32);
-  --hairline: rgba(255,255,255,.09);
-  --nav-bg: rgba(10,10,12,.72);
-  --blue: #3987e5;       /* 轨迹线色 (与地图页一致) */
-}
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-[hidden] { display: none !important; }
-html { -webkit-text-size-adjust: 100%; }
-html, body { overscroll-behavior-y: none; }   /* 拦掉 Safari 自带的下拉刷新 (刷新只走顶栏按钮) */
-body {
-  background: var(--bg); color: var(--ink-1);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
-               "Helvetica Neue", system-ui, sans-serif;
-  font-size: 14px; line-height: 1.45;
-  min-height: 100vh; min-height: 100dvh;
-}
-button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
-/* 触屏双击控件不再触发整页放大 (manipulation 保留平移/捏合, 只去掉双击缩放) */
-button, a, summary { touch-action: manipulation; }
-
-/* ---------- 顶部导航 (毛玻璃) ---------- */
-header {
-  position: sticky; top: 0; z-index: 50;
-  padding: calc(env(safe-area-inset-top) + 10px) 14px 10px;
-  background: var(--nav-bg);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
-  border-bottom: 1px solid var(--hairline);
-}
-/* 顶栏一行: 全部 nowrap + 不许压缩换行 (窄屏字号收一档) */
-.nav-row { display: flex; align-items: baseline; gap: 8px; }
-.nav-row > * { flex-shrink: 0; }
-/* ---------- 页签菜单 (收起式) ---------- */
-.nav-menu { position: relative; align-self: center; margin-left: auto; }
-.nav-menu summary {
-  display: flex; align-items: center; gap: 5px;
-  font-size: 12px; color: var(--ink-1); background: var(--surface-2);
-  padding: 4px 10px; border-radius: 999px; cursor: pointer; white-space: nowrap;
-  list-style: none; -webkit-user-select: none; user-select: none;
-}
-.nav-menu summary::-webkit-details-marker { display: none; }
-.nav-menu summary:active { opacity: .7; }
-.nav-menu[open] summary { background: var(--surface-3); }
-.nav-menu .chev { transition: transform .18s; }
-.nav-menu[open] .chev { transform: rotate(180deg); }
-.nav-menu .menu {
-  position: absolute; top: calc(100% + 8px); right: 0; min-width: 128px; z-index: 30;
-  display: flex; flex-direction: column; padding: 5px;
-  background: rgba(44,44,46,.88);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid var(--hairline); border-radius: 14px;
-  box-shadow: 0 12px 32px rgba(0,0,0,.5);
-}
-.nav-menu .menu a {
-  font-size: 14px; color: var(--ink-1); text-decoration: none;
-  padding: 9px 12px; border-radius: 10px; white-space: nowrap;
-}
-.nav-menu .menu a:active { background: var(--surface-3); }
-.nav-menu .menu a.on { color: #7db3f0; }
-.nav-menu + .nav-menu { margin-left: 0; }   /* 顶栏两个菜单靠右并排, 只有第一个吃 auto 边距 */
-/* 品牌即入口: My Tesla 本身是下拉按钮, 展开是全部页面 + 退出登录。
-   块要放在 .nav-menu 系列之后 —— 同特异性靠源序取胜, 放前面会被盖掉
-   (实测放 h1 原位时 margin-left:auto 没被压掉, 品牌被顶到行中间)。 */
-.brand-menu { margin-left: 0; }
-.brand-menu summary {
-  font-size: 20px; font-weight: 700; letter-spacing: -.3px;
-  background: none; padding: 0; border-radius: 0;
-}
-.brand-menu[open] summary { background: none; }
-.brand-menu .chev { color: var(--ink-3); }
-.brand-menu .menu { left: 0; right: auto; }   /* 面板锚品牌左缘向右展开, 不出屏 */
-.nav-menu .menu .logout-row {
-  color: #e5484d; border-top: 1px solid var(--hairline); margin-top: 5px;
-}
-.brand-menu + .nav-menu { margin-left: auto; }   /* 品牌居左, 顶栏其余菜单仍靠右 */
-.nav-menu .menu button {
-  font-size: 14px; color: var(--ink-1); text-align: left;
-  padding: 9px 12px; border-radius: 10px; white-space: nowrap;
-}
-.nav-menu .menu button.on { color: #7db3f0; }
-.nav-menu .menu button:active { background: var(--surface-3); }
-/* 筛选栏 (顶栏下方): 行程独有筛选, 下拉不能被横向滚动裁掉 */
-.filters { display: flex; gap: 8px; margin-top: 10px; }
-/* 手机: 筛选行放不下就自己横滑 (下拉此时锚在全宽 header 上, 不受横滑容器
-   裁剪; 桌面下拉锚在胶囊内不能加), 不把整个页面带着滑 */
-@media (max-width: 479px) {
-  .filters { overflow-x: auto; scrollbar-width: none; }
-  .filters::-webkit-scrollbar { display: none; }
-}
-.filters .nav-menu { margin-left: 0; }              /* 不吃顶栏的靠右边距 */
-.filters .nav-menu .menu { left: 0; right: auto; }  /* 下拉锚左, 行首也不出屏 */
-/* 手机: 下拉改顶栏正下方近全宽面板 —— 自定义日历一行要 ~300px, 挂在胶囊
-   右缘必出屏 (390px 时面板左缘 -64px, 起始日期半格在屏幕外)。
-   .nav-menu 改 static 让 containing block 上移到全宽的 sticky header,
-   top:calc(100%+8px) 恰好落在 header 底 + 8px, left/right 即视口两侧。 */
-@media (max-width: 479px) {
-  .nav-menu { position: static; }
-  .nav-menu .menu, .filters .nav-menu .menu { left: 12px; right: 12px; }
-}
-.filt .fl { max-width: 30vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* 起终点省市区级联: 菜单限高滚动 (区县可能有十几项), 返回行/面包屑/层级行 */
-.nav-menu .menu.loc-menu { max-height: min(420px, 62vh); overflow-y: auto; min-width: 176px; }
-.nav-menu .menu .loc-crumb { font-size: 11px; color: var(--ink-3); padding: 4px 12px 2px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.nav-menu .menu button.loc-back { color: var(--ink-2); font-size: 13px; padding: 5px 12px 8px; }
-.nav-menu .menu button.loc-row { display: flex; align-items: baseline; gap: 8px; }
-.nav-menu .menu button.loc-row .nm { overflow: hidden; text-overflow: ellipsis; }
-.nav-menu .menu button.loc-row .cnt { color: var(--ink-3); font-size: 12px;
-  margin-left: auto; white-space: nowrap; flex-shrink: 0; }
-.nav-menu .menu button.on .cnt { color: #7db3f0; }
-/* 时间菜单的自定义日历: 月历网格, 同一个日历连点两次 (第一下起点, 第二下终点) */
-.time-menu .tm-custom { border-top: 1px solid var(--hairline); margin-top: 5px; padding-top: 5px; }
-.time-menu .menu { max-height: calc(100vh - 130px); overflow-y: auto; }  /* 矮屏展开日历时兜底滚动 */
-.tm-dates { padding: 6px 8px 3px; }
-.tm-cal-top { display: flex; align-items: center; gap: 4px; padding: 0 2px 5px; }
-.tm-cal-top b { flex: 1; text-align: center; font-size: 13px; font-weight: 600; }
-.tm-cal-top button { min-width: 28px; height: 26px; border-radius: 7px; color: var(--ink-2); }
-.tm-cal-top button:disabled { opacity: .3; }
-.tm-cal-top button:active { background: var(--surface-3); }
-.tm-week, .tm-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-.tm-week i { font-style: normal; text-align: center; font-size: 11px; color: var(--ink-3); padding: 2px 0 4px; }
-.tm-cal { padding-bottom: 4px; }
-.tm-cal button { min-width: 34px; height: 34px; border-radius: 9px; font-size: 13px; color: var(--ink-1); }
-.tm-cal button:active { background: var(--surface-3); }
-.tm-cal button.today { color: #7db3f0; font-weight: 600; }
-.tm-cal button.mid { background: rgba(57,135,229,.16); border-radius: 0; }
-.tm-cal button.on { background: #3987e5; color: #fff; font-weight: 600; }
-.tm-foot { display: flex; align-items: center; gap: 8px; padding: 6px 2px 2px; }
-.tm-foot span { flex: 1; min-width: 0; font-size: 12px; color: var(--ink-2);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tm-dates #tm-apply {
-  flex: none; background: #3987e5; color: #fff;
-  border-radius: 8px; font-size: 12.5px; font-weight: 600; padding: 7px 14px;
-}
-
-main { max-width: 760px; margin: 0 auto; }
-.sec-head { display: flex; align-items: baseline; gap: 8px; padding: 16px 16px 4px; }
-.sec-head h2 { font-size: 17px; font-weight: 650; letter-spacing: -.2px; }
-.count-badge { font-size: 12px; color: var(--ink-3); }
-
-/* ---------- 行程列表 (单列) ---------- */
-#list { display: flex; flex-direction: column; gap: 10px; padding: 8px 14px 10px; }
-@media (max-width: 719px) { #list { padding: 8px 12px 10px; } }
-
-/* ---------- 行程卡片 ---------- */
-.card-t {
-  background: var(--surface); border-radius: 16px; border: 1px solid var(--hairline);
-  padding: 12px 13px; cursor: pointer; overflow: hidden;
-  transition: transform .15s, background .15s;
-  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
-}
-.card-t:active { transform: scale(.975); background: #232326; }
-@media (hover: hover) { .card-t:hover { border-color: rgba(255,255,255,.2); } }
-.ct-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
-.ct-date { font-size: 11.5px; color: var(--ink-2); white-space: nowrap; }
-.ct-arrow {
-  flex: none; font-size: 10.5px; font-weight: 600; color: #7db3f0;
-  background: rgba(57,135,229,.14); padding: 2px 8px; border-radius: 999px;
-}
-.ct-drv {
-  flex: none; font-size: 10.5px; color: var(--ink-2);
-  background: rgba(255,255,255,.08); padding: 2.5px 9px; border-radius: 999px;
-  max-width: 42%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.ct-drv.def {   /* 默认驾驶员兜底 (没人标过): 弱一档, 和显式标注区分 */
-  color: var(--ink-3); background: none; border: 1px solid var(--hairline);
-  padding: 1.5px 8px;   /* 补偿 1px 边框, 高度对齐无框 pill */
-}
-/* 多选模式: 卡片右上角 → 查看轨迹 换成选圈 */
-.card-t .pick { display: none; }
-body.selecting .ct-arrow { display: none; }
-body.selecting .card-t .pick {
-  display: inline-block; flex: none; width: 22px; height: 22px;
-  border-radius: 50%; border: 1.5px solid rgba(255,255,255,.25); box-sizing: border-box;
-}
-body.selecting .card-t.picked { border-color: rgba(57,135,229,.55); background: #20242b; }
-body.selecting .card-t.picked .pick { border-color: var(--blue); background: var(--blue); }
-body.selecting .card-t.picked .pick::after {
-  content: ""; display: block; width: 9px; height: 5px; margin: 5px auto 0;
-  border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg);
-}
-.ct-cells { display: flex; gap: 8px; margin: 9px 0 1px; }
-.ct-cell { flex: 1; min-width: 0; background: var(--surface); border-radius: 10px; padding: 7px 10px; }
-.ct-cell .lb { font-size: 10px; color: var(--ink-3); }
-.ct-cell .val { font-size: 17px; font-weight: 650; letter-spacing: -.3px; margin-top: 1px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ct-cell .val small { font-size: 10.5px; color: var(--ink-2); font-weight: 500; }
-.ct-addr { margin-top: 8px; display: flex; flex-direction: column; gap: 3px; }
-.ct-addr .line {
-  font-size: 12px; color: var(--ink-2); display: flex; gap: 6px; align-items: baseline;
-}
-.ct-addr .dot { flex: none; width: 6px; height: 6px; border-radius: 50%; align-self: center; }
-.ct-addr .from .dot { background: var(--green, #1fa349); }
-.ct-addr .to .dot { background: #d95926; }
-.ct-addr .txt {
-  -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
-  display: -webkit-box; min-width: 0;
-}
-.ct-sub { font-size: 11.5px; color: var(--ink-3); margin-top: 8px; }
-
-/* ---------- 尾部状态 ---------- */
-.tail { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 18px 0 40px; }
-.spin {
-  width: 22px; height: 22px; border-radius: 50%;
-  border: 2.5px solid var(--surface-3); border-top-color: var(--ink-2);
-  animation: spin .8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.endnote, .empty { font-size: 12px; color: var(--ink-3); }
-.err-box { display: flex; flex-direction: column; align-items: center; gap: 10px; font-size: 13px; color: #ff9f9f; }
-.retry {
-  font-size: 13px; padding: 7px 22px; border-radius: 999px;
-  border: 1px solid var(--hairline); color: var(--ink-1);
-}
-
-/* ---------- 轨迹弹层 (底部 sheet) ---------- */
-.backdrop {
-  position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.4);
-  opacity: 0; pointer-events: none; transition: opacity .2s;
-}
-.backdrop.show { opacity: 1; pointer-events: auto; }
-/* 多选底栏: 固定底部 (弹层 z=91 更高, 开合并弹层时被盖住) */
-.selbar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 80;
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 16px calc(env(safe-area-inset-bottom) + 10px);
-  background: rgba(28,28,30,.94);
-  -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%);
-  border-top: 1px solid var(--hairline);
-}
-.selbar[hidden] { display: none; }
-.sel-info {
-  flex: 1; min-width: 0; font-size: 13px; color: var(--ink-2);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.sel-info b { color: var(--ink-1); font-weight: 650; }
-.sel-info #sel-cap { color: #e08a2e; }   // 划选超上限: 提示为什么按钮置灰
-.sel-go {
-  flex: none; background: var(--blue); color: #fff; font-size: 13.5px; font-weight: 600;
-  padding: 9px 16px; border-radius: 999px;
-}
-.sel-go:disabled { opacity: .4; }
-.sel-go:active { transform: scale(.96); }
-.sel-all { flex: none; font-size: 13px; color: var(--blue); font-weight: 600; padding: 9px 4px; }
-.sel-all:disabled { opacity: .4; }
-.sel-cancel { flex: none; font-size: 13px; color: var(--ink-2); padding: 9px 4px; }
-.sel-row, .gp-row { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
-.selbar.naming .sel-row { display: none; }
-.gp-row { display: none; }
-.selbar.naming .gp-row { display: flex; }
-.gp-row input {
-  flex: 1; min-width: 0; font-size: 14px; color: var(--ink-1);
-  padding: 8px 12px; border-radius: 10px;
-  border: 1px solid var(--hairline); background: rgba(255,255,255,.06); outline: none;
-}
-.gp-row input:focus { border-color: var(--blue); }
-/* 手机窄屏: 选中信息独占一行, 按钮行换到下面 */
-@media (max-width: 479px) {
-  .sel-row { flex-wrap: wrap; gap: 8px 10px; }
-  .sel-info { flex-basis: 100%; }
-}
-
-
-/* 顶栏刷新按钮 (列表重载唯一入口, 与页签胶囊同款样式) */
-#refresh-btn {
-  align-self: center; display: flex; align-items: center; margin-left: 0;
-  color: var(--ink-1); background: var(--surface-2);
-  padding: 5px 9px; border-radius: 999px;
-}
-#refresh-btn:active { background: var(--surface-3); }
-#refresh-btn.busy svg { animation: refresh-spin .8s linear infinite; }
-@keyframes refresh-spin { to { transform: rotate(360deg); } }
-body.selecting #refresh-btn { display: none; }
-
-/* ---------- 轻提示 ---------- */
-#toast {
-  position: fixed; top: calc(env(safe-area-inset-top) + 60px); left: 50%;
-  transform: translateX(-50%) translateY(-8px); z-index: 99;
-  max-width: 80vw; font-size: 13px; color: #fff; text-align: center;
-  background: rgba(10,10,12,.85);
-  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-  border-radius: 999px; padding: 9px 16px;
-  opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none;
-}
-#toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
-#toast[hidden] { display: none; }
-.sheet {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 91;
-  height: 82vh; height: 82dvh;
-  display: flex; flex-direction: column;
-  background: var(--surface-2); border-radius: 20px 20px 0 0;
-  padding: 10px 16px calc(env(safe-area-inset-bottom) + 12px);
-  transform: translateY(105%); transition: transform .28s cubic-bezier(.32,.72,.33,1);
-}
-.sheet.show { transform: translateY(0); }
-/* 手柄改成整行命中区 (5px 的胶囊本体根本点不中), 胶囊用 ::before 画 */
-.grab { flex: none; padding: 7px 0 3px; margin-bottom: 8px; cursor: pointer;
-        touch-action: none; -webkit-user-select: none; user-select: none; }
-.grab::before { content: ""; display: block; width: 38px; height: 5px;
-                border-radius: 3px; background: var(--hairline); margin: 0 auto; }
-.sh-head { flex: none; display: flex; align-items: baseline; gap: 10px; padding: 0 4px 10px; }
-.sh-title { font-size: 17px; font-weight: 700; }
-.sh-sub { font-size: 12px; color: var(--ink-3); min-width: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sh-drv { flex: none; display: flex; align-items: center; gap: 8px; padding: 0 4px 8px; }
-#sh-drv-pick { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.sh-drv .lb { font-size: 11px; color: var(--ink-2); flex: none; }
-.sh-drv select {
-  font: inherit; font-size: 12.5px; color: var(--ink-1);
-  background: var(--surface); border: 1px solid var(--hairline);
-  border-radius: 999px; padding: 5px 10px; outline: none; max-width: 62%;
-}
-.sh-toll {
-  margin-left: auto; flex: none; font-size: 12.5px; color: #7db3f0;
-  background: rgba(57,135,229,.14); padding: 4px 10px; border-radius: 999px;
-  white-space: nowrap; max-width: 52%; overflow: hidden; text-overflow: ellipsis;
-}
-.sh-cells {   /* 单行横滑: 放不下就滑, 不折行挤地图 (里程/时长/车速/功耗 实时格排前) */
-  flex: none; display: flex; gap: 8px; padding-bottom: 10px;
-  overflow-x: auto; scrollbar-width: none;
-}
-.sh-cells::-webkit-scrollbar { display: none; }
-.sh-cell { flex: none; background: var(--surface); border-radius: 12px; padding: 8px 12px; }
-.sh-cell .lb { font-size: 11px; color: var(--ink-2); }
-.sh-cell .val { font-size: 17px; font-weight: 650; margin-top: 2px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.sh-cell .val small { font-size: 11px; color: var(--ink-2); font-weight: 500; }
-/* 实时数字位数变化 (0.0→4.9→12.3 / 0:00→1:02:45 / 回收 -12.3) 不许在横滑条里
-   挤动邻居格: 数字进定宽盒右对齐 (ch = 一个 tabular 数字宽), 变长只向左长 */
-.sh-cell .val .n { display: inline-block; text-align: right; }
-#sh-km .n, #sh-kwh .n { min-width: 4.5ch; }
-#sh-dur .n { min-width: 7ch; }
-#sh-spd .n { min-width: 3ch; }
-#sh-pw .n { min-width: 5ch; }    /* 可负 (动能回收 "-12.3") */
-#sh-avg .n { min-width: 4ch; }   /* 播放初期每公里成本高, 平均值可冲 4 位 */
-.trip-map-wrap {   /* 底部让位浮层播放条 (62px = 胶囊高50+距底16+净距8 − 弹层底padding12):
-  跟车的动态轨迹不再被控制条压住, AMap logo 也完整露出 */
-  position: relative; flex: 1; min-height: 0; margin-bottom: 62px;
-  border-radius: 14px; overflow: hidden; background: var(--surface);
-}
-#trip-map {   /* 环形前瞻: 容器四周扩出 (上下 ±320, 左右 ±160, 与 MAP_RING_* 一致),
-  wrap overflow 裁掉, 可视区不变 —— 引擎按容器矩形取瓦, 播放中四周瓦片提前
-  4~13 秒进缓存 (随速档下视野米宽与镜头扫速同比例缩放, 领先量近似恒定),
-  地名/道路不迟到, 边播边下天然成立 (流式分组播放也靠它)。代价: 渲染像素
-  ~4× (现代手机 GPU 无压力)。配套: setFitView 避让边距补环宽 (FIT_AVOID),
-  高德 logo 推回可视区, 版权文字隐藏 */
-  position: absolute; width: calc(100% + 320px); height: calc(100% + 640px);
-  left: -160px; top: -320px;
-}
-#trip-map .amap-logo {
-  /* logo 贴容器左缘 (dbg81 实测 left:4px), 平移环带偏移量 (对称补偿
-     #trip-map 的 -160/-320) 推回可视区 */
-  transform: translate(160px, -320px);
-}
-#trip-map .amap-copyright { display: none !important; }   /* 版权文字按需求去掉 */
-.trip-msg {
-  position: absolute; inset: 0; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 12px;
-  font-size: 13px; color: var(--ink-2); background: var(--surface);
-  z-index: 10; text-align: center; padding: 0 30px;
-}
-.trip-msg .spin { margin: 0 auto; }
-/* ---------- 播放控制条 ---------- */
-.playbar {   /* 浮层胶囊: 贴弹层底部; 地图已 margin-bottom 让位, 不再压住轨迹 */
-  position: absolute; left: 14px; right: 14px;
-  bottom: calc(env(safe-area-inset-bottom) + 16px);
-  z-index: 6; display: flex; align-items: center; gap: 10px;
-  padding: 9px 12px; border-radius: 999px;
-  background: rgba(22,24,29,.82);
-  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 6px 18px rgba(0,0,0,.35);
-}
-.pb-btn {
-  flex: none; width: 32px; height: 32px; border-radius: 50%;
-  background: var(--surface-3); color: var(--ink-1);
-  display: flex; align-items: center; justify-content: center;
-  transition: transform .12s;
-}
-.pb-btn:active { transform: scale(.9); }
-.pb-speed {
-  flex: none; width: 44px; font-size: 12px; color: var(--ink-2);
-  border: 1px solid var(--hairline); border-radius: 999px; padding: 5px 0;
-  font-variant-numeric: tabular-nums;
-}
-.pb-seek {   /* min-width: 0 必须: flex 项默认 min-width:auto = 控件内在宽
-  (进度条 Chromium 129px / Safari 更宽), 窄屏时把 +/- 视角钮挤出屏幕右缘 */
-  flex: 1; min-width: 0;
-  -webkit-appearance: none; appearance: none; height: 28px; background: transparent; cursor: pointer; }
-/* 视角基线微调: 整条随速变焦曲线平移 (慢近快远不变, 只挪基准远近) */
-.pb-zoom { flex: none; display: flex; align-items: center; gap: 3px; }
-.pb-zb {
-  flex: none; width: 26px; height: 26px; border-radius: 50%;
-  background: var(--surface-3); color: var(--ink-1); font-size: 15px; line-height: 1;
-  display: flex; align-items: center; justify-content: center;
-  transition: transform .12s;
-}
-.pb-zb:active { transform: scale(.9); }
-#pb-zval {
-  flex: none; min-width: 24px; text-align: center; font-size: 11px;
-  color: var(--ink-2); font-variant-numeric: tabular-nums;
-}
-.pb-seek::-webkit-slider-runnable-track {
-  height: 4px; border-radius: 2px;
-  background: linear-gradient(to right, var(--blue) var(--pb, 0%), var(--surface-3) var(--pb, 0%));
-}
-.pb-seek::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%;
-  background: #fff; margin-top: -5.5px; box-shadow: 0 1px 4px rgba(0,0,0,.55);
-}
-.pb-seek::-moz-range-track { height: 4px; border-radius: 2px; background: var(--surface-3); }
-.pb-seek::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--blue); }
-.pb-seek::-moz-range-thumb { width: 15px; height: 15px; border: 0; border-radius: 50%; background: #fff; }
-/* ---------- 导出视频 ---------- */
-#pb-rec .rec-dot {   /* 录制点: 平时灰, 录制中红 + 呼吸 */
-  width: 12px; height: 12px; border-radius: 50%;
-  background: var(--ink-3); transition: background .2s;
-}
-#pb-rec.rec .rec-dot { background: #ff453a; animation: rec-pulse 1.2s ease-in-out infinite; }
-@keyframes rec-pulse { 50% { opacity: .35; } }
-.rec-modal {   /* 成片预览: 压过弹层 (91), 在 toast (99) 之下 */
-  position: fixed; inset: 0; z-index: 95;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(0,0,0,.55); padding: 24px;
-}
-.rec-modal[hidden] { display: none; }
-.rec-card {
-  width: min(92vw, 420px); background: var(--surface-2);
-  border-radius: 16px; padding: 14px; border: 1px solid var(--hairline);
-  display: flex; flex-direction: column; gap: 12px;
-}
-.rec-card video { width: 100%; max-height: 52vh; border-radius: 10px; background: #000; }
-.rec-acts { display: flex; gap: 10px; }
-.rec-acts button {
-  flex: 1; padding: 10px 0; border-radius: 12px; font-size: 14px; font-weight: 600;
-  border: 1px solid var(--hairline); color: var(--ink-1); background: var(--surface-3);
-}
-.rec-acts .rec-main { background: var(--blue); border-color: transparent; color: #fff; }
-</style>
+<link rel="stylesheet" href="/tesla/static/css/tesla-trips-page.css?v=1">
+<link rel="stylesheet" href="/tesla/static/css/tesla-trips-cards.css?v=1">
+<link rel="stylesheet" href="/tesla/static/css/tesla-trips-sheet.css?v=1">
+<link rel="stylesheet" href="/tesla/static/css/tesla-trips-playback.css?v=1">
 </head>
 <body>
 
@@ -477,34 +34,34 @@ body.selecting #refresh-btn { display: none; }
         <a href="/tesla/live">当前驾驶</a>
         <a href="/tesla/settings">软件设置</a>
         <a href="/tesla/changelog">更新日志</a>
-        <button class="logout-row" id="logout" title="退出登录">退出登录</button>
+        <button type="button" class="logout-row" id="logout" title="退出登录">退出登录</button>
       </div>
     </details>
     <details class="nav-menu time-menu" id="time-menu">
       <summary><span id="time-lb">全部</span><svg class="chev" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
       <div class="menu" id="time-opts">
-        <button data-v="24h">最近 24 小时</button>
-        <button data-v="7d">最近一周</button>
-        <button data-v="30d">最近一个月</button>
-        <button data-v="180d">最近半年</button>
-        <button data-v="1y">最近一年</button>
-        <button data-v="all" class="on">全部</button>
+        <button type="button" data-v="24h">最近 24 小时</button>
+        <button type="button" data-v="7d">最近一周</button>
+        <button type="button" data-v="30d">最近一个月</button>
+        <button type="button" data-v="180d">最近半年</button>
+        <button type="button" data-v="1y">最近一年</button>
+        <button type="button" data-v="all" class="on">全部</button>
         <div class="tm-custom">
-          <button data-v="custom">自定义…</button>
+          <button type="button" data-v="custom">自定义…</button>
           <div class="tm-dates" id="tm-dates" hidden>
             <div class="tm-cal-top">
-              <button id="tm-prev" aria-label="上个月">‹</button>
+              <button type="button" id="tm-prev" aria-label="上个月">‹</button>
               <b id="tm-ym"></b>
-              <button id="tm-next" aria-label="下个月">›</button>
+              <button type="button" id="tm-next" aria-label="下个月">›</button>
             </div>
             <div class="tm-week"><i>一</i><i>二</i><i>三</i><i>四</i><i>五</i><i>六</i><i>日</i></div>
             <div class="tm-cal" id="tm-cal"></div>
-            <div class="tm-foot"><span id="tm-sel"></span><button id="tm-apply">确定</button></div>
+            <div class="tm-foot"><span id="tm-sel"></span><button type="button" id="tm-apply">确定</button></div>
           </div>
         </div>
       </div>
     </details>
-    <button id="refresh-btn" aria-label="刷新列表"><svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true"><path d="M12 7a5 5 0 1 1-1.46-3.54" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 1.6v2.4H9.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button type="button" id="refresh-btn" aria-label="刷新列表"><svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true"><path d="M12 7a5 5 0 1 1-1.46-3.54" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 1.6v2.4H9.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
   <!-- 行程页独有筛选 (顶栏时间筛选之下): 起点城市 / 终点城市 / 里程范围 -->
   <div class="filters">
@@ -519,16 +76,16 @@ body.selecting #refresh-btn { display: none; }
     <details class="nav-menu filt" id="km-menu">
       <summary><span class="fl" id="km-lb">里程: 全部</span><svg class="chev" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
       <div class="menu" id="km-opts">
-        <button data-k="all" class="on">全部</button>
-        <button data-k="0-20">20km 内</button>
-        <button data-k="20-100">20–100km</button>
-        <button data-k="100-300">100–300km</button>
-        <button data-k="300+">300km 以上</button>
+        <button type="button" data-k="all" class="on">全部</button>
+        <button type="button" data-k="0-20">20km 内</button>
+        <button type="button" data-k="20-100">20–100km</button>
+        <button type="button" data-k="100-300">100–300km</button>
+        <button type="button" data-k="300+">300km 以上</button>
       </div>
     </details>
     <details class="nav-menu filt" id="drv-menu" hidden>
       <summary><span class="fl" id="drv-lb">驾驶员: 全部</span><svg class="chev" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
-      <div class="menu" id="drv-opts"><button data-id="" class="on">全部</button></div>
+      <div class="menu" id="drv-opts"><button type="button" data-id="" class="on">全部</button></div>
     </details>
   </div>
 </header>
@@ -546,7 +103,7 @@ body.selecting #refresh-btn { display: none; }
     <div class="empty" id="empty" hidden>还没有行程记录</div>
     <div class="err-box" id="errbox" hidden>
       <p id="errmsg">加载失败</p>
-      <button class="retry" id="retry">重试</button>
+      <button type="button" class="retry" id="retry">重试</button>
     </div>
   </div>
 </main>
@@ -554,15 +111,15 @@ body.selecting #refresh-btn { display: none; }
 <div class="selbar" id="selbar" hidden>
   <div class="sel-row">
     <div class="sel-info">已选 <b id="sel-count">0</b> 段 · <span id="sel-km">0</span> km<span id="sel-cap" hidden> · 一次最多 100 段</span></div>
-    <button class="sel-all" id="gp-btn" disabled>存为分组</button>
-    <button class="sel-all" id="sel-all">全选</button>
-    <button class="sel-cancel" id="sel-cancel">取消</button>
-    <button class="sel-go" id="sel-go" disabled>查看连续轨迹</button>
+    <button type="button" class="sel-all" id="gp-btn" disabled>存为分组</button>
+    <button type="button" class="sel-all" id="sel-all">全选</button>
+    <button type="button" class="sel-cancel" id="sel-cancel">取消</button>
+    <button type="button" class="sel-go" id="sel-go" disabled>查看连续轨迹</button>
   </div>
   <div class="gp-row">
-    <input id="gp-name" maxlength="30" placeholder="分组名字" autocomplete="off">
-    <button class="sel-go" id="gp-save">保存</button>
-    <button class="sel-cancel" id="gp-name-cancel">取消</button>
+    <input type="text" id="gp-name" maxlength="30" placeholder="分组名字" autocomplete="off">
+    <button type="button" class="sel-go" id="gp-save">保存</button>
+    <button type="button" class="sel-cancel" id="gp-name-cancel">取消</button>
   </div>
 </div>
 <div class="backdrop" id="backdrop"></div>
@@ -585,15 +142,15 @@ body.selecting #refresh-btn { display: none; }
     <div class="sh-cell" id="sh-cell-avg" hidden><div class="lb">平均电耗</div><div class="val" id="sh-avg">–</div></div>
   </div>
   <div class="playbar" id="playbar" hidden>
-    <button id="pb-toggle" class="pb-btn" aria-label="暂停"></button>
+    <button type="button" id="pb-toggle" class="pb-btn" aria-label="暂停"></button>
     <input type="range" id="pb-seek" class="pb-seek" min="0" max="1000" step="1" value="0">
-    <button id="pb-speed" class="pb-speed">1×</button>
+    <button type="button" id="pb-speed" class="pb-speed">1×</button>
     <div class="pb-zoom" title="视角基线: 随速变焦整体拉近/拉远 (慢近快远不变)">
-      <button id="pb-zout" class="pb-zb" aria-label="视角拉远">−</button>
+      <button type="button" id="pb-zout" class="pb-zb" aria-label="视角拉远">−</button>
       <span id="pb-zval">0</span>
-      <button id="pb-zin" class="pb-zb" aria-label="视角拉近">+</button>
+      <button type="button" id="pb-zin" class="pb-zb" aria-label="视角拉近">+</button>
     </div>
-    <button id="pb-rec" class="pb-btn" aria-label="导出视频"><span class="rec-dot"></span></button>
+    <button type="button" id="pb-rec" class="pb-btn" aria-label="导出视频"><span class="rec-dot"></span></button>
   </div>
   <div class="trip-map-wrap">
     <div id="trip-map"></div>
@@ -608,18 +165,36 @@ body.selecting #refresh-btn { display: none; }
   <div class="rec-card">
     <video id="rec-video" playsinline controls></video>
     <div class="rec-acts">
-      <button id="rec-save" class="rec-main">存到相册</button>
-      <button id="rec-close">关闭</button>
+      <button type="button" id="rec-save" class="rec-main">存到相册</button>
+      <button type="button" id="rec-close">关闭</button>
     </div>
   </div>
 </div>
 <div id="toast" hidden></div>
 
-<script src="/tesla/static/gcj02.js?v=1"></script>
-<script src="/tesla/static/trackutil.js?v=8"></script>
-<script src="/tesla/static/format.js?v=1"></script>
-<script src="/tesla/static/trip-playback.js?v=1"></script>
-<script src="/tesla/static/trips-list.js?v=1"></script>
-<script src="/tesla/static/trips.js?v=3"></script>
+<script src="/tesla/static/js/gcj02.js?v=1"></script>
+<script src="/tesla/static/js/trackutil.js?v=1"></script>
+<script src="/tesla/static/js/format.js?v=1"></script>
+<script src="/tesla/static/js/track-animation.js?v=1"></script>
+<script src="/tesla/static/js/trip-playback.js?v=1"></script>
+<script src="/tesla/static/js/trips-list-page.js?v=1"></script>
+<script src="/tesla/static/js/trips-list-url.js?v=1"></script>
+<script src="/tesla/static/js/trips-list-time-filters.js?v=1"></script>
+<script src="/tesla/static/js/trips-list-region-filters.js?v=1"></script>
+<script src="/tesla/static/js/trips-list-select.js?v=1"></script>
+<script src="/tesla/static/js/trips-list-groups.js?v=1"></script>
+<script src="/tesla/static/js/trips-sheet-page.js?v=1"></script>
+<script src="/tesla/static/js/trips-playback-bar.js?v=1"></script>
+<script src="/tesla/static/js/trips-gap-routing.js?v=1"></script>
+<script src="/tesla/static/js/trips-playback-zoom.js?v=1"></script>
+<script src="/tesla/static/js/trips-playback-overlays.js?v=1"></script>
+<script src="/tesla/static/js/trips-playback-loop.js?v=1"></script>
+<script src="/tesla/static/js/trips-playback-session.js?v=1"></script>
+<script src="/tesla/static/js/trips-preload-tiles.js?v=1"></script>
+<script src="/tesla/static/js/trips-preload-vector.js?v=1"></script>
+<script src="/tesla/static/js/trips-sheet-driver.js?v=1"></script>
+<script src="/tesla/static/js/trips-sheet-open.js?v=1"></script>
+<script src="/tesla/static/js/trips-export-video.js?v=1"></script>
+<script src="/tesla/static/js/trips-sheet-close.js?v=1"></script>
 </body>
 </html>

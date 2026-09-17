@@ -1,0 +1,86 @@
+/* tesla-chargemap-map — chargemap 页样式。拆自 chargemap.html 的内联 <style> (结构化重构, 内容逐字节未动)。 */
+/* ---------- 地图 ---------- */
+main { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
+#map {
+  position: absolute; inset: 0;
+  touch-action: none;   /* 不让 iOS Safari 把双指缩放劫持成整页缩放, 交给高德 */
+}
+#map .amap-copyright { display: none !important; }
+.overlay {
+  position: absolute; inset: 0; z-index: 20;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 24px; background: rgba(0,0,0,.45);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.spin {
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 3px solid rgba(255,255,255,.18); border-top-color: var(--blue);
+  animation: rot .8s linear infinite;
+}
+@keyframes rot { to { transform: rotate(360deg); } }
+.ov-text { font-size: 14px; color: var(--ink-2); }
+.retry-btn {
+  padding: 9px 26px; border-radius: 999px; font-size: 14px; font-weight: 600;
+  background: var(--blue); color: #fff;
+}
+.retry-row { text-align: center; margin-top: 16px; }  /* 重新检测按钮居中 (原内联样式) */
+.hint-card {
+  max-width: 420px; background: var(--surface); border-radius: 18px;
+  border: 1px solid var(--hairline); padding: 22px 20px; text-align: left;
+}
+.hint-card h2 { font-size: 17px; text-align: center; margin-bottom: 4px; }
+.hint-card .h-sub { font-size: 12.5px; color: var(--ink-2); text-align: center; margin-bottom: 14px; }
+.hint-card ol { padding-left: 20px; display: grid; gap: 7px; font-size: 13px; color: var(--ink-2); }
+.hint-card code {
+  font-family: ui-monospace, Menlo, monospace; font-size: 12px;
+  background: var(--surface-2); padding: 1px 6px; border-radius: 5px; color: #7db3f0;
+}
+.hint-card a { color: #7db3f0; }
+
+/* 热力图例: 颜色梯度条 (蓝→红) + 当前视图的最小/中位/最大值 */
+.legend {
+  position: absolute; left: 14px; bottom: calc(env(safe-area-inset-bottom) + 18px);
+  z-index: 30;
+  background: rgba(28,28,30,.85); border: 1px solid var(--hairline);
+  border-radius: 14px; padding: 10px 14px;
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  pointer-events: none;   /* 纯图例, 不挡地图操作 */
+}
+.legend .lg-mode { font-size: 12px; font-weight: 600; color: var(--ink-1); }
+.legend .lg-ramp { width: 148px; height: 8px; border-radius: 4px; margin-top: 8px;
+                   border: 1px solid var(--hairline); }
+.legend .lg-row { display: flex; justify-content: space-between; width: 148px; margin-top: 5px; }
+.legend .lg-row span { font-size: 10px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.zoom-ctl {
+  position: absolute; right: 14px; bottom: calc(env(safe-area-inset-bottom) + 18px);
+  z-index: 30; display: flex; flex-direction: column; gap: 8px;
+}
+.zoom-ctl button {
+  width: 42px; height: 42px; border-radius: 14px; font-size: 23px; line-height: 1;
+  background: rgba(28,28,30,.85); border: 1px solid var(--hairline); color: var(--ink-1);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+}
+.zoom-ctl button:active { background: var(--surface-2); }
+
+/* ---------- 充电点详情底部弹层 ---------- */
+.backdrop {
+  position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.4);
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.backdrop.show { opacity: 1; pointer-events: auto; }
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 91;
+  background: var(--surface-2); border-radius: 20px 20px 0 0;
+  padding: 10px 20px calc(env(safe-area-inset-bottom) + 22px);
+  transform: translateY(105%); transition: transform .28s cubic-bezier(.32,.72,.33,1);
+}
+.sheet.show { transform: translateY(0); }
+.sh-title { font-size: 17px; font-weight: 700; margin-top: 10px; }
+.sh-sub { font-size: 12px; color: var(--ink-3); margin-top: 2px; margin-bottom: 14px; }
+.sh-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sh-cell { background: var(--surface); border-radius: 12px; padding: 10px 12px; }
+.sh-cell .lb { font-size: 11px; color: var(--ink-2); }
+.sh-cell .val { font-size: 18px; font-weight: 650; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.sh-cell .val small { font-size: 11px; color: var(--ink-2); font-weight: 500; }

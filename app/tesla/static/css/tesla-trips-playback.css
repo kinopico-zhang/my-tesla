@@ -1,0 +1,77 @@
+/* tesla-trips-playback — trips 页样式。拆自 trips.html 的内联 <style> (结构化重构, 内容逐字节未动)。 */
+/* ---------- 播放控制条 ---------- */
+.playbar {   /* 浮层胶囊: 贴弹层底部; 地图已 margin-bottom 让位, 不再压住轨迹 */
+  position: absolute; left: 14px; right: 14px;
+  bottom: calc(env(safe-area-inset-bottom) + 16px);
+  z-index: 6; display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 999px;
+  background: rgba(22,24,29,.82);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+}
+.pb-btn {
+  flex: none; width: 32px; height: 32px; border-radius: 50%;
+  background: var(--surface-3); color: var(--ink-1);
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .12s;
+}
+.pb-btn:active { transform: scale(.9); }
+.pb-speed {
+  flex: none; width: 44px; font-size: 12px; color: var(--ink-2);
+  border: 1px solid var(--hairline); border-radius: 999px; padding: 5px 0;
+  font-variant-numeric: tabular-nums;
+}
+.pb-seek {   /* min-width: 0 必须: flex 项默认 min-width:auto = 控件内在宽
+  (进度条 Chromium 129px / Safari 更宽), 窄屏时把 +/- 视角钮挤出屏幕右缘 */
+  flex: 1; min-width: 0;
+  -webkit-appearance: none; appearance: none; height: 28px; background: transparent; cursor: pointer; }
+/* 视角基线微调: 整条随速变焦曲线平移 (慢近快远不变, 只挪基准远近) */
+.pb-zoom { flex: none; display: flex; align-items: center; gap: 3px; }
+.pb-zb {
+  flex: none; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--surface-3); color: var(--ink-1); font-size: 15px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .12s;
+}
+.pb-zb:active { transform: scale(.9); }
+#pb-zval {
+  flex: none; min-width: 24px; text-align: center; font-size: 11px;
+  color: var(--ink-2); font-variant-numeric: tabular-nums;
+}
+.pb-seek::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 2px;
+  background: linear-gradient(to right, var(--blue) var(--pb, 0%), var(--surface-3) var(--pb, 0%));
+}
+.pb-seek::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%;
+  background: #fff; margin-top: -5.5px; box-shadow: 0 1px 4px rgba(0,0,0,.55);
+}
+.pb-seek::-moz-range-track { height: 4px; border-radius: 2px; background: var(--surface-3); }
+.pb-seek::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--blue); }
+.pb-seek::-moz-range-thumb { width: 15px; height: 15px; border: 0; border-radius: 50%; background: #fff; }
+
+/* ---------- 导出视频 ---------- */
+#pb-rec .rec-dot {   /* 录制点: 平时灰, 录制中红 + 呼吸 */
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--ink-3); transition: background .2s;
+}
+#pb-rec.rec .rec-dot { background: #ff453a; animation: rec-pulse 1.2s ease-in-out infinite; }
+@keyframes rec-pulse { 50% { opacity: .35; } }
+.rec-modal {   /* 成片预览: 压过弹层 (91), 在 toast (99) 之下 */
+  position: fixed; inset: 0; z-index: 95;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.55); padding: 24px;
+}
+.rec-modal[hidden] { display: none; }
+.rec-card {
+  width: min(92vw, 420px); background: var(--surface-2);
+  border-radius: 16px; padding: 14px; border: 1px solid var(--hairline);
+  display: flex; flex-direction: column; gap: 12px;
+}
+.rec-card video { width: 100%; max-height: 52vh; border-radius: 10px; background: #000; }
+.rec-acts { display: flex; gap: 10px; }
+.rec-acts button {
+  flex: 1; padding: 10px 0; border-radius: 12px; font-size: 14px; font-weight: 600;
+  border: 1px solid var(--hairline); color: var(--ink-1); background: var(--surface-3);
+}
+.rec-acts .rec-main { background: var(--blue); border-color: transparent; color: #fff; }

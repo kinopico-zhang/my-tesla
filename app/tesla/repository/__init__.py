@@ -1,18 +1,10 @@
-"""数据访问层门面: 按域拆成五个模块, 这里统一重导出 (调用方不必关心分布)。"""
+"""数据访问层门面: 按域拆包, 这里统一重导出 (调用方不必关心分布)。
 
-from .common import (  # pylint: disable=unused-import
-    BBox,
-    DateRange,
-    NotFound,
-    fdate,
-    ftime,
-    parse_date_range,
-    parse_region,
-    region_address_ids,
-    to_local,
-)
-
-from .charging import (  # pylint: disable=unused-import
+充电域在 charging/, 行程域在 trips/, 通用工具在 common 与 region_tree,
+当前驾驶在 live, 足迹地图在 map; 这里聚合对外名面 (调用方统一
+repository.xxx / from .. import repository, 不感知内部分层)。
+"""
+from .charging import (
     ChargeAgg,
     ChargeRow,
     SORT_OPTIONS,
@@ -29,8 +21,32 @@ from .charging import (  # pylint: disable=unused-import
     monthly_stats,
     update_charging_cost,
 )
-
-from .trips import (  # pylint: disable=unused-import
+from .common import (
+    BBox,
+    DateRange,
+    NotFound,
+    fdate,
+    ftime,
+    parse_date_range,
+    to_local,
+)
+from .live import live_status
+from .map import (
+    DETAIL_MAX_IDS,
+    DETAIL_PER_FLOOR,
+    DETAIL_PER_MAX,
+    DETAIL_TOTAL_CAP,
+    DETAIL_WORKERS,
+    MAP_TRACKS_PER_DRIVE,
+    detail_per_for,
+    drive_max_id,
+    map_summary,
+    query_detail,
+    query_detail_parallel,
+    query_tracks,
+)
+from .region_tree import parse_region, region_address_ids
+from .trips import (
     EARTH_RADIUS_KM,
     FILL_STEP_KM,
     GAP_ANCHOR_MAX_KM,
@@ -60,21 +76,23 @@ from .trips import (  # pylint: disable=unused-import
     trip_track,
 )
 
-from .live import (  # pylint: disable=unused-import
-    live_status,
-)
-
-from .map import (  # pylint: disable=unused-import
-    DETAIL_MAX_IDS,
-    DETAIL_PER_FLOOR,
-    DETAIL_PER_MAX,
-    DETAIL_TOTAL_CAP,
-    DETAIL_WORKERS,
-    MAP_TRACKS_PER_DRIVE,
-    detail_per_for,
-    drive_max_id,
-    map_summary,
-    query_detail,
-    query_detail_parallel,
-    query_tracks,
-)
+__all__ = [
+    "BBox", "ChargeAgg", "ChargeRow", "DateRange", "DETAIL_MAX_IDS",
+    "DETAIL_PER_FLOOR", "DETAIL_PER_MAX", "DETAIL_TOTAL_CAP",
+    "DETAIL_WORKERS", "EARTH_RADIUS_KM", "FILL_STEP_KM", "GAP_ANCHOR_MAX_KM",
+    "MAP_TRACKS_PER_DRIVE", "MERGED_TRACK_BUDGET", "MERGED_TRACK_PER_MIN",
+    "MergedPlan", "NotFound", "SORT_OPTIONS", "SessionFilter",
+    "TRIP_TRACK_PER", "TripFilter", "annotate_drivers", "annotate_tolls",
+    "charge_efficiency", "charging_dimensions", "charging_map_locations",
+    "charging_region_tree", "charging_session_detail", "charging_summary",
+    "closed_drive_ids_between", "delete_trip_group", "detail_per_for",
+    "drive_max_id", "driver_scope", "fdate", "filter_map_tracks_by_driver",
+    "ftime", "get_trip", "list_cars", "list_charging_sessions",
+    "list_trip_groups", "list_trip_regions", "list_trips", "live_status",
+    "location_stats", "map_summary", "merged_track", "merged_track_plan",
+    "merged_track_segments", "monthly_stats", "parse_date_range",
+    "parse_region", "query_detail", "query_detail_parallel", "query_tracks",
+    "region_address_ids", "rename_trip_group", "save_fill", "save_trip_group",
+    "save_trip_toll", "set_trip_driver", "to_local", "trip_track",
+    "update_charging_cost",
+]

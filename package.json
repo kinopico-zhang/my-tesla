@@ -7,17 +7,22 @@
     "node": ">=20"
   },
   "scripts": {
-    "lint": "eslint app/tesla/static app/static tests/js",
+    "lint": "eslint app/home/static app/tesla/static/js tests/js",
     "typecheck": "tsc -p tsconfig.json",
+    "stylelint": "stylelint 'app/*/static/css/*.css'",
+    "htmlvalidate": "html-validate 'app/*/static/*.html'",
     "test": "node --test tests/js/*.test.mjs",
-    "coverage": "c8 --include app/tesla/static/gcj02.js --include app/tesla/static/trackutil.js --include app/tesla/static/format.js --include app/tesla/static/trip-playback.js --include app/tesla/static/lastpage.js --check-coverage --lines 95 --branches 95 --functions 95 --reporter text node --test tests/js/*.test.mjs",
-    "check": "npm run lint && npm run typecheck && npm run test && npm run coverage"
+    "coverage": "c8 --include app/tesla/static/js/gcj02.js --include app/tesla/static/js/trackutil.js --include app/tesla/static/js/track-animation.js --include app/tesla/static/js/format.js --include app/tesla/static/js/trip-playback.js --include app/tesla/static/js/lastpage.js --check-coverage --lines 95 --branches 95 --functions 95 --reporter text node --test tests/js/*.test.mjs",
+    "check": "npm run lint && npm run typecheck && npm run stylelint && npm run htmlvalidate && npm run test && npm run coverage"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.5",
-    "c8": "^11.0.0",
-    "eslint": "^9.39.5",
-    "globals": "^17.12.0",
-    "typescript": "^5.7.3"
+    "@eslint/js": "9.39.5",
+    "c8": "11.0.0",
+    "eslint": "9.39.5",
+    "globals": "16.4.0",
+    "html-validate": "10.0.0",
+    "stylelint": "17.15.0",
+    "stylelint-config-standard": "40.0.0",
+    "typescript": "5.7.3"
   }
 }

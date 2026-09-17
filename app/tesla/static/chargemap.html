@@ -11,235 +11,10 @@
 <link rel="apple-touch-icon" href="/tesla/static/apple-touch-icon.png?v=2">
 <link rel="manifest" href="/tesla/static/manifest.json">
 <script src="/static/menu-user.js?v=2"></script>
-<script src="/tesla/static/lastpage.js?v=1"></script>
+<script src="/tesla/static/js/lastpage.js?v=1"></script>
 <title>充电地图 · My Tesla</title>
-<style>
-:root {
-  color-scheme: dark;
-  --bg: #000;
-  --surface: #1c1c1e;
-  --surface-2: #2c2c2e;
-  --ink-1: #f5f5f7;
-  --ink-2: rgba(235,235,245,.62);
-  --ink-3: rgba(235,235,245,.32);
-  --hairline: rgba(255,255,255,.09);
-  --nav-bg: rgba(10,10,12,.72);
-  --blue: #3987e5;
-}
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-[hidden] { display: none !important; }
-html { -webkit-text-size-adjust: 100%; }
-body {
-  background: var(--bg); color: var(--ink-1);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
-               "Helvetica Neue", system-ui, sans-serif;
-  font-size: 14px; line-height: 1.45;
-  height: 100vh; height: 100dvh;
-  display: flex; flex-direction: column; overflow: hidden;
-}
-button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
-/* 触屏双击控件不再触发整页放大 (manipulation 保留平移/捏合, 只去掉双击缩放) */
-button, a, summary { touch-action: manipulation; }
-
-/* ---------- 顶部导航 (毛玻璃, 与足迹地图页一致) ---------- */
-header {
-  padding: calc(env(safe-area-inset-top) + 10px) 14px 10px;
-  background: var(--nav-bg);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
-  border-bottom: 1px solid var(--hairline);
-  z-index: 50;
-}
-.nav-row { display: flex; align-items: baseline; gap: 8px; }
-.nav-row > * { flex-shrink: 0; }
-
-/* 顶栏刷新按钮 (与页签胶囊同款样式) */
-#refresh-btn {
-  align-self: center; display: flex; align-items: center; margin-left: 0;
-  color: var(--ink-1); background: var(--surface-2);
-  padding: 5px 9px; border-radius: 999px;
-}
-#refresh-btn:active { background: var(--surface-3); }
-#refresh-btn.busy svg { animation: refresh-spin .8s linear infinite; }
-@keyframes refresh-spin { to { transform: rotate(360deg); } }
-.nav-menu { position: relative; align-self: center; margin-left: auto; }
-.nav-menu summary {
-  display: flex; align-items: center; gap: 5px;
-  font-size: 12px; color: var(--ink-1); background: var(--surface-2);
-  padding: 4px 10px; border-radius: 999px; cursor: pointer; white-space: nowrap;
-  list-style: none; -webkit-user-select: none; user-select: none;
-}
-.nav-menu summary::-webkit-details-marker { display: none; }
-.nav-menu summary:active { opacity: .7; }
-.nav-menu[open] summary { background: var(--surface-3); }
-.nav-menu .chev { transition: transform .18s; }
-.nav-menu[open] .chev { transform: rotate(180deg); }
-.nav-menu .menu {
-  position: absolute; top: calc(100% + 8px); right: 0; min-width: 128px; z-index: 30;
-  display: flex; flex-direction: column; padding: 5px;
-  background: rgba(44,44,46,.88);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid var(--hairline); border-radius: 14px;
-  box-shadow: 0 12px 32px rgba(0,0,0,.5);
-}
-.nav-menu .menu a {
-  font-size: 14px; color: var(--ink-1); text-decoration: none;
-  padding: 9px 12px; border-radius: 10px; white-space: nowrap;
-}
-.nav-menu .menu a:active { background: var(--surface-3); }
-.nav-menu .menu a.on { color: #7db3f0; }
-.brand-menu { margin-left: 0; }
-.brand-menu summary {
-  font-size: 20px; font-weight: 700; letter-spacing: -.3px;
-  background: none; padding: 0; border-radius: 0;
-}
-.brand-menu[open] summary { background: none; }
-.brand-menu .chev { color: var(--ink-3); }
-.brand-menu .menu { left: 0; right: auto; }
-.nav-menu .menu .logout-row {
-  color: #e5484d; border-top: 1px solid var(--hairline); margin-top: 5px;
-}
-.brand-menu + .nav-menu { margin-left: auto; }
-.nav-menu .menu button {
-  font-size: 14px; color: var(--ink-1); text-align: left;
-  padding: 9px 12px; border-radius: 10px; white-space: nowrap;
-}
-.nav-menu .menu button.on { color: #7db3f0; }
-.nav-menu .menu button:active { background: var(--surface-3); }
-/* 筛选行: 三视图切换 (时间筛选在顶栏) */
-.filters { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
-/* 三视图分段钮 (电量/次数/费用): 圆标大小的度量切换 */
-.seg { display: flex; flex: none; background: rgba(118,118,128,.24);
-       border-radius: 999px; padding: 2px; -webkit-user-select: none; user-select: none; }
-.seg button { padding: 4px 11px; border-radius: 999px; font-size: 12px; color: var(--ink-2); white-space: nowrap; }
-.seg button.on { background: #3987e5; color: #fff; font-weight: 600; }
-@media (max-width: 479px) {
-  header { position: relative; }
-  .nav-menu { position: static; }
-  .nav-menu .menu { left: 12px; right: 12px; }
-}
-/* 时间菜单的自定义日历: 月历网格, 同一个日历连点两次 (第一下起点, 第二下终点) */
-.time-menu .tm-custom { border-top: 1px solid var(--hairline); margin-top: 5px; padding-top: 5px; }
-.time-menu .menu { max-height: calc(100vh - 130px); overflow-y: auto; }
-.tm-dates { padding: 6px 8px 3px; }
-.tm-cal-top { display: flex; align-items: center; gap: 4px; padding: 0 2px 5px; }
-.tm-cal-top b { flex: 1; text-align: center; font-size: 13px; font-weight: 600; }
-.tm-cal-top button { min-width: 28px; height: 26px; border-radius: 7px; color: var(--ink-2); }
-.tm-cal-top button:disabled { opacity: .3; }
-.tm-cal-top button:active { background: var(--surface-3); }
-.tm-week, .tm-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-.tm-week i { font-style: normal; text-align: center; font-size: 11px; color: var(--ink-3); padding: 2px 0 4px; }
-.tm-cal { padding-bottom: 4px; }
-.tm-cal button { min-width: 34px; height: 34px; border-radius: 9px; font-size: 13px; color: var(--ink-1); }
-.tm-cal button:active { background: var(--surface-3); }
-.tm-cal button.today { color: #7db3f0; font-weight: 600; }
-.tm-cal button.mid { background: rgba(57,135,229,.16); border-radius: 0; }
-.tm-cal button.on { background: #3987e5; color: #fff; font-weight: 600; }
-.tm-foot { display: flex; align-items: center; gap: 8px; padding: 6px 2px 2px; }
-.tm-foot span { flex: 1; min-width: 0; font-size: 12px; color: var(--ink-2);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tm-dates #tm-apply {
-  flex: none; background: #3987e5; color: #fff;
-  border-radius: 8px; font-size: 12.5px; font-weight: 600; padding: 7px 14px;
-}
-
-/* ---------- 汇总行 ---------- */
-.stats { display: flex; gap: 10px; padding: 10px 14px 0; }
-.stat {
-  flex: 1; background: var(--surface); border-radius: 14px;
-  padding: 9px 13px; border: 1px solid var(--hairline);
-}
-.stat .lb { font-size: 11px; color: var(--ink-2); }
-.stat .val { font-size: 19px; font-weight: 650; letter-spacing: -.4px; margin-top: 2px;
-             font-variant-numeric: tabular-nums; }
-.stat .val small { font-size: 11px; font-weight: 500; color: var(--ink-2); margin-left: 2px; }
-
-/* ---------- 地图 ---------- */
-main { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
-#map {
-  position: absolute; inset: 0;
-  touch-action: none;   /* 不让 iOS Safari 把双指缩放劫持成整页缩放, 交给高德 */
-}
-#map .amap-copyright { display: none !important; }
-.overlay {
-  position: absolute; inset: 0; z-index: 20;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 14px; padding: 24px; background: rgba(0,0,0,.45);
-  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-}
-.spin {
-  width: 30px; height: 30px; border-radius: 50%;
-  border: 3px solid rgba(255,255,255,.18); border-top-color: var(--blue);
-  animation: rot .8s linear infinite;
-}
-@keyframes rot { to { transform: rotate(360deg); } }
-.ov-text { font-size: 14px; color: var(--ink-2); }
-.retry-btn {
-  padding: 9px 26px; border-radius: 999px; font-size: 14px; font-weight: 600;
-  background: var(--blue); color: #fff;
-}
-.hint-card {
-  max-width: 420px; background: var(--surface); border-radius: 18px;
-  border: 1px solid var(--hairline); padding: 22px 20px; text-align: left;
-}
-.hint-card h2 { font-size: 17px; text-align: center; margin-bottom: 4px; }
-.hint-card .h-sub { font-size: 12.5px; color: var(--ink-2); text-align: center; margin-bottom: 14px; }
-.hint-card ol { padding-left: 20px; display: grid; gap: 7px; font-size: 13px; color: var(--ink-2); }
-.hint-card code {
-  font-family: ui-monospace, Menlo, monospace; font-size: 12px;
-  background: var(--surface-2); padding: 1px 6px; border-radius: 5px; color: #7db3f0;
-}
-.hint-card a { color: #7db3f0; }
-
-/* 热力图例: 颜色梯度条 (蓝→红) + 当前视图的最小/中位/最大值 */
-.legend {
-  position: absolute; left: 14px; bottom: calc(env(safe-area-inset-bottom) + 18px);
-  z-index: 30;
-  background: rgba(28,28,30,.85); border: 1px solid var(--hairline);
-  border-radius: 14px; padding: 10px 14px;
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
-  pointer-events: none;   /* 纯图例, 不挡地图操作 */
-}
-.legend .lg-mode { font-size: 12px; font-weight: 600; color: var(--ink-1); }
-.legend .lg-ramp { width: 148px; height: 8px; border-radius: 4px; margin-top: 8px;
-                   border: 1px solid var(--hairline); }
-.legend .lg-row { display: flex; justify-content: space-between; width: 148px; margin-top: 5px; }
-.legend .lg-row span { font-size: 10px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.zoom-ctl {
-  position: absolute; right: 14px; bottom: calc(env(safe-area-inset-bottom) + 18px);
-  z-index: 30; display: flex; flex-direction: column; gap: 8px;
-}
-.zoom-ctl button {
-  width: 42px; height: 42px; border-radius: 14px; font-size: 23px; line-height: 1;
-  background: rgba(28,28,30,.85); border: 1px solid var(--hairline); color: var(--ink-1);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
-}
-.zoom-ctl button:active { background: var(--surface-2); }
-
-/* ---------- 充电点详情底部弹层 ---------- */
-.backdrop {
-  position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.4);
-  opacity: 0; pointer-events: none; transition: opacity .2s;
-}
-.backdrop.show { opacity: 1; pointer-events: auto; }
-.sheet {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 91;
-  background: var(--surface-2); border-radius: 20px 20px 0 0;
-  padding: 10px 20px calc(env(safe-area-inset-bottom) + 22px);
-  transform: translateY(105%); transition: transform .28s cubic-bezier(.32,.72,.33,1);
-}
-.sheet.show { transform: translateY(0); }
-.sh-title { font-size: 17px; font-weight: 700; margin-top: 10px; }
-.sh-sub { font-size: 12px; color: var(--ink-3); margin-top: 2px; margin-bottom: 14px; }
-.sh-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.sh-cell { background: var(--surface); border-radius: 12px; padding: 10px 12px; }
-.sh-cell .lb { font-size: 11px; color: var(--ink-2); }
-.sh-cell .val { font-size: 18px; font-weight: 650; margin-top: 2px; font-variant-numeric: tabular-nums; }
-.sh-cell .val small { font-size: 11px; color: var(--ink-2); font-weight: 500; }
-</style>
+<link rel="stylesheet" href="/tesla/static/css/tesla-chargemap-page.css?v=1">
+<link rel="stylesheet" href="/tesla/static/css/tesla-chargemap-map.css?v=1">
 </head>
 <body>
 <header>
@@ -256,40 +31,40 @@ main { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
         <a href="/tesla/live">当前驾驶</a>
         <a href="/tesla/settings">软件设置</a>
         <a href="/tesla/changelog">更新日志</a>
-        <button class="logout-row" id="logout" title="退出登录">退出登录</button>
+        <button type="button" class="logout-row" id="logout" title="退出登录">退出登录</button>
       </div>
     </details>
     <details class="nav-menu time-menu" id="time-menu">
       <summary><span id="time-lb">全部</span><svg class="chev" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
       <div class="menu" id="time-opts">
-        <button data-v="24h">最近 24 小时</button>
-        <button data-v="7d">最近一周</button>
-        <button data-v="30d">最近一个月</button>
-        <button data-v="180d">最近半年</button>
-        <button data-v="1y">最近一年</button>
-        <button data-v="all" class="on">全部</button>
+        <button type="button" data-v="24h">最近 24 小时</button>
+        <button type="button" data-v="7d">最近一周</button>
+        <button type="button" data-v="30d">最近一个月</button>
+        <button type="button" data-v="180d">最近半年</button>
+        <button type="button" data-v="1y">最近一年</button>
+        <button type="button" data-v="all" class="on">全部</button>
         <div class="tm-custom">
-          <button data-v="custom">自定义…</button>
+          <button type="button" data-v="custom">自定义…</button>
           <div class="tm-dates" id="tm-dates" hidden>
             <div class="tm-cal-top">
-              <button id="tm-prev" aria-label="上个月">‹</button>
+              <button type="button" id="tm-prev" aria-label="上个月">‹</button>
               <b id="tm-ym"></b>
-              <button id="tm-next" aria-label="下个月">›</button>
+              <button type="button" id="tm-next" aria-label="下个月">›</button>
             </div>
             <div class="tm-week"><i>一</i><i>二</i><i>三</i><i>四</i><i>五</i><i>六</i><i>日</i></div>
             <div class="tm-cal" id="tm-cal"></div>
-            <div class="tm-foot"><span id="tm-sel"></span><button id="tm-apply">确定</button></div>
+            <div class="tm-foot"><span id="tm-sel"></span><button type="button" id="tm-apply">确定</button></div>
           </div>
         </div>
       </div>
     </details>
-    <button id="refresh-btn" aria-label="刷新地图"><svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true"><path d="M12 7a5 5 0 1 1-1.46-3.54" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 1.6v2.4H9.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button type="button" id="refresh-btn" aria-label="刷新地图"><svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true"><path d="M12 7a5 5 0 1 1-1.46-3.54" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 1.6v2.4H9.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
   <div class="filters">
     <div class="seg" id="view-seg">
-      <button data-v="energy" class="on">充电电量</button>
-      <button data-v="sessions">充电次数</button>
-      <button data-v="cost">充电费用</button>
+      <button type="button" data-v="energy" class="on">充电电量</button>
+      <button type="button" data-v="sessions">充电次数</button>
+      <button type="button" data-v="cost">充电费用</button>
     </div>
   </div>
 </header>
@@ -308,7 +83,7 @@ main { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
   </div>
   <div class="overlay" id="error" hidden>
     <div class="ov-text" id="error-text">加载失败</div>
-    <button class="retry-btn" id="retry">重试</button>
+    <button type="button" class="retry-btn" id="retry">重试</button>
   </div>
   <div class="overlay" id="keyhint" hidden>
     <div class="hint-card">
@@ -322,8 +97,8 @@ main { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
           <br><code>AMAP_SECURITY_CODE=你的安全密钥</code></li>
         <li>重启服务 (<code>./run.sh</code>) 后点击下方按钮</li>
       </ol>
-      <div style="text-align:center;margin-top:16px">
-        <button class="retry-btn" id="recheck">重新检测</button>
+      <div class="retry-row">
+        <button type="button" class="retry-btn" id="recheck">重新检测</button>
       </div>
     </div>
   </div>
@@ -333,8 +108,8 @@ main { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
     <div class="lg-row" id="lg-row"></div>
   </div>
   <div class="zoom-ctl">
-    <button id="zin" title="放大">+</button>
-    <button id="zout" title="缩小">−</button>
+    <button type="button" id="zin" title="放大">+</button>
+    <button type="button" id="zout" title="缩小">−</button>
   </div>
 </main>
 
@@ -350,7 +125,9 @@ main { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
   </div>
 </div>
 
-<script src="/tesla/static/gcj02.js?v=1"></script>
-<script src="/tesla/static/chargemap.js?v=1"></script>
+<script src="/tesla/static/js/gcj02.js?v=1"></script>
+<script src="/tesla/static/js/chargemap-page.js?v=1"></script>
+<script src="/tesla/static/js/chargemap-heatmap.js?v=1"></script>
+<script src="/tesla/static/js/chargemap-time-filters.js?v=1"></script>
 </body>
 </html>

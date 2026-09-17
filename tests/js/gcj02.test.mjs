@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 const require = createRequire(import.meta.url);
 const G = require(path.join(
   path.dirname(fileURLToPath(import.meta.url)), "..", "..",
-  "app", "tesla", "static", "gcj02.js"));
+  "app", "tesla", "static", "js", "gcj02.js"));
 
 test("outOfChina 判断中国范围", () => {
   assert.equal(G.outOfChina(0, 0), true);
@@ -57,7 +57,7 @@ test("逆变换近似还原 (误差 < 1e-4°, 约 10m)", () => {
 test("浏览器挂载: 无 module 时挂到 self (window.GCJ02)", () => {
   const src = readFileSync(path.join(
     path.dirname(fileURLToPath(import.meta.url)), "..", "..",
-    "app", "tesla", "static", "gcj02.js"), "utf8");
+    "app", "tesla", "static", "js", "gcj02.js"), "utf8");
   const fakeSelf = {};
   new Function("module", "exports", "self", src)(undefined, undefined, fakeSelf);
   assert.equal(typeof fakeSelf.GCJ02.wgs84ToGcj02, "function");
@@ -68,7 +68,7 @@ test("浏览器挂载: 无 module 时挂到 self (window.GCJ02)", () => {
 test("self 也未定义 (Worker 等): 兜底 this (= globalThis) 挂载", () => {
   const src = readFileSync(path.join(
     path.dirname(fileURLToPath(import.meta.url)), "..", "..",
-    "app", "tesla", "static", "gcj02.js"), "utf8");
+    "app", "tesla", "static", "js", "gcj02.js"), "utf8");
   new Function("module", "exports", "self", src)(undefined, undefined, undefined);
   assert.equal(typeof globalThis.GCJ02.wgs84ToGcj02, "function");
   delete globalThis.GCJ02;   // 别污染后续用例
