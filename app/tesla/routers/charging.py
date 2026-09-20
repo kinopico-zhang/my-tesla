@@ -34,42 +34,48 @@ def get_car(db: Session = Depends(database.get_db)) -> list[CarInfo]:
 @charging.get("/summary")
 def get_charging_summary(
         frm: str | None = Query(None, alias="from"), to: str | None = None,
+        car_id: int | None = None,
         db: Session = Depends(database.get_db)) -> ChargingSummary:
-    """充电汇总 (次数/电量/费用/SOC 与续航增益), 可按日期过滤。"""
-    return repository.charging_summary(db, date_range_or_400(frm, to))
+    """充电汇总 (次数/电量/费用/SOC 与续航增益), 可按日期/车辆过滤。"""
+    return repository.charging_summary(db, date_range_or_400(frm, to), car_id)
 
 
 @charging.get("/dimensions")
 def get_charging_dimensions(
         frm: str | None = Query(None, alias="from"), to: str | None = None,
+        car_id: int | None = None,
         db: Session = Depends(database.get_db)) -> ChargeDims:
     """充电统计维度聚合: 快慢/开始时段/起充 SOC/峰值功率/城市 (统计页图表)。"""
-    return repository.charging_dimensions(db, date_range_or_400(frm, to))
+    return repository.charging_dimensions(db, date_range_or_400(frm, to), car_id)
 
 
 @charging.get("/map-locations")
 def get_charging_map_locations(
         frm: str | None = Query(None, alias="from"), to: str | None = None,
+        car_id: int | None = None,
         db: Session = Depends(database.get_db)) -> list[ChargeMapLocation]:
     """充电地图充电点聚合 (按地址, 次数降序; 无坐标的地址不上图)。"""
-    return repository.charging_map_locations(db, date_range_or_400(frm, to))
+    return repository.charging_map_locations(db, date_range_or_400(frm, to),
+                                             car_id)
 
 
 @charging.get("/regions")
 def get_charging_regions(
+        car_id: int | None = None,
         db: Session = Depends(database.get_db)) -> list[RegionNode]:
     """充电地点省市区树 (级联下拉数据源, 按充电次数降序)。"""
-    return repository.charging_region_tree(db)
+    return repository.charging_region_tree(db, car_id)
 
 
 @charging.get("/sessions")
-def get_sessions(
+def get_sessions(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         offset: int = 0, limit: int = 50, sort: str = "date_desc",
         type_: str = Query("all", alias="type"), q: str | None = None,
         region: str | None = None, cost: str | None = None,
         frm: str | None = Query(None, alias="from"), to: str | None = None,
+        car_id: int | None = None,
         db: Session = Depends(database.get_db)) -> ChargingSessionsPage:
-    """充电列表: 过滤 (日期/快慢/地点省市区/费用记录/地址搜索) → 排序 → 分页。
+    """充电列表: 过滤 (日期/快慢/地点省市区/费用记录/地址搜索/车辆) → 排序 → 分页。
 
     region 是 "/" 连接的省市区路径 (1~3 段 = 精确到省/市/区县), 与行程页同款。
     """
@@ -84,7 +90,7 @@ def get_sessions(
     flt = repository.SessionFilter(
         date_range=date_range_or_400(frm, to), charge_type=type_,
         region=region or None, query=q, sort=sort, offset=offset, limit=limit,
-        cost=None if cost == "all" else cost)
+        cost=None if cost == "all" else cost, car_id=car_id)
     total, items = repository.list_charging_sessions(db, flt)
     return ChargingSessionsPage(total=total, items=items)
 
@@ -115,14 +121,16 @@ def update_cost(session_id: int, body: CostUpdateRequest,
 @charging.get("/monthly")
 def get_monthly(
         frm: str | None = Query(None, alias="from"), to: str | None = None,
+        car_id: int | None = None,
         db: Session = Depends(database.get_db)) -> list[MonthlyStat]:
     """按月充电统计 (图表用)。"""
-    return repository.monthly_stats(db, date_range_or_400(frm, to))
+    return repository.monthly_stats(db, date_range_or_400(frm, to), car_id)
 
 
 @charging.get("/locations")
 def get_locations(
         frm: str | None = Query(None, alias="from"), to: str | None = None,
+        car_id: int | None = None,
         db: Session = Depends(database.get_db)) -> list[LocationStat]:
     """按充电地点分组统计 (图表用)。"""
-    return repository.location_stats(db, date_range_or_400(frm, to))
+    return repository.location_stats(db, date_range_or_400(frm, to), car_id)

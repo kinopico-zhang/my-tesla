@@ -4,7 +4,7 @@
 
 from app.tesla.models import ChargingProcess
 from tests.seed_factories import seed_addresses, seed_charging
-from tests.charging_page_scripts import CHARGING_ASSETS, _page_scripts
+from tests.tesla_static_files import served_page
 
 # ---------------------------------------------------------------- 费用编辑
 def test_cost_patch_rejects_out_of_range(auth):
@@ -52,9 +52,8 @@ def test_cost_patch_rounds_to_two_decimals(auth, db):
 
 def test_charging_page_single_column_and_lazy_chain(auth):
     """充电列表单列 (手机优先, 对齐行程页) + Chrome 懒加载修复 (装载后链式续载)。"""
-    html = auth.get("/tesla/charging").text
-    html += _page_scripts(auth, *CHARGING_ASSETS)
-    for frag in ['id="masonry"', "flex-direction: column", "PRELOAD_PX = 800",
+    html = served_page(auth, "/tesla")
+    for frag in ['id="chg-masonry"', "flex-direction: column", "PRELOAD_PX = 800",
                  'rootMargin: PRELOAD_PX + "px"',
                  "getBoundingClientRect().top < window.innerHeight + PRELOAD_PX",
                  "max-width: 760px"]:
@@ -65,8 +64,7 @@ def test_charging_page_single_column_and_lazy_chain(auth):
 
 def test_charging_page_unrecorded_cost_red(auth):
     """没记费用的充电记录红标醒目: 卡片红色"添加费用"胶囊 + 详情费用格红字。"""
-    html = auth.get("/tesla/charging").text
-    html += _page_scripts(auth, *CHARGING_ASSETS)
+    html = served_page(auth, "/tesla")
     for frag in [
         '<button class="cs-cost none" data-cost>＋ 添加费用</button>',
         ".cs-cost.none {", "background: #e5484d",   # 红色实心胶囊
@@ -80,8 +78,7 @@ def test_charging_page_unrecorded_cost_red(auth):
 def test_charging_page_soc_axis_fixed_and_dense(auth):
     """SOC 轴固定 0-100% 量程: 标签按真实百分比定位 (贴边的 space-between 读起来像自适应);
     电量与费用并入一行, 收紧卡片纵向留白。"""
-    html = auth.get("/tesla/charging").text
-    html += _page_scripts(auth, *CHARGING_ASSETS)
+    html = served_page(auth, "/tesla")
     assert "soc-lbl" not in html                 # 贴边标签行已删
     assert 'class="sa-lb"' in html               # 轴标签钉在真实位置
     assert "Math.min(it.start_soc, 93)" in html  # 左标签左缘 = 充电起点
@@ -92,8 +89,7 @@ def test_charging_page_soc_axis_fixed_and_dense(auth):
 def test_charging_page_soc_labels_merge_on_short_charges(auth):
     """短充电 (起止差 < 15%) 两端标签钉真实百分比会叠字: 并成一个 "起 → 终"
     标签居中钉在轨迹中点, 中点钳 15~85% (标签再宽也不出卡)。"""
-    html = auth.get("/tesla/charging").text
-    html += _page_scripts(auth, *CHARGING_ASSETS)
+    html = served_page(auth, "/tesla")
     assert "it.end_soc - it.start_soc >= 15" in html   # 阈值: 起止差 ≥15% 仍钉两端
     assert "Math.min(Math.max((it.start_soc + it.end_soc) / 2, 15), 85)" in html
     assert "transform:translateX(-50%)" in html        # 合并标签按中心定位

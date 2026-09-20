@@ -1,0 +1,109 @@
+// view/charging-cards.js — 充电记录视图 (壳版 2/6): 瀑布流卡片 + 分页
+// (makePager 骨架) + registerView("charging") 生命周期 (首次进视图才
+// chgBoot, 藏起停 IO) + 手势绑定 (右划抽屉/在顶下拉刷新) + 卡片点击分发。
+// 旧版顶栏刷新/登出/车辆胶囊归抽屉; 分页细节收进 tesla-paged-list.js。
+/* global $, esc, num, money, fmtCardDate, fmtDur, getJSON, PAGE,
+          sessionParams, editCost, chgOpenSheet, registerView, bindGestures,
+          makePager, chgFetchRegions */
+/* exported chgMasonry, chgItemsById, chgRenderCard, chgRefetch, chgBoot */
+"use strict";
+/* ============================ 瀑布流 ============================ */
+const chgMasonry = $("#chg-masonry");
+const chgItemsById = new Map();
+
+function chgRenderCard(it) {
+  const el = document.createElement("article");
+  el.className = "card-s"; el.dataset.id = it.id;
+  const costLine = it.cost != null
+    ? `<button class="cs-cost" data-cost>${money(it.cost)}${it.price_per_kwh != null
+        ? `<span class="pp">¥${it.price_per_kwh.toFixed(2)}/kWh</span>` : ""}<span class="edit-ic">✎</span></button>`
+    : `<button class="cs-cost none" data-cost>＋ 添加费用</button>`;
+  /* 短充电 (起止差 < 15%) 两个标签钉在真实百分比会叠字: 并成一个 "起 → 终"
+     标签居中钉在轨迹中点 (中点钳 15~85%, 标签再宽也不出卡) */
+  const wide = it.end_soc - it.start_soc >= 15;
+  const mid = Math.min(Math.max((it.start_soc + it.end_soc) / 2, 15), 85);
+  const socLabels = wide
+    ? `<span class="sa-lb" style="left:${Math.min(it.start_soc, 93)}%">${it.start_soc}%</span>` +
+      `<span class="sa-lb" style="right:${100 - it.end_soc}%">${it.end_soc}%</span>`
+    : `<span class="sa-lb" style="left:${mid}%;transform:translateX(-50%)">` +
+      `${it.start_soc} → ${it.end_soc}%</span>`;
+  el.innerHTML = `
+    <div class="cs-top">
+      <span class="cs-date">${esc(fmtCardDate(it.start))}</span>
+      <span class="tag ${it.is_fast ? "tag-fast" : "tag-slow"}">${it.is_fast ? "⚡ 快充" : "🔌 慢充"}</span>
+    </div>
+    <h3 class="cs-loc">${esc(it.location)}</h3>
+    <div class="soc-axis">
+      ${socLabels}
+      <span class="trk"><i style="left:${it.start_soc}%;width:${Math.max(it.end_soc - it.start_soc, 2)}%"></i></span>
+    </div>
+    <div class="cs-main">
+      <div class="cs-energy">${num(it.energy_added ?? it.energy_used)}<small>kWh</small></div>
+      ${costLine}
+    </div>
+    <div class="cs-sub">${fmtDur(it.duration_min)} · 峰值 ${it.power_max ?? "—"} kW${it.outside_temp != null ? ` · ${num(it.outside_temp, 0)}°C` : ""}</div>`;
+  return el;
+}
+
+/* ============================ 分页 (骨架在 tesla-paged-list) ============================ */
+function chgSetTail(st) {
+  $("#chg-tail").hidden = st.total === 0 && !st.loading && st.done;
+  $("#chg-loader-spin").hidden = !st.loading;
+  $("#chg-endnote").hidden = !(st.done && st.total > 0);
+  $("#chg-empty").hidden = !(st.done && st.total === 0 && !st.err);
+  $("#chg-errbox").hidden = !st.err;
+  $("#chg-count-badge").textContent = st.total ? `共 ${st.total} 次` : "";
+}
+const chgPager = makePager({
+  sentinel: $("#chg-tail"),
+  container: chgMasonry,
+  limit: PAGE,
+  fetchPage: (offset, limit) =>
+    getJSON("/tesla/charging/api/sessions?" + sessionParams({ offset, limit })),
+  renderItem: it => {
+    chgItemsById.set(it.id, it);
+    return chgRenderCard(it);
+  },
+  paint: chgSetTail,
+});
+async function chgRefetch() {
+  chgItemsById.clear();                 // reset 重灌前的配套清账 (骨架只清容器)
+  await chgPager.refetch();
+}
+
+/* ============================ 首启与生命周期 ============================ */
+let chgBooted = false;
+function chgBoot() {   // 首次进视图: 地点树异步拉 (失败不阻塞) + 首屏列表
+  chgBooted = true;
+  chgFetchRegions();
+  chgRefetch();
+}
+
+/* 手势一次绑定 (元素静态常驻; 重进视图不重复挂) */
+const chgScroll = $("#chg-scroll");
+bindGestures(chgScroll, { drawer: true, ptr: true, onRefresh: chgRefetch });
+
+registerView("charging", {
+  title: "充电记录",
+  el: $("#view-charging"),
+  show() {
+    if (!chgBooted) chgBoot();
+    chgPager.start();
+  },
+  hide() { chgPager.stop(); },
+  refresh: chgRefetch,
+});
+
+chgMasonry.addEventListener("click", e => {
+  const costBtn = e.target.closest("[data-cost]");
+  if (costBtn) {
+    editCost(chgItemsById.get(+costBtn.closest(".card-s").dataset.id));
+    return;
+  }
+  const card = e.target.closest(".card-s");
+  if (card) chgOpenSheet(+card.dataset.id);
+});
+$("#chg-retry").addEventListener("click", () => {
+  chgPager.st.err = null;
+  chgRefetch();
+});

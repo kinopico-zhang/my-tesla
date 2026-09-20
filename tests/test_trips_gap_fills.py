@@ -126,7 +126,7 @@ def test_gap_fill_points_survive_downsampling(auth, db):
     seed_addresses(db)
     seed_drive(db, id=9)
     t0 = datetime(2026, 9, 10, 0, 32)
-    rows = [Position(drive_id=9, date=t0 + timedelta(seconds=i),
+    rows = [Position(drive_id=9, car_id=1, date=t0 + timedelta(seconds=i),
                      longitude=round(114.0 + i * 0.000002
                                      + (0.033 if i >= 5000 else 0), 6),
                      latitude=22.5, speed=30.0, power=45000.0)

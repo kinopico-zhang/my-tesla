@@ -4,8 +4,9 @@
 from datetime import datetime
 
 from app.tesla.models import Address
-from tests.seed_factories import seed_addresses, seed_charge, seed_charging
 from tests.charging_page_scripts import CHARGING_ASSETS, _page_scripts
+from tests.seed_factories import seed_addresses, seed_charge, seed_charging
+from tests.tesla_static_files import served_page
 
 # ---------------------------------------------------------------- 地点筛选
 def test_charging_regions_endpoint(auth, db):
@@ -63,39 +64,39 @@ def test_charging_sessions_filters_by_region(auth, db):
                     params={"region": "省/市/区/街道"}).status_code == 400  # 最多 3 段
 
 
-def test_charging_page_time_menu_calendar_and_region_filter(auth):
-    """顶栏时间下拉 (快捷档 + 自定义日历) + 筛选行省市区级联, 筛选写进 URL。"""
-    html = auth.get("/tesla/charging").text
-    html += _page_scripts(auth, *CHARGING_ASSETS)
+def test_charging_view_time_menu_calendar(auth):
+    """抽屉时间下拉 (快捷档 + 自定义日历): 全壳一份, 充电视图共用。"""
+    html = served_page(auth, "/tesla")
     for frag in ['id="time-menu"', 'data-v="24h"', 'data-v="7d"', 'data-v="30d"',
                  'data-v="180d"', 'data-v="1y"', 'data-v="all"',
                  'data-v="custom"', 'id="tm-cal"', 'id="tm-prev"', 'id="tm-next"',
                  'id="tm-ym"', 'id="tm-sel"', 'id="tm-apply"', 'function calRender()',
-                 '再点结束日期',
-                 # 时间菜单在顶栏 nav-row (全站统一位置; 本页品牌旁还有车名胶囊)
-                 '<span class="car-pill" id="car-pill">Tesla</span>\n'
-                 '    <details class="nav-menu time-menu" id="time-menu">',
-                 'id="loc-menu"', 'id="loc-opts"', "/tesla/charging/api/regions",
-                 # 地点省市区级联 (行程页同款): 钻取行/返回行/面包屑/限高滚动
-                 'class="menu loc-menu"', 'class="loc-back"', 'class="loc-crumb"',
-                 '<button class="loc-row', "const locParam = () =>", "钻下一级",
-                 # 快充/慢充筛选改下拉 (与地点筛选同款, 分段钮太占地方)
-                 'id="type-menu"', 'id="type-opts"', 'id="type-lb"',
-                 'data-v="fast"', "⚡ 快充", "🔌 慢充", "TYPE_LABELS",
-                 '$("#type-opts").addEventListener',
-                 "function syncURL()", 'u.searchParams.set("region", state.region)',
-                 # 手机: 下拉面板锚全宽 header (日历行 ~300px, 挂胶囊右缘必出屏)
-                 '@media (max-width: 479px)', '.nav-menu { position: static; }']:
-        assert frag in html, f"充电页缺少 {frag}"
+                 '再点结束日期']:
+        assert frag in html, f"壳缺少 {frag}"
     assert "chips-range" not in html and 'id="tm-from"' not in html
-    assert 'id="seg-type"' not in html and ".seg {" not in html   # 分段钮样式不许回来
     for i in ('time-menu', 'time-lb', 'time-opts', 'tm-dates', 'tm-cal', 'tm-prev',
-              'tm-next', 'tm-ym', 'tm-sel', 'brand-menu', 'logout', 'loc-opts',
-              'type-opts'):
+              'tm-next', 'tm-ym', 'tm-sel', 'tm-apply'):
         assert html.count(f'id="{i}"') == 1, f"页面 {i} 重复"
-    # 筛选行太宽时手机端自己横滑, 不把整个页面带着滑 (下拉锚在 header 不受裁)
-    assert ".filters { overflow-x: auto; scrollbar-width: none; }" in html
-    assert ".filters::-webkit-scrollbar { display: none; }" in html
+
+
+def test_charging_view_region_chips(auth):
+    """屏底筛选条三枚 chips (类型/费用/地点省市区级联), 选完即收; 偏好住
+    localStorage (不再写 URL, 旧链接参数冷启折进偏好)。"""
+    html = served_page(auth, "/tesla")
+    for frag in [
+        'registerChips("charging"',
+        "TYPE_LABELS", "COST_LABELS",
+        "/tesla/charging/api/regions",
+        # 地点省市区级联 (行程页同款): 钻取行/返回行/面包屑
+        'class="loc-back"', 'class="loc-crumb"', 'class="loc-row', "钻下一级",
+        "⚡ 快充", "🔌 慢充",
+        "已记录费用", "未记录费用",
+        "chgSaveFilters", "refreshBarChips",
+        'p.set("region", chgState.region)',   # 列表请求带地点筛选
+        'qs.get("region")',                   # 旧 URL 深链折进偏好 (tesla-shell)
+        'qs.get("cost")', 'qs.get("type")',
+    ]:
+        assert frag in html, f"充电视图缺少 {frag}"
 
 
 def test_charging_sheet_grab_drag_close(auth):
@@ -104,28 +105,18 @@ def test_charging_sheet_grab_drag_close(auth):
     iOS Safari 对 touch 指针 setPointerCapture 会当场 pointercancel
     (用户实测拉不动), move/up 挂 window 级不捕获 —— 手指出界照样收,
     各端行为一致 (2026-09-13 修)。"""
-    html = auth.get("/tesla/charging").text
-    html += _page_scripts(auth, *CHARGING_ASSETS)
-    for frag in ['id="grab-zone"', "touch-action: none",
+    html = served_page(auth, "/tesla")
+    for frag in ['id="chg-grab-zone"', "touch-action: none",
                  'window.addEventListener("pointermove", move)',
                  'window.addEventListener("pointerup", release)',
                  'window.removeEventListener("pointermove", move)',
-                 "translateY(${dy}px)", "if (dy > 90) closeSheet()",
+                 "translateY(${dy}px)", "if (dy > 90) chgCloseSheet()",
                  # 点一下也关; 拖过 8px 抑制随后的 click (trips 手柄同款)
                  'if (dy > 8) { dy = 0; return; }']:
-        assert frag in html, f"充电页缺少 {frag}"
-    assert "setPointerCapture(e.pointerId)" not in html   # iOS capture 即 cancel, 别回潮
-    assert "touchstart" not in html          # 旧 touch 三件套已废 (鼠标拖不动)
-
-
-def test_charging_page_cost_filter_menu(auth):
-    """费用筛选下拉 (全部/已记录/未记录): 与类型筛选同款收起式, 写进 URL。"""
-    html = auth.get("/tesla/charging").text
-    html += _page_scripts(auth, *CHARGING_ASSETS)
-    for frag in ['id="cost-menu"', 'id="cost-opts"', 'id="cost-lb"',
-                 'data-v="recorded"', 'data-v="missing"', "已记录费用", "未记录费用",
-                 "COST_LABELS", '$("#cost-opts").addEventListener',
-                 'u.searchParams.set("cost", state.cost)',
-                 'cost: state.cost',                       # 列表请求带费用筛选
-                 'qs0.get("cost")']:                       # URL 深链带入
-        assert frag in html, f"充电页缺少 {frag}"
+        assert frag in html, f"充电视图缺少 {frag}"
+    # iOS capture 即 cancel, 别回潮 (抽屉的拖拽是另一模式: 元素自身捕获,
+    # 串的是 d.setPointerCapture(pid), 不在此列)
+    assert "setPointerCapture(e.pointerId)" not in html
+    # 旧 touch 三件套已废 (鼠标拖不动) —— 只对充电视图自有脚本 (trips 的
+    # 地图双指探测合法用 touchstart)
+    assert "touchstart" not in _page_scripts(auth, *CHARGING_ASSETS)

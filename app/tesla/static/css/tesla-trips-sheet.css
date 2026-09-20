@@ -47,16 +47,6 @@
 }
 
 
-/* 顶栏刷新按钮 (列表重载唯一入口, 与页签胶囊同款样式) */
-#refresh-btn {
-  align-self: center; display: flex; align-items: center; margin-left: 0;
-  color: var(--ink-1); background: var(--surface-2);
-  padding: 5px 9px; border-radius: 999px;
-}
-#refresh-btn:active { background: var(--surface-3); }
-#refresh-btn.busy svg { animation: refresh-spin .8s linear infinite; }
-@keyframes refresh-spin { to { transform: rotate(360deg); } }
-body.selecting #refresh-btn { display: none; }
 
 /* ---------- 轻提示 ---------- */
 #toast {
@@ -129,7 +119,7 @@ body.selecting #refresh-btn { display: none; }
   ~4× (现代手机 GPU 无压力)。配套: setFitView 避让边距补环宽 (FIT_AVOID),
   高德 logo 推回可视区, 版权文字隐藏 */
   position: absolute; width: calc(100% + 320px); height: calc(100% + 640px);
-  left: -160px; top: -320px;
+  left: -160px; top: -320px; z-index: 0;   /* 层叠上下文: 引擎内部高 z 不压 .trip-msg */
 }
 #trip-map .amap-logo {
   /* logo 贴容器左缘 (dbg81 实测 left:4px), 平移环带偏移量 (对称补偿
@@ -137,6 +127,10 @@ body.selecting #refresh-btn { display: none; }
   transform: translate(160px, -320px);
 }
 #trip-map .amap-copyright { display: none !important; }   /* 版权文字按需求去掉 */
+#trip-map .leaflet-bottom.leaflet-right {
+  /* OSM 版权角标挂在扩容器的右下角 (可视区外), 平移环带偏移量推回可视区 */
+  transform: translate(-160px, -320px);
+}
 .trip-msg {
   position: absolute; inset: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 12px;

@@ -1,11 +1,12 @@
 /* tesla-chargemap-map — chargemap 页样式。拆自 chargemap.html 的内联 <style> (结构化重构, 内容逐字节未动)。 */
 /* ---------- 地图 ---------- */
 main { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
-#map {
-  position: absolute; inset: 0;
-  touch-action: none;   /* 不让 iOS Safari 把双指缩放劫持成整页缩放, 交给高德 */
+/* 旧页 #map 与壳版 #cm-map 双选择器 (壳里三张地图画布各带前缀, 防跨视图串) */
+#map, #cm-map {
+  position: absolute; inset: 0; z-index: 0;   /* 层叠上下文: 引擎内部高 z 不压 overlay */
+  touch-action: none;   /* 不让 iOS Safari 把双指缩放劫持成整页缩放, 交给地图引擎 */
 }
-#map .amap-copyright { display: none !important; }
+#map .amap-copyright, #cm-map .amap-copyright { display: none !important; }
 .overlay {
   position: absolute; inset: 0; z-index: 20;
   display: flex; flex-direction: column; align-items: center; justify-content: center;

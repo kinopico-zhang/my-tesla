@@ -1,4 +1,4 @@
-"""充电地图页测试: /map-locations 充电点聚合接口 + 页面骨架 + 导航入口。
+"""充电地图视图测试: /map-locations 充电点聚合接口 + 壳内视图骨架。
 
 聚合口径: 按地址聚合 (次数降序), 无坐标的地址不上图; 展示名与列表
 口径一致 (geofence 名优先, 同地址多次充电取最近一次的名字)。
@@ -7,9 +7,7 @@ from datetime import datetime
 
 from app.tesla.models import Address, Geofence
 from tests.seed_factories import seed_charge, seed_charging
-
-PAGES = ["/tesla/charging", "/tesla/stats", "/tesla/chargemap", "/tesla/map",
-         "/tesla/trips", "/tesla/groups", "/tesla/live", "/tesla/settings"]
+from tests.tesla_static_files import served_page
 
 
 def _seed_points(db):
@@ -88,52 +86,42 @@ def test_map_locations_empty(auth, db):
     assert auth.get("/tesla/charging/api/map-locations").json() == []
 
 
-# ---------------------------------------------------------------- 页面
-def test_chargemap_page_skeleton(auth):
-    """充电地图页: 全屏热力图 + 三视图切换 + 颜色梯度图例 + 点击就近取点弹详情。"""
-    html = auth.get("/tesla/chargemap").text
-    # 脚本/样式拆去了 js/ 与 css/ (结构化重构): 断言用的片段全拼接进来查
-    for name in ("css/tesla-chargemap-page.css", "css/tesla-chargemap-map.css",
-                 "js/chargemap-page.js", "js/chargemap-heatmap.js",
-                 "js/chargemap-time-filters.js"):
-        html += auth.get(f"/tesla/static/{name}").text
+# ---------------------------------------------------------------- 视图
+def test_chargemap_view_skeleton(auth):
+    """充电地图视图: 全屏热力图 + 三视图度量切换 + 颜色梯度图例 + 点击就近
+    取点弹详情 (壳内撞名 id 加 cm- 前缀, 裸 #map/#legend/#keyhint 归别的
+    视图; 生命周期/手势断言在 test_shell_views)。"""
+    html = served_page(auth, "/tesla")
     for frag in [
-        "<title>充电地图 · My Tesla</title>",
-        '<a class="on" href="/tesla/chargemap">充电地图</a>',
-        'id="map"',
-        'id="view-seg"',
-        '<button type="button" data-v="energy" class="on">充电电量</button>',
-        '<button type="button" data-v="sessions">充电次数</button>',
-        '<button type="button" data-v="cost">充电费用</button>',
+        'id="view-chargemap"', 'data-view="chargemap"',
+        'id="cm-map"',
+        'registerChips("chargemap"',                            # 度量收进屏底筛选条
+        '"视角: " + cmViews[cmMode].lb',                        # chip 文案随度量走
         'id="st-places"', 'id="st-sessions"', 'id="st-energy"',   # 汇总行
-        'id="legend"', 'id="lg-mode"', 'id="lg-ramp"', 'id="lg-row"',   # 热力图例
+        'id="cm-legend"', 'id="lg-mode"', 'id="lg-ramp"', 'id="lg-row"',   # 热力图例
         'id="sh-name"', 'id="sh-sessions"', 'id="sh-fast"',
         'id="sh-energy"', 'id="sh-cost"',                          # 详情弹层
-        'id="keyhint"', 'id="zin"', 'id="zout"',                   # Key 引导 + 缩放钮
-        '"/tesla/charging/api/map-locations"',                     # 数据源
+        'id="cm-keyhint"', 'id="cm-zin"', 'id="cm-zout"',          # Key 引导 + 缩放钮
+        '"/tesla/charging/api/map-locations?"',                 # 数据源
         "plugin=AMap.HeatMap",                                     # 热力插件随主脚本加载
         "new AMap.HeatMap(", "setDataSet",                         # 热力层
         "const GRADIENT = {",                                      # 蓝→红梯度 (图例同色)
         "PICK_PX", "pickNearest",                                  # 点击就近取点弹详情
         'GCJ02.wgs84ToGcj02',                                      # WGS-84 → GCJ-02
         '"/tesla/map/api/config?_="',                              # 高德配置 (Key/样式)
-        "const VIEWS = {",
+        "const cmViews = {",                                       # 三视图 (壳内防撞名前缀)
         "renderLegend", "setFitView", "gradientCss",
         "gesturestart",                                            # iOS 双指缩放防劫持
-        "syncURL",
+        "cmSaveFilters",                                           # 度量偏好持久化 (替代旧 syncURL)
     ]:
-        assert frag in html, f"充电地图页缺少 {frag}"
-    # 时间菜单在顶栏 nav-row (与全站一致); 筛选行只剩三视图切换
-    assert '</details>\n    <details class="nav-menu time-menu" id="time-menu">' in html
-    assert '<div class="filters">\n    <div class="seg" id="view-seg">' in html
+        assert frag in html, f"充电地图视图缺少 {frag}"
+    # 度量切换收进屏底筛选条 (摘要条不放控件, 时间档在抽屉) —— 顶部不再
+    # 留任何筛选控件 (用户点名: 所有页面的筛选都在屏底固定位置)
+    assert 'id="view-seg"' not in html
 
 
-def test_chargemap_link_in_all_nav_menus(auth):
-    """每个业务页的页签菜单都有充电地图入口; 上次停留页/登录回跳白名单收录。"""
-    for path in PAGES:
-        html = auth.get(path).text
-        assert 'href="/tesla/chargemap">充电地图</a>' in html, path   # 含 on 态
-    lastpage = auth.get("/tesla/static/js/lastpage.js?v=1").text
-    assert '"/tesla/chargemap", "/tesla/map"' in lastpage
+def test_chargemap_link_in_login_whitelist(auth):
+    """登录回跳白名单仍收旧充电地图路径: 2.x 存的上次停留值跳旧路径, 302
+    落回壳充电地图视图, 不丢。"""
     login_js = auth.get("/static/login.js?v=1").text
     assert "stats|chargemap|map" in login_js

@@ -3,6 +3,9 @@
    阈值自适应 (段长中位数的 10 倍, 下限 ~0.0016° ≈ 160m):
    - 城市轨迹段长 10-30m, 断档 700m+ → 拆;
    - 概览粗轨迹 (40 点/条, 段长常达公里级) → 阈值跟着变大, 不误拆。
+   点对版 (splitGaps) 供行程/回放; 足迹地图 v4 起轨迹是全精度扁平数组
+   [lng, lat, lng, lat, ...] (75 万点点对嵌套会翻几倍内存), 配套
+   splitGapsFlat / decimateFlat —— 概览/细化抽稀全在客户端做。
    本文件管几何/着色/测距/功耗; 播放节拍与描画路径 (animAt/splicePath/
    pathPointAt/lngLatToTile) 按域拆去了 track-animation.js。
    UMD: 浏览器挂 window.TrackUtil, node (测试) 走 module.exports。 */
@@ -39,6 +42,44 @@
     segs.push(cur);
     const ok = segs.filter(s => s.length >= 2);
     return ok.length ? ok : [pts];   // 全是孤立点时按原样画, 不能让轨迹消失
+  }
+
+  /* ---- 扁平数组版 (足迹地图 v4): pts 是 [lng, lat, lng, lat, ...] ----
+     段拆与点对版同一套阈值逻辑; decimateFlat 把一条轨迹抽稀到 ~per 个点
+     (首末必留, 等步长), 概览 ~40 点/条与缩放档位 800/2000 都走它。 */
+  function segLenFlat(pts, i, j) {   // 第 i/j 点的段长 (取经纬度差较大者, 度)
+    return Math.max(Math.abs(pts[j * 2] - pts[i * 2]),
+                    Math.abs(pts[j * 2 + 1] - pts[i * 2 + 1]));
+  }
+
+  function splitGapsFlat(pts) {   // → [扁平段, ...] (每段 ≥ 2 点)
+    const n = pts.length / 2;
+    if (n < 2) return [];
+    const lens = [];
+    for (let i = 1; i < n; i += 7) lens.push(segLenFlat(pts, i - 1, i));
+    lens.sort((a, b) => a - b);
+    const med = lens[lens.length >> 1];   // n ≥ 2 → 至少 1 个样本, 不会越界
+    const thresh = Math.max(MIN_GAP, med * 10);
+    const segs = [];
+    let cur = [pts[0], pts[1]];
+    for (let i = 1; i < n; i++) {
+      if (segLenFlat(pts, i - 1, i) > thresh) { segs.push(cur); cur = []; }
+      cur.push(pts[i * 2], pts[i * 2 + 1]);
+    }
+    segs.push(cur);
+    const ok = segs.filter(s => s.length >= 4);
+    return ok.length ? ok : [pts];   // 全是孤立点时按原样画, 不能让轨迹消失
+  }
+
+  function decimateFlat(pts, per) {   // 抽稀到 ~per 个点 (首末必留); per<2 不动
+    const n = pts.length / 2;
+    if (per < 2 || n <= per) return pts;
+    const stride = Math.max(1, Math.floor(n / per));
+    const out = [];
+    for (let i = 0; i < n; i += stride) { out.push(pts[i * 2], pts[i * 2 + 1]); }
+    const lx = pts[(n - 1) * 2], ly = pts[(n - 1) * 2 + 1];
+    if (out[out.length - 2] !== lx || out[out.length - 1] !== ly) out.push(lx, ly);
+    return out;
   }
 
   /* ---- 速度着色: 慢=红 快=绿 (行程弹层轨迹) ----
@@ -129,6 +170,7 @@
   }
 
   return { splitGaps: splitGaps, gapsBetween: gapsBetween, speedLines: speedLines, cumDistKm: cumDistKm,
+           splitGapsFlat: splitGapsFlat, decimateFlat: decimateFlat,
            meanPowerW: meanPowerW,
            speedBucket: speedBucket, ptDistKm: ptDistKm, bearingDeg: bearingDeg,
            SPEED_COLORS: SPEED_COLORS, MIN_GAP_KM: MIN_GAP_KM, _segLen: segLen };

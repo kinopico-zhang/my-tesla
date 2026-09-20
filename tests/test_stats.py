@@ -1,20 +1,13 @@
-"""充电统计页测试: /dimensions 维度聚合接口 + 页面骨架 + 充电页瘦身守卫。
+"""充电统计视图测试: /dimensions 维度聚合接口 + 壳内视图骨架 + 充电视图瘦身守卫。
 
-统计图表 (月度趋势/常去充电点) 与统计卡从充电记录页整体搬到本页,
-充电页只留记录列表 —— 两页的边界由 test_charging_page_records_only 看住。
+统计图表 (月度趋势/常去充电点) 与统计卡从充电视图整体搬到本视图,
+充电视图只留记录列表 —— 两个视图的边界由 test_charging_view_records_only 看住。
 """
 from datetime import datetime
 
+from tests.charging_page_scripts import CHARGING_ASSETS, _page_scripts
 from tests.seed_factories import seed_addresses, seed_charge, seed_charging
-
-
-# 充电记录/统计页共用格式化拆去了 format.js: 页面片段断言把先加载的
-# format.js 一并拼进来查子串
-def _page_scripts(auth, *names):
-    return "".join(auth.get(f"/tesla/static/{name}").text for name in names)
-
-PAGES = ["/tesla/charging", "/tesla/stats", "/tesla/chargemap", "/tesla/map",
-         "/tesla/trips", "/tesla/groups", "/tesla/live", "/tesla/settings"]
+from tests.tesla_static_files import served_page
 
 
 def _seed_dimensions(db):
@@ -88,18 +81,13 @@ def test_dimensions_empty_db(auth, db):
     assert d["by_city"] == []
 
 
-# ---------------------------------------------------------------- 页面
-def test_stats_page_skeleton(auth):
-    """统计页: 统计卡行 + 七张图表卡 (每张图表/表格切换), 菜单高亮充电统计。"""
-    html = auth.get("/tesla/stats").text
-    # 脚本/样式拆去了 js/ 与 css/ (结构化重构): 断言用的片段全拼接进来查
-    html += auth.get("/tesla/static/css/tesla-stats.css?v=1").text
-    html += _page_scripts(auth, "js/format.js", "js/stats-page.js",
-                          "js/stats-chart-trend.js", "js/stats-chart-dimensions.js",
-                          "js/stats-time-filters.js")
+# ---------------------------------------------------------------- 视图
+def test_stats_view_skeleton(auth):
+    """统计视图: 统计卡行 + 七张图表卡 (每张图表/表格切换); 时间筛选与日历
+    在抽屉 (time-menu/tm-cal 壳内全局)。"""
+    html = served_page(auth, "/tesla")
     for frag in [
-        "<title>充电统计 · My Tesla</title>",
-        '<a class="on" href="/tesla/stats">充电统计</a>',
+        'id="view-stats"', 'data-view="stats"',
         'id="stats-row"', 'id="charts-grid"',
         'id="chart-monthly-kwh"', 'id="chart-monthly-cost"',   # 月度趋势 (上下两幅)
         'id="chart-fastslow"', 'id="chart-hour"', 'id="chart-loc"',
@@ -111,9 +99,7 @@ def test_stats_page_skeleton(auth):
         '<div class="cc-title">城市分布</div>',
         'id="monthly-view"', 'id="fastslow-view"', 'id="hour-view"',
         'id="loc-view"', 'id="soc-view"', 'id="power-view"', 'id="city-view"',
-        'id="time-menu"', 'id="tm-cal"',                     # 时间筛选 + 自定义日历
-        # 时间菜单在顶栏 nav-row (与全站一致), 本页没有筛选行
-        '</details>\n    <details class="nav-menu time-menu" id="time-menu">',
+        'id="time-menu"', 'id="tm-cal"',                     # 时间筛选 + 自定义日历 (抽屉)
         '"/tesla/charging/api/dimensions?"',                 # 新维度接口
         '"/tesla/charging/api/summary?"', '"/tesla/charging/api/monthly?"',
         "renderFastSlow", "renderHour", "renderSoc", "renderPower", "renderCity",
@@ -123,30 +109,22 @@ def test_stats_page_skeleton(auth):
         'type: "pie"',                                       # 快慢充环形
         "grid-template-columns: 1fr 1fr",                    # 宽屏两列网格
     ]:
-        assert frag in html, f"统计页缺少 {frag}"
-    assert 'class="filters"' not in html   # 时间筛选上顶栏后, 本页没有筛选行
+        assert frag in html, f"统计视图缺少 {frag}"
 
 
-def test_charging_page_records_only(auth):
-    """充电页只留记录列表: 统计卡/图表卡搬去统计页, 详情弹层的曲线图表保留。"""
-    from tests.charging_page_scripts import CHARGING_ASSETS
-    html = auth.get("/tesla/charging").text
-    html += _page_scripts(auth, *CHARGING_ASSETS)
-    for frag in ['id="masonry"',                             # 记录列表
-                 'id="chart-soc"', 'id="chart-pw"',          # 详情弹层图表仍在
-                 ".mini-seg {", "renderPwChart"]:
-        assert frag in html, f"充电页缺少 {frag}"
-    for gone in ['id="stats-row"', 'id="charts-grid"', "loadSummary", "loadCharts",
-                 "renderMonthly", "renderLocations", "bindViewToggle"]:
-        assert gone not in html, f"充电页不应再有 {gone} (统计已挪充电统计页)"
-
-
-def test_stats_link_in_all_nav_menus(auth):
-    """每个业务页的页签菜单都有充电统计入口; 上次停留页/登录回跳白名单收录。"""
-    for path in PAGES:
-        html = auth.get(path).text
-        assert 'href="/tesla/stats">充电统计</a>' in html, path   # 含 on 态 (统计页自身)
-    lastpage = auth.get("/tesla/static/js/lastpage.js?v=1").text
-    assert '"/tesla/stats", "/tesla/chargemap"' in lastpage
-    login_js = auth.get("/static/login.js?v=1").text
-    assert "stats|chargemap|map" in login_js
+def test_charging_view_records_only(auth):
+    """充电视图只留记录列表: 统计卡/图表卡在统计视图, 充电视图段没有;
+    详情弹层的曲线图表保留。3.0 单壳后全页断言分不开视图, 这里按
+    app.html 的视图段切开看边界。"""
+    page = auth.get("/tesla").text
+    charging = page[page.index('id="view-charging"'):page.index('id="view-stats"')]
+    assert 'id="chg-masonry"' in charging                  # 记录列表 (壳内 chg- 前缀)
+    for gone in ('id="stats-row"', 'id="charts-grid"'):
+        assert gone not in charging, f"充电视图段不应再有 {gone} (统计在统计视图)"
+    js = _page_scripts(auth, *CHARGING_ASSETS)
+    for frag in ('id="chart-soc"', 'id="chart-pw"',          # 详情弹层图表仍在
+                 "renderPwChart"):
+        assert frag in js, f"充电视图缺少 {frag}"
+    for gone in ("loadSummary", "loadCharts",
+                 "renderMonthly", "renderLocations", "bindViewToggle"):
+        assert gone not in js, f"充电视图脚本不应再有 {gone} (统计已挪统计视图)"

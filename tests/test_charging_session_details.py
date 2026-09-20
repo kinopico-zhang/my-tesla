@@ -6,6 +6,7 @@ from datetime import datetime
 from app.tesla.models import Address
 from tests.seed_factories import seed_addresses, seed_charge, seed_charging
 from tests.charging_page_scripts import CHARGING_ASSETS, _page_scripts
+from tests.tesla_static_files import served_page
 
 def test_session_detail(auth, db):
     seed_addresses(db)
@@ -49,17 +50,16 @@ def test_session_detail_no_coords(auth, db):
 
 def test_charging_detail_nav_button(auth):
     """详情「导航到充电站」: 先弹选单让用户挑地图 App, 点一个只拉一个。"""
-    html = auth.get("/tesla/charging").text
-    html += _page_scripts(auth, *CHARGING_ASSETS)
+    html = served_page(auth, "/tesla")
     for frag in [
         'id="nav-go"', "🧭 导航到充电站",
-        'id="nav-bd"', 'id="nav-apps"', 'id="nav-cancel"',     # 选单
-        'data-app="amap"', 'data-app="baidu"',
-        'data-app="tencent"', 'data-app="apple"',
-        "openNavChooser",                     # 点按钮先弹选单
+        'id="chg-nav-bd"', 'id="chg-nav-apps"', 'id="chg-nav-cancel"',   # 选单
+        '{ app: "amap", label: "高德地图" }', '{ app: "baidu", label: "百度地图" }',
+        '{ app: "tencent", label: "腾讯地图" }', '{ app: "apple", label: "苹果地图" }',
+        "chgOpenNavChooser",               # 点按钮先弹选单
         # 没装的地图长按隐藏 (localStorage 记住), ＋ 胶囊恢复 —— 网页枚举不了装了哪些 App
         "navHiddenApps", "function renderNavApps()", "data-restore",
-        "长按可隐藏没装的地图", "长按隐藏后的 click 吞掉",
+        "长按一行隐藏掉", "长按隐藏后的 click 吞掉",
         "function navAppUrl(",                # 一个 App 一个 URL
         "GCJ02.wgs84ToGcj02",                 # WGS-84 → GCJ-02, 不转偏几百米
         "iosamap://navi", "androidamap://navi",    # 高德 (iOS / 安卓 scheme)
@@ -70,12 +70,14 @@ def test_charging_detail_nav_button(auth):
         assert frag in html, f"充电详情导航缺少 {frag}"
     # 不自动探测连环拉起: iOS 拉 scheme 前先弹「在 xx 中打开」确认框,
     # 确认前页面不切后台, 探测窗口一过就把装了的 App 连环拉起 (用户实测)
+    # (守卫只对充电视图自有脚本 —— 壳内 live/trips 视图自己听
+    # visibilitychange 切后台暂停, 是合法用法)
     js = _page_scripts(auth, *CHARGING_ASSETS)
     for gone in ["NAV_PROBE_MS", "visibilitychange", "uri.amap.com/navigation"]:
         assert gone not in js, f"自动探测链残留: {gone}"
-    # 坐标换算库要先于页面脚本加载
-    page = auth.get("/tesla/charging").text
-    assert page.index("gcj02.js") < page.index("charging-page.js")
+    # 坐标换算库要先于视图脚本加载
+    page = auth.get("/tesla").text
+    assert page.index("gcj02.js") < page.index("view/charging-page.js")
 
 
 def test_session_detail_hides_national_standard_tags(auth, db):

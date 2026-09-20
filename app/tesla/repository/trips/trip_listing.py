@@ -56,6 +56,7 @@ class TripFilter:
     km_min: float | None = None     # 里程下限 (km)
     km_max: float | None = None     # 里程上限 (km)
     driver_id: int | None = None    # 驾驶员 (own 库驾驶员 id, 空 = 全部)
+    car_id: int | None = None       # 车辆 (多车切换, 空 = 全部)
 
 
 def _trip_rows_stmt(start_addr: type[Address],
@@ -69,9 +70,11 @@ def _trip_rows_stmt(start_addr: type[Address],
 
 def _trip_conditions(session: Session,
                      flt: TripFilter | None) -> list[ColumnElement[bool]]:
-    """时间 / 起终地区 / 里程过滤条件 (计数与列表共用)。"""
+    """时间 / 起终地区 / 里程 / 车辆过滤条件 (计数与列表共用)。"""
     conds = _range_conditions(Drive.start_date, flt.date_range if flt else None)
     if flt:
+        if flt.car_id is not None:
+            conds.append(Drive.car_id == flt.car_id)
         if flt.from_loc:
             conds.append(Drive.start_address_id.in_(
                 region_address_ids(session, flt.from_loc)))
@@ -83,6 +86,12 @@ def _trip_conditions(session: Session,
         if flt.km_max is not None:
             conds.append(Drive.distance <= flt.km_max)
     return conds
+
+
+def _eff_by_car(session: Session,
+                car_ids: set[int]) -> dict[int, float | None]:
+    """逐车的电耗换算系数 (各车电池效率不同; 每车一次聚合, 混排页共用)。"""
+    return {cid: charge_efficiency(session, cid) for cid in car_ids}
 
 
 def list_trips(session: Session, own: Session, offset: int, limit: int,
@@ -98,41 +107,46 @@ def list_trips(session: Session, own: Session, offset: int, limit: int,
         _trip_rows_stmt(aliased(Address), aliased(Address)).where(*conds)
         .order_by(Drive.start_date.desc())
         .offset(offset).limit(limit)).all()
-    eff = charge_efficiency(session)   # 电耗换算: 一页行程共用一次充电记录聚合
-    items = [_trip_item(d, s, e, eff) for d, s, e in rows]
+    effs = _eff_by_car(session, {d.car_id for d, _, _ in rows})
+    items = [_trip_item(d, s, e, effs.get(d.car_id)) for d, s, e in rows]
     annotate_drivers(own, items)
     annotate_tolls(own, items)
     return int(total), items
 
 
 def _region_tree(session: Session,
-                 address_id: InstrumentedAttribute[int | None]) -> list[RegionNode]:
+                 address_id: InstrumentedAttribute[int | None],
+                 car_id: int | None = None) -> list[RegionNode]:
     """某个地址角色 (起点/终点) 的省→市→区县计数树 (次数降序, 未结束行程不计)。"""
     addr = aliased(Address)
-    rows = session.execute(
-        select(addr.display_name)
-        .select_from(Drive)
-        .join(addr, address_id == addr.id, isouter=True)
-        .where(Drive.end_date.is_not(None))).all()
+    stmt = (select(addr.display_name)
+            .select_from(Drive)
+            .join(addr, address_id == addr.id, isouter=True)
+            .where(Drive.end_date.is_not(None)))
+    if car_id is not None:
+        stmt = stmt.where(Drive.car_id == car_id)
+    rows = session.execute(stmt).all()
     return _acc_region_tree(name for (name,) in rows)
 
 
-def list_trip_regions(session: Session) -> TripRegions:
-    """行程起终点省市区树 (级联下拉数据源)。"""
+def list_trip_regions(session: Session,
+                      car_id: int | None = None) -> TripRegions:
+    """行程起终点省市区树 (级联下拉数据源); car_id 选定时只数那台车的行程。"""
     return TripRegions(
-        start=_region_tree(session, Drive.start_address_id),
-        end=_region_tree(session, Drive.end_address_id))
+        start=_region_tree(session, Drive.start_address_id, car_id),
+        end=_region_tree(session, Drive.end_address_id, car_id))
 
 
 def get_trip(session: Session, own: Session, drive_id: int) -> TripItem | None:
-    """单条行程 (未结束 / 不存在返回 None)。"""
+    """单条行程 (未结束 / 不存在返回 None); 电耗按该车自己的充电定标。"""
     rows = session.execute(
         _trip_rows_stmt(aliased(Address), aliased(Address))
         .where(Drive.id == drive_id)).all()
     if not rows:
         return None
-    item = _trip_item(rows[0][0], rows[0][1], rows[0][2],
-                      charge_efficiency(session))
+    drive = rows[0][0]
+    item = _trip_item(drive, rows[0][1], rows[0][2],
+                      charge_efficiency(session, drive.car_id))
     annotate_drivers(own, [item])
     annotate_tolls(own, [item])
     return item

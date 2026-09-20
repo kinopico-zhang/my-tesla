@@ -1,13 +1,17 @@
-"""行程页播放接线测试: 流式播放 / 速度缩放 / 补路 POST / 播放
+"""行程视图播放接线测试: 流式播放 / 速度缩放 / 补路 POST / 播放
 节奏 / 定宽单元格。
-拆自 test_trips.py (结构化重构, 代码逐字节未动)。"""
+拆自 test_trips.py (结构化重构; P7 起按 3.0 单壳改口径)。"""
 
-from tests.trips_page_assets import _trips_scripts
+from tests.tesla_static_files import page_asset_paths, served_page
+
+def _trips_view_js(auth):
+    """行程视图自有脚本拼起来 (整壳断言分不清视图时用)。"""
+    return "".join(auth.get(ref).text for ref in page_asset_paths(auth, "/tesla")
+                   if "/js/view/trips-" in ref)
 
 def test_trips_page_streams_speed_zoom_and_gap_fill_post(auth):
-    """页面片段: 流式边下边播 / 随速变焦 / 断档回传一应俱全。"""
-    html = auth.get("/tesla/trips").text
-    html += _trips_scripts(auth)
+    """视图片段: 流式边下边播 / 随速变焦 / 断档回传一应俱全。"""
+    html = served_page(auth, "/tesla")
     for frag in ["function loadMergedStream(", "sess.append(d.pts, d.ts)",
                  "sess.more = false", "正在下载轨迹", "等待后续轨迹",
                  # 首段开播前也扫路预取 (矢量), 后续段靠环形前瞻容器边播边覆盖
@@ -38,12 +42,13 @@ def test_trips_page_streams_speed_zoom_and_gap_fill_post(auth):
                  # 速度色分段线/断档虚线圆头端帽: 换色处两段共享端点, butt 端帽
                  # 在转角各留楔形缺口 (定格后一节节断开), 圆头补上段间无缝
                  'lineJoin: "round", lineCap: "round", zIndex: 50,',
-                 # 地图样式走 config (设置页可换), 兜底幻影黑 (配深色 App)
-                 "mapStyle: amapStyle",
-                 'let amapStyle = "amap://styles/dark"',
+                 # 地图引擎经适配层 (服务商可切), 样式兜底幻影黑 (配深色 App)
+                 'mapLib.createMap("trip-map"',
+                 'let styleV = "amap://styles/dark";',
                  # 地名首帧竞态: 矢量样式数据异步加载, 首帧不画地名 (同一轨迹
                  # 第二次进入才有地名的原因); 开弹层后延时补重渲染
-                 "tripMap.setFeatures(tripMap.getFeatures())",
+                 # (getFeatures 是高德方言, OSM 垫片没有 → 有这方法才补画)
+                 "if (tripMap && tripMap.getFeatures) tripMap.setFeatures(tripMap.getFeatures());",
                  "setTimeout(nudgeLabels, 1500)",
                  # 播放动画期间禁止熄屏: 双保险 —— Wake Lock (standalone iOS
                  # 申请成功也可能不生效) + 1px 循环静音视频 (NoSleep.js 同款,
@@ -61,8 +66,9 @@ def test_trips_page_streams_speed_zoom_and_gap_fill_post(auth):
     # 滑窗已无状态化: 旧 zoomWin 残留任何一处引用都会让整页 JS 抛
     # ReferenceError (严格模式), 播放直接挂
     assert "zoomWin" not in html and "ZOOM_WIN" not in html
-    # 圆头端帽三处: 速度色分段线 + 断档虚线 + 白色进度线 (播放线本就有)
-    assert html.count('lineCap: "round"') == 3
+    # 圆头端帽三处 (都在行程视图): 速度色分段线 + 断档虚线 + 白色进度线;
+    # 驾驶视图也用圆头线 (live-driving), 整壳口径数不清, 按视图脚本数
+    assert _trips_view_js(auth).count('lineCap: "round"') == 3
 
 
 def test_trips_page_playback_fixed_width_cells(auth):
@@ -70,8 +76,7 @@ def test_trips_page_playback_fixed_width_cells(auth):
     不许在横滑条里挤动邻居格 —— 数字进 ch 定宽盒右对齐, setLive 每帧重写、
     setOfficial/fillSheetHeader 定格共三处写法都要带盒 (漏一处会在开弹层或
     收尾时跳一次宽度)。"""
-    html = auth.get("/tesla/trips").text
-    html += _trips_scripts(auth)
+    html = served_page(auth, "/tesla")
     for frag in [
         ".sh-cell .val .n { display: inline-block; text-align: right; }",
         "#sh-km .n, #sh-kwh .n { min-width: 4.5ch; }",
@@ -83,5 +88,6 @@ def test_trips_page_playback_fixed_width_cells(auth):
         '#sh-pw").innerHTML = \'<span class="n">\' + (pw == null',
     ]:
         assert frag in html, f"行程页缺少定宽盒片段 {frag}"
-    # 每帧重写的六格无一漏网 (含 kWh/Wh-per-km 模型两格)
-    assert html.count("</span><small>") >= 8, "统计格写法有未进定宽盒的"
+    # 每帧重写的六格无一漏网 (含 kWh/Wh-per-km 模型两格); 统计格写法
+    # 全在行程视图脚本里, 按视图口径数
+    assert _trips_view_js(auth).count("</span><small>") >= 8, "统计格写法有未进定宽盒的"

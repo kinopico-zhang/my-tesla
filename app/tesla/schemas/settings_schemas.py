@@ -13,8 +13,10 @@ class TeslaMateSettings(BaseModel):
 
 
 class AmapSettings(BaseModel):
-    """高德 Key 现值 (打码回显 + 安全码是否在用) + 地图样式现值。"""
+    """地图设置现值: 服务商 (高德/OSM) + 高德 Key (打码回显 + 安全码是否在用)
+    + 地图样式现值 (OSM 不用 Key, 后两者只在选高德时有意义)。"""
 
+    provider: str
     key_masked: str
     security_code_set: bool
     style: str
@@ -35,6 +37,7 @@ class SettingsUpdate(BaseModel):
     tmdb_user: str = ""
     tmdb_password: str = ""
     tmdb_name: str = ""
+    map_provider: str = ""   # amap / osm (空 = 保持现值)
     amap_key: str = ""
     amap_security_code: str = ""
     amap_style: str = ""   # 官方样式名或 amap://styles/<自定义ID> (空 = 保持现值)

@@ -51,7 +51,7 @@ def _moved_target(path: str) -> str | None:
 
 
 # 应用登录页 → 登录后回哪 (登录页在应用 scope 内, 已登录的访客直接回应用)
-_APP_LOGIN_ROOTS = {"/tesla/login": "/tesla/charging"}
+_APP_LOGIN_ROOTS = {"/tesla/login": "/tesla"}
 
 
 def _login_redirect(path: str, query: str) -> str:
@@ -70,7 +70,7 @@ def _login_redirect(path: str, query: str) -> str:
 def _is_protected(path: str) -> bool:
     """保护面: Tesla 应用 (/tesla) + 账号管理页 + 账号接口 (me / 自助改)。
 
-    根路径 / 不在其中 —— 它是无条件的 302 进 /tesla/charging (见 pages.py)。"""
+    根路径 / 不在其中 —— 它是无条件的 302 进 /tesla (见 pages.py)。"""
     if path.startswith("/tesla") or path == "/accounts":
         return True
     return path == "/api/me" or path.startswith("/api/account/")
@@ -94,7 +94,7 @@ async def auth_middleware(
     resp: Response
     if path == "/login" and token_ok:
         # 已登录的访客不再看表单, 直接进应用 (独立仓没有门厅)
-        resp = RedirectResponse("/tesla/charging", status_code=302)
+        resp = RedirectResponse("/tesla", status_code=302)
     elif path in _APP_LOGIN_ROOTS and token_ok:
         # 应用自己的登录页: 已登录直接回该应用
         resp = RedirectResponse(_APP_LOGIN_ROOTS[path], status_code=302)

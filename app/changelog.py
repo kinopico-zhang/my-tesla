@@ -10,6 +10,34 @@ from typing import Final
 from .schemas import ChangelogItem, ChangelogVersion
 
 VERSIONS: Final[list[ChangelogVersion]] = [
+    ChangelogVersion(version="3.0.1", date="2026-09-20", items=[
+        ChangelogItem(kind="修复", text="足迹地图放大后轨迹还是折线感 (你点"
+                                       "的「所有轨迹都要细化」): 以前只有最"
+                                       "新的 150 条画了细线, 现在所有轨迹"
+                                       "都会一批批细化到当前档位, 平移到哪"
+                                       "都是细线; 放到最大时全部轨迹全精度"
+                                       "渲染 (坐标本来就整库存在手机里, 之"
+                                       "前只有你正看着的那片给全精度), 中"
+                                       "间两档的精细度也调高了, 点选过的轨"
+                                       "迹换缩放档不再掉回粗线"),
+        ChangelogItem(kind="改进", text="足迹地图加载时不再整屏蒙住地图转圈"
+                                       "圈 (你点的): 地图全程看得见, 轨迹边"
+                                       "下边画, 只在最底下留一条进度"),
+    ]),
+    ChangelogVersion(version="3.0.0", date="2026-09-19", items=[
+        ChangelogItem(kind="新增", text="多车支持: 家里有两台以上车时, 抽屉里可以按车看数据, 不选就是像以前一样看全部"),
+        ChangelogItem(kind="新增", text="地图服务商可切换: 高德 / OpenStreetMap, 在地图设置里换, OSM 不用 Key"),
+        ChangelogItem(kind="改进", text="足迹地图全精度下载: 边下边画, 轨迹存在手机里, 下次只补新的, 打开快得多"),
+        ChangelogItem(kind="改进", text="界面大改版 (适配 iOS 27): 所有页面并进一个应用, 换页面不再整页跳转, 右划任意页面呼出抽屉菜单"),
+        ChangelogItem(kind="改进", text="抽屉菜单加宽, 页面入口改成图标网格, 一屏就能看全"),
+        ChangelogItem(kind="改进", text="每个页面都能下拉刷新, 顶栏收掉, 时间范围收进抽屉"),
+        ChangelogItem(kind="改进", text="筛选挪到底部悬浮条, 横着滑就能换, 单手也够得着"),
+        ChangelogItem(kind="改进", text="行程卡片整行点一下就是看轨迹, 右上角显示驾驶员"),
+        ChangelogItem(kind="改进", text="地点显示更干净: 去掉邮编和「中国」, 按省市区从大到小排"),
+        ChangelogItem(kind="改进", text="顶部留出通透的模糊留白带, 内容从状态栏底下滑过"),
+        ChangelogItem(kind="改进", text="禁掉了边缘右滑返回和双指缩放页面, 看地图时手势不再误触; 播放中的行程弹层可以分享链接"),
+        ChangelogItem(kind="改进", text="收藏夹和聊天记录里的旧链接照常能用, 自动跳到对应的页面"),
+    ]),
     ChangelogVersion(version="2.6.0", date="2026-09-15", items=[
         ChangelogItem(kind="新增", text="左上角的菜单顶部现在显示当前登录的是谁 (管理员带标记), 换账号、看家人有没有登录一目了然;"
                                        " 三个应用的菜单都一样"),

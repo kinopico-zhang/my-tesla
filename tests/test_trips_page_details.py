@@ -1,34 +1,39 @@
-"""行程页细节接线测试: URL 深链 / 瓦片预载 / 样式块守恒 / 多选。
-拆自 test_trips.py (结构化重构, 代码逐字节未动)。"""
+"""行程细节接线测试: 深链镜像 / 瓦片预载 / 样式块守恒 / 多选。
+拆自 test_trips.py (结构化重构; P7 起按 3.0 单壳改口径 —— 深链是
+replaceState 镜像 ?view=trips&id=X, 旧页地址 302 进壳由 boot 消费)。"""
 
-from tests.trips_page_assets import TRIPS_ASSETS, _trips_scripts
+from tests.tesla_static_files import page_asset_paths, served_page
 
 def test_trips_page_has_url_deeplink(auth):
-    """打开行程地址栏变 ?id=X / 合并 ?ids=a,b: pushState/popstate 同步 + 分享直开。"""
-    html = auth.get("/tesla/trips").text
-    html += _trips_scripts(auth)
-    for frag in ["urlTripKey", "openByKey", "history.pushState",
-                 "addEventListener(\"popstate\"",
-                 "/tesla/trips/api/sessions/${",
-                 "history.pushState({ k: curKey }, \"\", listURL(curKey))",
-                 "history.replaceState(null, \"\", listURL())",
-                 '/[-,]/.test(key) ? "ids=" : "id="',
-                 # 单条行程头部立即填 (字段随卡片/接口齐), 占位只留给合并流式
-                 "if (it.pts || !it.merged) fillSheetHeader(it)",
-                 # 坏合并深链: 关弹层 + 抹参回列表 (单条卡片打开的错留在弹层里)
-                 "hideSheet(); throw e"]:
+    """2.0 的分享链接照用: 旧地址 302 成 /tesla?view=trips&id=X (pages.py),
+    boot 冷启抠参 → openByKey 直开弹层; 打开的行程用 replaceState 把地址栏
+    镜像成 /tesla?view=trips&id=X / 合并 ?ids=a,b (零历史条目, 返回不留栈)。"""
+    html = served_page(auth, "/tesla")
+    for frag in [
+        # 冷启消费: 洗参前抠出 id/ids (URLSearchParams 自动解码, 分享渠道
+        # 再编码的 %2C 也不用手工 decode 了), 抠到就直接开行程视图
+        'bootQs.get("id") || bootQs.get("ids")',
+        "if (tripKey) openByKey(tripKey)",
+        # 打开弹层: 地址栏镜像 (单条 id= / 合并 ids=), 不留历史
+        '"/tesla?view=trips&" + (/[-,]/.test(curKey) ? "ids=" : "id=") + curKey',
+        "openByKey",
+        "/tesla/trips/api/sessions/${",
+        # 单条行程头部立即填 (字段随卡片/接口齐), 占位只留给合并流式
+        "if (it.pts || !it.merged) fillSheetHeader(it)",
+        # 坏合并深链: 关弹层 + 洗掉行程参数回列表 (单条卡片打开的错留在弹层里)
+        "hideSheet(); throw e",
+        "history.replaceState(null, \"\", \"/tesla\");"]:
         assert frag in html, f"行程页缺少深链片段 {frag}"
-    # ids= 逗号经分享渠道常被再编码 (%2C): 深链解析先解码再配, 不许截断
-    assert "decodeURIComponent(m[1])" in html
-
+    # 历史栈操作已清偿 (零历史条目): 镜像只 wash 地址栏 (test_shell_wiring 钉)
 
 def test_trips_page_preloads_tiles(auth):
     """播放前预载沿途瓦片: 倍率按里程 + DOM 抄模板 + Image() 刷缓存, 失败静默。
     矢量模式没有可抄的瓦片 URL → 扫路预取 (相机沿路线按未来档位扫一遍灌
     TileCache, 收尾补整轨拉远视野); 时长公式抽 animDurMs 与播放同口径。"""
-    html = auth.get("/tesla/trips").text
-    html += _trips_scripts(auth)
-    for frag in ["function followZoom(", "async function tileTemplate(", "function tileUrl(",
+    html = served_page(auth, "/tesla")
+    for frag in ["function followZoom(", "async function tileTemplate(",
+                 "return tileTplCache = (x, y, z) =>",   # 模板返回造 URL 的函数 (OSM 合成 Carto 地址 / 高德抄 DOM)
+                 "basemaps.cartocdn.com/dark_all/${z}/${x}/${y}.png",
                  "function preloadTiles(", "正在预载地图", "TrackAnimation.lngLatToTile",
                  "appmaptile", "playTrack(c.pts, c.ts || [], it, zoom)",
                  "setTimeout(resolve, 8000)", "track-animation.js?v=1",
@@ -69,19 +74,19 @@ def test_trips_page_style_block_balanced(auth):
     少一个 } 会让 CSS 错误恢复把其后全部规则吞进未闭合的规则
     (ct-drv 接缝曾丢 }, 弹层/底栏/选中态全体裸奔, 且控制台无任何报错,
     只有页面悄悄变丑)。"""
-    html = auth.get("/tesla/trips").text
+    html = auth.get("/tesla").text
     assert "<style>" not in html, "样式应全在 css/ 文件里"
-    for name in TRIPS_ASSETS:
-        if not name.startswith("css/"):
+    for ref in page_asset_paths(auth, "/tesla"):
+        if not ref.endswith(".css"):
             continue
-        css = auth.get(f"/tesla/static/{name}").text
-        assert css.count("{") == css.count("}"), f"{name} 花括号不配平, 后半规则全被吞"
+        css = auth.get(ref).text
+        assert css.count("{") == css.count("}"), \
+            f"{ref} 花括号不配平, 后半规则全被吞"
 
 
 def test_trips_page_has_multiselect(auth):
     """多选连续行程: 长按卡片进选择模式 + 底栏 (全选/上限提示) + 合并接口直开。"""
-    html = auth.get("/tesla/trips").text
-    html += _trips_scripts(auth)
+    html = served_page(auth, "/tesla")
     for frag in ['id="selbar"', 'id="sel-go"', 'id="sel-cancel"',
                  'id="sel-count"', 'id="sel-all"', 'id="sel-cap"', "MERGE_MAX = 100",
                  "body.selecting", "pickCard", "enterSelect", "exitSelect",

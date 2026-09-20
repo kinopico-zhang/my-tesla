@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from .charge_samples import ChargeRow, _charge_rows
 from .charging_regions import _match_region
-from ..common import DateRange, _fnum, fdate, ftime
+from ..common import DateRange, _clean_addr, _fnum, fdate, ftime
 from ...schemas import ChargingSession
 
 
@@ -30,7 +30,7 @@ def _session_item(row: ChargeRow) -> ChargingSession:
         date=fdate(cp.start_date),
         location=_location_name(row),
         city=row.address.city if row.address else None,
-        address=row.address.display_name if row.address else None,
+        address=_clean_addr(row.address.display_name) if row.address else None,
         start_soc=cp.start_battery_level,
         end_soc=cp.end_battery_level,
         energy_added=energy_added,
@@ -97,12 +97,13 @@ class SessionFilter:
     limit: int
     region: str | None = None    # 充电地点 "/" 路径 (1~3 段 = 省/市/区县, 空 = 全部)
     cost: str | None = None      # 费用记录: recorded / missing (None = 全部)
+    car_id: int | None = None    # 车辆 (多车切换, None = 全部)
 
 
 def list_charging_sessions(session: Session,
                            flt: SessionFilter) -> tuple[int, list[ChargingSession]]:
-    """充电列表: 日期/类型/搜索过滤 → 排序 → 分页; total 为过滤后总数。"""
-    rows = _charge_rows(session, flt.date_range, flt.query)
+    """充电列表: 日期/类型/搜索/车辆过滤 → 排序 → 分页; total 为过滤后总数。"""
+    rows = _charge_rows(session, flt.date_range, flt.query, flt.car_id)
     if flt.charge_type == "fast":
         rows = [row for row in rows if row.agg.is_fast]
     elif flt.charge_type == "slow":

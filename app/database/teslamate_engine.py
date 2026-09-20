@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 from collections.abc import Iterator
+from typing import Any
 
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -61,8 +62,16 @@ def init_engine(url: str | None = None) -> None:
     """创建引擎与会话工厂 (url 缺省走 TeslaMate Postgres 定位逻辑)。"""
     if url is None:
         url = build_db_url()
-    connect_args = ({"connect_timeout": 10} if url.startswith("postgresql")
-                    else {})  # SQLite (测试) 不认 postgres 专属参数
+    if url.startswith("postgresql"):
+        # keepalive: 容器网络抽风时的黑洞连接 (对端已死但无 FIN/RST)
+        # 会在 ~60s 内探测断开抛错, 取数线程不至于永等
+        connect_args: dict[str, Any] = {"connect_timeout": 10,
+                                        "keepalives": 1,
+                                        "keepalives_idle": 30,
+                                        "keepalives_interval": 10,
+                                        "keepalives_count": 3}
+    else:
+        connect_args = {}   # SQLite (测试) 不认 postgres 专属参数
     _EngineState.engine = create_engine(
         url, pool_size=4, max_overflow=2, pool_pre_ping=True,
         connect_args=connect_args)

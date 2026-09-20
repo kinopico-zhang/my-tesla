@@ -97,8 +97,10 @@ def merged_track_plan(session: Session, ids: Sequence[int]) -> MergedPlan:
                          round(MERGED_TRACK_BUDGET * cnt / total))
                 for did, cnt in counts.items()} if total else {})
     first, last = drive_rows[0][0], drive_rows[-1][0]
-    eff = charge_efficiency(session)
-    raw_kwh = sum(_consumption(d, eff)[0] or 0.0 for d, _, _ in drive_rows)
+    effs = {cid: charge_efficiency(session, cid)
+            for cid in {d.car_id for d, _, _ in drive_rows}}
+    raw_kwh = sum(_consumption(d, effs.get(d.car_id))[0] or 0.0
+                  for d, _, _ in drive_rows)
     total_km = sum(float(d.distance or 0) for d, _, _ in drive_rows)
     header = MergedTrack(
         ids=id_list, n=len(id_list), pts=[], ts=[], seg_starts=[],
@@ -107,9 +109,9 @@ def merged_track_plan(session: Session, ids: Sequence[int]) -> MergedPlan:
         km=round(total_km, 2),
         min=sum(d.duration_min or 0 for d, _, _ in drive_rows),
         speed_max=max((d.speed_max or 0) for d, _, _ in drive_rows) or None,
-        kwh=round(raw_kwh, 1) if eff is not None else None,
+        kwh=round(raw_kwh, 1) if any(effs.values()) else None,
         wh_per_km=(round(raw_kwh / total_km * 1000)
-                   if eff is not None and total_km >= 1 else None),
+                   if any(effs.values()) and total_km >= 1 else None),
         from_=_clean_addr(drive_rows[0][1]),
         to=_clean_addr(drive_rows[-1][2]))
     return MergedPlan(header, id_list, budgets)

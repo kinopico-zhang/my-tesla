@@ -86,5 +86,16 @@ def _keep_indices(count: int, per: int) -> list[int]:
 
 
 def _clean_addr(s: str | None) -> str:
-    """地址去掉反查带来的尾部悬挂逗号/空白。"""
-    return (s or "未知位置").rstrip(", ").strip()[:80] or "未知位置"
+    """地址串给用户看的形态 (用户点名): OSM 反查链是逗号分隔、从细到粗
+    ("POI, 路, 区县, 市, 省, 邮编, 中国") —— 去掉邮编和中国, 翻转成从大到小
+    空心拼接 ("省市区…POI"); 相邻重名去重, 尾部悬挂逗号/空白清掉。"""
+    if not s:
+        return "未知位置"
+    kept: list[str] = []
+    for p in (part.strip() for part in reversed(s.split(","))):
+        if not p or p in ("中国", "中国大陆") or p.isdigit():
+            continue
+        if kept and p == kept[-1]:     # 相邻重名 (OSM 偶发市=区) 去重
+            continue
+        kept.append(p)
+    return "".join(kept)[:80] or "未知位置"

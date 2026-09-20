@@ -20,12 +20,16 @@ def _match_region(address: Address | None, path: str) -> bool:
     return region[:len(segs)] == tuple(segs)
 
 
-def charging_region_tree(session: Session) -> list[RegionNode]:
+def charging_region_tree(session: Session,
+                         car_id: int | None = None) -> list[RegionNode]:
     """充电地点省→市→区县计数树 (按充电次数降序), 地点级联下拉数据源。
 
-    与行程页同款树 (同一解析器); 解析不出省的地址不进树, 但仍参与列表展示。
+    与行程页同款树 (同一解析器); 解析不出省的地址不进树, 但仍参与列表展示;
+    car_id 选定时只数那台车充过的地点。
     """
-    rows = session.execute(
-        select(Address.display_name)
-        .join(ChargingProcess, ChargingProcess.address_id == Address.id)).all()
+    stmt = (select(Address.display_name)
+            .join(ChargingProcess, ChargingProcess.address_id == Address.id))
+    if car_id is not None:
+        stmt = stmt.where(ChargingProcess.car_id == car_id)
+    rows = session.execute(stmt).all()
     return _acc_region_tree(name for (name,) in rows)

@@ -13,9 +13,10 @@ from app.tesla.models import (Address, Car, Charge, ChargingProcess, Drive,
 
 
 def seed_charging(session: Session, **kw: Any) -> ChargingProcess:
-    """一条充电过程 (默认: 2026-09-07 UTC 15:50, 快充, 家充桩地址)。"""
+    """一条充电过程 (默认: 2026-09-07 UTC 15:50, 快充, 家充桩地址, 车 1)。"""
     fields: dict[str, Any] = {
-        "id": 1, "start_date": datetime(2026, 9, 7, 15, 50),
+        "id": 1, "car_id": 1,
+        "start_date": datetime(2026, 9, 7, 15, 50),
         "end_date": datetime(2026, 9, 7, 23, 2),
         "address_id": 1, "geofence_id": None,
         "start_battery_level": 20, "end_battery_level": 80,
@@ -50,9 +51,10 @@ def seed_charge(session: Session, process_id: int, **kw: Any) -> Charge:
 
 
 def seed_drive(session: Session, **kw: Any) -> Drive:
-    """一条行程 (默认: 2026-09-10 UTC 00:32→01:44, 42.5km)。"""
+    """一条行程 (默认: 2026-09-10 UTC 00:32→01:44, 42.5km, 车 1)。"""
     fields: dict[str, Any] = {
-        "id": 1, "start_date": datetime(2026, 9, 10, 0, 32),
+        "id": 1, "car_id": 1,
+        "start_date": datetime(2026, 9, 10, 0, 32),
         "end_date": datetime(2026, 9, 10, 1, 44),
         "distance": 42.5, "duration_min": 72, "speed_max": 118,
         "start_address_id": 1, "end_address_id": 2,
@@ -65,9 +67,9 @@ def seed_drive(session: Session, **kw: Any) -> Drive:
 
 
 def seed_position(session: Session, drive_id: int, **kw: Any) -> Position:
-    """一个轨迹点 (默认: 深圳附近, 30km/h, 45kW)。"""
+    """一个轨迹点 (默认: 深圳附近, 30km/h, 45kW, 车 1)。"""
     fields: dict[str, Any] = {
-        "id": None, "drive_id": drive_id,
+        "id": None, "car_id": 1, "drive_id": drive_id,
         "date": datetime(2026, 9, 10, 0, 32),
         "longitude": 114.05, "latitude": 22.55, "speed": 30.0, "power": 45000.0,
     }
@@ -84,9 +86,11 @@ def seed_positions(session: Session, drive_id: int,
 
     seed_position 每点一次 commit, NAS 磁盘高压下一次 fsync ~100ms,
     大轨迹种子 (降采样用例 10001 点) 光播种就能拖十几分钟;
-    上百点的批量一律走这里, rows 内字段同 seed_position 的覆盖参数。
+    上百点的批量一律走这里, rows 内字段同 seed_position 的覆盖参数
+    (car_id 缺省补 1, 与 seed_position 默认一致)。
     """
-    positions = [Position(drive_id=drive_id, **r) for r in rows]
+    positions = [Position(drive_id=drive_id, **{"car_id": 1, **r})
+                 for r in rows]
     session.add_all(positions)
     session.commit()
     return positions
@@ -101,7 +105,11 @@ def seed_addresses(session: Session) -> None:
     session.commit()
 
 
-def seed_car(session: Session) -> None:
-    """默认车辆: 臭哈子 (Model Y 50)。"""
-    session.add(Car(id=1, name="臭哈子", model="Y", trim_badging="50", vin="LRW1"))
+def seed_car(session: Session, **kw: Any) -> None:
+    """默认车辆: 臭哈子 (Model Y 50); 覆盖参数可种第二辆 (多车用例)。"""
+    fields: dict[str, Any] = {
+        "id": 1, "name": "臭哈子", "model": "Y", "trim_badging": "50",
+        "vin": "LRW1",
+    }
+    session.add(Car(**{**fields, **kw}))
     session.commit()

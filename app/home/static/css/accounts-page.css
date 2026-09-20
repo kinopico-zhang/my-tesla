@@ -37,14 +37,6 @@ header {
 }
 .nav-row { display: flex; align-items: baseline; gap: 8px; }
 .nav-row > * { flex-shrink: 0; }
-#refresh-btn {
-  align-self: center; display: flex; align-items: center; margin-left: auto;
-  color: var(--ink-1); background: var(--surface-2);
-  padding: 5px 9px; border-radius: 999px;
-}
-#refresh-btn:active { background: var(--surface-3); }
-#refresh-btn.busy svg { animation: refresh-spin .8s linear infinite; }
-@keyframes refresh-spin { to { transform: rotate(360deg); } }
 .nav-menu { position: relative; align-self: center; margin-left: auto; }
 .nav-menu summary {
   display: flex; align-items: center; gap: 5px;

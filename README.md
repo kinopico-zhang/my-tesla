@@ -19,21 +19,17 @@ Pydantic, 前端零依赖 (原生 JS + 高德地图 + echarts)。
 
 | 路径 | 页面 |
 |---|---|
-| `/` | 302 → `/tesla/charging` |
-| `/tesla/charging` | 充电记录 (默认页) |
-| `/tesla/stats` | 充电统计 |
-| `/tesla/chargemap` | 充电地图 (热力图) |
-| `/tesla/map` | 足迹地图 (轨迹) |
-| `/tesla/trips` `/tesla/groups` | 行程列表 / 行程分组 |
-| `/tesla/live` | 当前驾驶 (实时) |
-| `/tesla/settings` | 软件设置 (TeslaMate 连接 / 高德 Key / 驾驶员) |
-| `/tesla/changelog` | 更新日志 |
+| `/` | 302 → `/tesla` |
+| `/tesla` | 单壳应用 (3.0): 抽屉切视图 —— 充电记录 (默认) / 充电统计 / 充电地图 / 足迹地图 / 行程列表 / 行程分组 / 当前驾驶 / 设置 / 更新日志 |
+
+旧页地址 (`/tesla/charging`、`/tesla/trips` 等) 302 回壳并带 `?view=`
+落到对应视图 (行程深链 `?id=` 照旧直开弹层), 老书签不断。
 
 账号体系在根路径 (账号跟应用走, 不在业务前缀下): `/login` `/register`
 登录与凭邀请注册, `/accounts` 账号管理 (仅管理员), `/api/*` 账号接口。
 旧地址 (`/tesla/login`、`/tesla/api/*` 等) 302/307 兼容, 已发出去的邀请
-链接不断。静态资源: `/tesla/static/*` (应用页) 与 `/static/*` (账号页 +
-全站小件 menu-user / changelog-page)。
+链接不断。静态资源: `/tesla/static/*` (应用壳) 与 `/static/*` (账号页 +
+全站小件 menu-user)。
 
 ## 部署
 

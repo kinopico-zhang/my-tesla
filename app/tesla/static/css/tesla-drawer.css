@@ -1,0 +1,149 @@
+/* tesla-drawer — 左侧抽屉: 开合/拖拽跟手, 顶部车辆 + 时间范围同一排
+   (车辆在前, 用户点名), 首行避开顶部模糊带 (--top-clear),
+   导航分组 (图标瓦片网格, 每行 4 个), 底部账号行 + 登出。
+   用户点名: 右划拉出; 加宽 + 子项图标每行 3-4 个压纵向空间。 */
+#drawer-mask {
+  position: fixed; inset: 0; z-index: var(--z-drawer-mask);
+  background: rgba(0,0,0,.5);
+  opacity: 0; pointer-events: none; transition: opacity .3s;
+}
+#drawer-mask.on { opacity: 1; pointer-events: auto; }
+#drawer {
+  position: fixed; left: 0; top: 0; bottom: 0; z-index: var(--z-drawer);
+  width: min(400px, 92vw);
+  display: flex; flex-direction: column;
+  background: rgba(22,22,24,.88);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border-right: 1px solid var(--hairline);
+  box-shadow: 10px 0 32px rgba(0,0,0,.5);
+  transform: translateX(-100%);
+  transition: transform .34s cubic-bezier(.32,.72,.35,1);
+  overscroll-behavior: contain;
+}
+#drawer.on { transform: translateX(0); }
+#drawer.dragging { transition: none; }
+
+/* ---------- 抽屉顶部: 车辆 + 时间范围 (同一排, 车辆在前) ---------- */
+.drw-top {
+  /* 首行控件不进顶部模糊带 (用户点名「最上面的模糊地带不要放固定控件」,
+     与视图内容同一条全局上边界 --top-clear) */
+  padding: calc(var(--top-clear) + 14px) 14px 10px;
+  border-bottom: 1px solid var(--hairline);
+}
+.drw-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+/* 车辆切换 (≥2 台才有 pills; 单车静态行, 拉不到整块藏) */
+.drw-cars {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+}
+.drw-cars-lb { font-size: 11px; color: var(--ink-3); }
+.car-pills { display: flex; flex-wrap: wrap; gap: 7px; }
+.car-pill {
+  padding: 5px 12px; border-radius: 999px; font-size: 12.5px; white-space: nowrap;
+  color: var(--ink-2); border: 1px solid var(--hairline); transition: all .18s;
+}
+.car-pill.on {
+  background: rgba(57,135,229,.20); color: #7db3f0;
+  border-color: rgba(57,135,229,.35);
+}
+/* 时间菜单: 抽屉内不放悬浮下拉 (窄条里锚不开销) —— 展开式面板,
+   内容就地向下推开, 抽屉自己竖滚。收起时与车辆同一排 (右侧, 收缩到
+   内容宽); 展开时整块换行占满一行 —— 日历 (7×34px) 在半宽里放不下 */
+.drw-menu { flex: none; }
+.drw-cars[hidden] + .drw-menu { flex: 1; }   /* 没有车辆行: 时间菜单占满 */
+.drw-menu[open] { flex-basis: 100%; }
+.drw-menu summary {
+  display: flex; align-items: center; gap: 5px; min-width: 0;
+  font-size: 13px; color: var(--ink-1); background: var(--surface-2);
+  padding: 6px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+  list-style: none; -webkit-user-select: none; user-select: none;
+}
+.drw-menu .drw-lb { color: var(--ink-3); }   /* 「时间范围」说明字, 现值亮色 */
+.drw-menu summary::-webkit-details-marker { display: none; }
+.drw-menu summary:active { opacity: .7; }
+.drw-menu[open] summary { background: var(--surface-3); }
+.drw-menu .chev { transition: transform .18s; color: var(--ink-3); }
+.drw-menu[open] .chev { transform: rotate(180deg); }
+.drw-menu-body { display: flex; flex-direction: column; padding: 5px 0 2px; }
+.drw-menu-body button {
+  font-size: 14px; color: var(--ink-1); text-align: left;
+  padding: 9px 12px; border-radius: 10px; white-space: nowrap;
+}
+.drw-menu-body button.on { color: #7db3f0; }
+.drw-menu-body button:active { background: var(--surface-3); }
+
+/* ---------- 导航分组: 图标瓦片网格 (每行 4 个, 压纵向空间) ---------- */
+.drw-nav {
+  flex: 1; min-height: 0; overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 12px;
+}
+.drw-group-lb {
+  font-size: 11px; color: var(--ink-3); padding: 12px 2px 6px;
+}
+.drw-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+}
+.drw-nav button.drw-item {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; min-width: 0;
+  font-size: 12px; color: var(--ink-1); text-align: center;
+  padding: 12px 4px 10px; border-radius: 12px;
+}
+.drw-nav button.drw-item:active { background: var(--surface-2); }
+.drw-nav button.drw-item.on { color: #7db3f0; background: rgba(57,135,229,.12); }
+.drw-item svg { flex-shrink: 0; width: 24px; height: 24px; opacity: .8; }
+.drw-item.on svg { opacity: 1; }
+.drw-item span {
+  max-width: 100%; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ---------- 抽屉底部: 账号 + 登出 ---------- */
+.drw-bottom {
+  padding: 10px 14px calc(env(safe-area-inset-bottom) + 12px);
+  border-top: 1px solid var(--hairline);
+}
+.drw-acct {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 9px 8px; border-radius: 12px; text-align: left;
+  font-size: 14px; color: var(--ink-2);
+}
+.drw-acct:active { background: var(--surface-2); }
+.drw-acct svg { flex-shrink: 0; opacity: .7; }
+.drw-acct span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drw-acct em {
+  font-style: normal; font-size: 10px; color: #7db3f0;
+  border: 1px solid rgba(125,179,240,.5); border-radius: 4px;
+  padding: 0 4px; margin-left: auto; flex-shrink: 0;
+}
+.drw-logout {
+  width: 100%; padding: 10px 8px; margin-top: 4px; border-radius: 12px;
+  font-size: 14px; color: #e5484d; text-align: left;
+}
+.drw-logout:active { background: var(--surface-2); }
+
+/* ---------- 自定义日历 (与旧顶栏同款, 时间菜单展开区内) ---------- */
+.drw-menu .tm-custom { border-top: 1px solid var(--hairline); margin-top: 5px; padding-top: 5px; }
+.tm-dates { padding: 6px 8px 3px; }
+.tm-cal-top { display: flex; align-items: center; gap: 4px; padding: 0 2px 5px; }
+.tm-cal-top b { flex: 1; text-align: center; font-size: 13px; font-weight: 600; }
+.tm-cal-top button { min-width: 28px; height: 26px; border-radius: 7px; color: var(--ink-2); }
+.tm-cal-top button:disabled { opacity: .3; }
+.tm-cal-top button:active { background: var(--surface-3); }
+.tm-week, .tm-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.tm-week i { font-style: normal; text-align: center; font-size: 11px; color: var(--ink-3); padding: 2px 0 4px; }
+.tm-cal { padding-bottom: 4px; }
+.tm-cal button { min-width: 34px; height: 34px; border-radius: 9px; font-size: 13px; color: var(--ink-1); }
+.tm-cal button:active { background: var(--surface-3); }
+.tm-cal button.today { color: #7db3f0; font-weight: 600; }
+.tm-cal button.mid { background: rgba(57,135,229,.16); border-radius: 0; }
+.tm-cal button.on { background: #3987e5; color: #fff; font-weight: 600; }
+.tm-foot { display: flex; align-items: center; gap: 8px; padding: 6px 2px 2px; }
+.tm-foot span { flex: 1; min-width: 0; font-size: 12px; color: var(--ink-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tm-dates #tm-apply {
+  flex: none; background: #3987e5; color: #fff;
+  border-radius: 8px; font-size: 12.5px; font-weight: 600; padding: 7px 14px;
+}

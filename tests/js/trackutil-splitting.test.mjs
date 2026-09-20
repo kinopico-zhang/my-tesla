@@ -67,6 +67,69 @@ test("全是孤立大跳点时退回整条, 不让轨迹消失", () => {
 });
 
 
+/* ---------------- 扁平数组版 (足迹地图 v4 全精度轨迹) ---------------- */
+const { splitGapsFlat, decimateFlat } = TrackUtil;
+
+function flat(n, step = M, start = 114) {   // [lng, lat, ...] 共 n 点
+  const out = [];
+  for (let i = 0; i < n; i++) { out.push(start + i * step, 22.5); }
+  return out;
+}
+
+test("扁平版: 正常轨迹不拆分", () => {
+  const segs = splitGapsFlat(flat(500));
+  assert.equal(segs.length, 1);
+  assert.equal(segs[0].length, 1000);
+});
+
+test("扁平版: GPS 断档在断点处拆开, 段仍是扁平数组", () => {
+  const pts = flat(500);
+  const jump = 0.0066;   // ~730m
+  const withGap = [...pts.slice(0, 500),                 // 前 250 点
+                   pts[498] + jump, pts[499] + jump * 0.5,  // 瞬移点
+                   ...pts.slice(500).map((v, i) =>
+                     v + (i % 2 ? jump * 0.5 : jump))];  // 后 250 点整体平移
+  const segs = splitGapsFlat(withGap);
+  assert.equal(segs.length, 2);
+  assert.ok(segs[0].length >= 4 && segs[1].length >= 4);
+  assert.equal(segs[0][segs[0].length - 2], pts[498]);   // 第一段止于断点前
+  assert.equal(segs[1][0], pts[498] + jump);             // 第二段从瞬移点开始
+});
+
+test("扁平版: 概览抽稀后的段长公里级不误拆 / 全孤立退回整条", () => {
+  assert.equal(splitGapsFlat(flat(40, 0.01)).length, 1);
+  const pts = [114, 22.5, 115, 23.5, 113, 21.5];
+  assert.deepEqual(splitGapsFlat(pts), [pts]);
+  assert.deepEqual(splitGapsFlat([114, 22.5]), []);      // 1 点不成轨迹
+});
+
+test("decimateFlat: 抽到 ~per 个点, 首末必留", () => {
+  const pts = flat(400, 0.0001);
+  const d40 = decimateFlat(pts, 40);
+  assert.equal(d40.length / 2, 41);                      // 0,10,...,390 + 末点 399
+  assert.equal(d40[0], pts[0]);
+  assert.equal(d40[d40.length - 2], pts[pts.length - 2]);   // 末点必留
+  assert.equal(d40[1], 22.5);
+  // 点数不多于目标时原样返回 (同一引用); per<2 不动
+  const small = flat(30);
+  assert.equal(decimateFlat(small, 40), small);
+  assert.equal(decimateFlat(small, 0), small);
+});
+
+test("decimateFlat: 整除边界 (末点恰在步进上) 不重复补点", () => {
+  const pts = flat(400, 0.0001);
+  const d = decimateFlat(pts, 400);   // n ≤ per → 原样返回
+  assert.equal(d, pts);
+  const d39 = decimateFlat(pts, 39);  // stride=10 → 0,10,...,390 + 399
+  assert.equal(d39.length / 2, 41);
+  assert.equal(d39[d39.length - 2], pts[pts.length - 2]);
+  const d401 = decimateFlat(flat(401, 0.0001), 40);   // stride=10, 末点 400 恰在步进上
+  assert.equal(d401.length / 2, 41);                  // 步进已含末点, 不再补
+  assert.equal(d401[d401.length - 2], 114 + 400 * 0.0001);
+  assert.equal(d401[d401.length - 1], 22.5);
+});
+
+
 /* ---------------- speedLines: 速度着色分档 ---------------- */
 const C0 = "#e5484d", C4 = "#1fa349";   // 最慢红 / 最快绿
 

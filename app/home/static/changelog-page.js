@@ -56,14 +56,6 @@ function showError(msg) {
 }
 
 $("#retry").addEventListener("click", load);
-/* 顶栏刷新: 重拉当前页数据 */
-$("#refresh-btn").addEventListener("click", async () => {
-  const btn = $("#refresh-btn");
-  btn.classList.add("busy");
-  await load();
-  btn.classList.remove("busy");
-});
-
 $("#logout").addEventListener("click", async () => {
   try { await fetch("/api/logout", { method: "POST" }); } catch (e) {}
   location.href = "/login";

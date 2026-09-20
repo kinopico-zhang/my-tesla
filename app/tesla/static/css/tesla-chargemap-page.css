@@ -38,15 +38,6 @@ header {
 .nav-row { display: flex; align-items: baseline; gap: 8px; }
 .nav-row > * { flex-shrink: 0; }
 
-/* 顶栏刷新按钮 (与页签胶囊同款样式) */
-#refresh-btn {
-  align-self: center; display: flex; align-items: center; margin-left: 0;
-  color: var(--ink-1); background: var(--surface-2);
-  padding: 5px 9px; border-radius: 999px;
-}
-#refresh-btn:active { background: var(--surface-3); }
-#refresh-btn.busy svg { animation: refresh-spin .8s linear infinite; }
-@keyframes refresh-spin { to { transform: rotate(360deg); } }
 .nav-menu { position: relative; align-self: center; margin-left: auto; }
 .nav-menu summary {
   display: flex; align-items: center; gap: 5px;
@@ -92,13 +83,6 @@ header {
 }
 .nav-menu .menu button.on { color: #7db3f0; }
 .nav-menu .menu button:active { background: var(--surface-3); }
-/* 筛选行: 三视图切换 (时间筛选在顶栏) */
-.filters { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
-/* 三视图分段钮 (电量/次数/费用): 圆标大小的度量切换 */
-.seg { display: flex; flex: none; background: rgba(118,118,128,.24);
-       border-radius: 999px; padding: 2px; -webkit-user-select: none; user-select: none; }
-.seg button { padding: 4px 11px; border-radius: 999px; font-size: 12px; color: var(--ink-2); white-space: nowrap; }
-.seg button.on { background: #3987e5; color: #fff; font-weight: 600; }
 @media (max-width: 479px) {
   header { position: relative; }
   .nav-menu { position: static; }

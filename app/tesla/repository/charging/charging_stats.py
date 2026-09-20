@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from .charge_samples import ChargeRow, _charge_rows
 from .charging_sessions import _location_name
-from ..common import DateRange, _fnum, fdate, to_local
+from ..common import DateRange, _clean_addr, _fnum, fdate, to_local
 from ...schemas import (
     ChargeDims,
     ChargeMapLocation,
@@ -16,9 +16,10 @@ from ...schemas import (
 )
 
 
-def charging_dimensions(session: Session, date_range: DateRange | None) -> ChargeDims:
+def charging_dimensions(session: Session, date_range: DateRange | None,
+                        car_id: int | None = None) -> ChargeDims:
     """充电统计维度聚合 (快慢/时段/起充 SOC/峰值功率/城市), 与列表同源同日期口径。"""
-    rows = _charge_rows(session, date_range, None)
+    rows = _charge_rows(session, date_range, None, car_id)
     by_hour = [0] * 24
     by_soc = [0] * 5
     by_power = [0] * 5
@@ -55,12 +56,13 @@ def charging_dimensions(session: Session, date_range: DateRange | None) -> Charg
 
 
 def charging_map_locations(session: Session,
-                           date_range: DateRange | None) -> list[ChargeMapLocation]:
+                           date_range: DateRange | None,
+                           car_id: int | None = None) -> list[ChargeMapLocation]:
     """充电地图聚合: 按地址聚充电点 (次数降序), 无坐标的地址不上图。
 
     展示名与列表口径一致 —— geofence 名 (家/公司) 优先于地址名;
     同一地址多次充电挂不同 geofence 时, 取最近一次充电的名字。"""
-    rows = _charge_rows(session, date_range, None)
+    rows = _charge_rows(session, date_range, None, car_id)
     points: dict[int, dict[str, Any]] = {}
     for row in rows:
         addr = row.address
@@ -84,7 +86,7 @@ def charging_map_locations(session: Session,
             p["latest"] = cp.start_date
             p["name"] = (row.geofence.name
                          if row.geofence is not None and row.geofence.name
-                         else addr.name or addr.display_name or "未知位置")
+                         else addr.name or _clean_addr(addr.display_name))
     return [ChargeMapLocation(
                 id=p["id"], name=p["name"], city=p["city"],
                 lat=p["lat"], lng=p["lng"],
@@ -94,9 +96,10 @@ def charging_map_locations(session: Session,
 
 
 def charging_summary(session: Session,
-                     date_range: DateRange | None) -> ChargingSummary:
+                     date_range: DateRange | None,
+                     car_id: int | None = None) -> ChargingSummary:
     """充电汇总: 次数 / 电量 / 费用 / 快充占比 / SOC 与续航增益。"""
-    rows = _charge_rows(session, date_range, None)
+    rows = _charge_rows(session, date_range, None, car_id)
     energy_added = sum(r.process.charge_energy_added or 0.0 for r in rows)
     energy_used = sum(r.process.charge_energy_used or 0.0 for r in rows)
     cost = sum(r.process.cost or 0.0 for r in rows)
@@ -120,9 +123,10 @@ def charging_summary(session: Session,
 
 
 def monthly_stats(session: Session,
-                  date_range: DateRange | None) -> list[MonthlyStat]:
+                  date_range: DateRange | None,
+                  car_id: int | None = None) -> list[MonthlyStat]:
     """按本地月份分组的充电统计 (分组在 Python 侧, 免 to_char 方言差异)。"""
-    rows = _charge_rows(session, date_range, None)
+    rows = _charge_rows(session, date_range, None, car_id)
     grouped: dict[str, list[ChargeRow]] = {}
     for row in rows:
         grouped.setdefault(
@@ -136,9 +140,10 @@ def monthly_stats(session: Session,
 
 
 def location_stats(session: Session,
-                   date_range: DateRange | None) -> list[LocationStat]:
+                   date_range: DateRange | None,
+                   car_id: int | None = None) -> list[LocationStat]:
     """按充电地点 (围栏优先, 否则地址名) 分组的统计, 按次数降序。"""
-    rows = _charge_rows(session, date_range, None)
+    rows = _charge_rows(session, date_range, None, car_id)
     grouped: dict[tuple[str, str | None], list[ChargeRow]] = {}
     for row in rows:
         grouped.setdefault(

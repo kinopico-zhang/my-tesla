@@ -8,6 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app import database
+from tests.tesla_static_files import served_page
 
 
 @pytest.fixture()
@@ -39,8 +40,8 @@ def test_settings_save_amap_and_map_config_reflects(auth, monkeypatch):
     assert r.status_code == 200
     assert r.json()["amap"]["key_masked"] == "abcd****5678"
     assert auth.get("/tesla/map/api/config").json() == {
-        "amap_key": "abcd1234efgh5678", "security_code": "9182ac3b",
-        "style": "amap://styles/dark"}
+        "provider": "amap", "amap_key": "abcd1234efgh5678",
+        "security_code": "9182ac3b", "style": "amap://styles/dark"}
     # 留空 = 保持现值
     auth.post("/tesla/api/settings", json={"amap_key": "", "amap_security_code": ""})
     assert auth.get("/tesla/map/api/config").json()["amap_key"] == "abcd1234efgh5678"
@@ -75,6 +76,30 @@ def test_settings_save_map_style_and_validation(auth, monkeypatch):
     monkeypatch.setenv("AMAP_STYLE", "amap://styles/grey")
     r = auth.post("/tesla/api/settings", json={"amap_style": "amap://styles/normal"})
     assert r.json()["amap"]["style"] == "amap://styles/normal"
+
+
+def test_settings_save_map_provider_and_validation(auth, monkeypatch):
+    """地图服务商切换 (用户点名: 支持高德 / OpenStreetMap 等): 存自有库,
+    map config 即时反映; 留空保持; 不认识的值 400 不落库。
+
+    选 OSM 不需要 Key —— 前端配置端点带 provider, 各地图视图据此选渲染层
+    (OSM=Leaflet 瓦片 + WGS-84 原生坐标; 高德=GCJ-02)。"""
+    monkeypatch.delenv("MAP_PROVIDER", raising=False)
+    assert auth.get("/tesla/api/settings").json()["amap"]["provider"] == "amap"
+    r = auth.post("/tesla/api/settings", json={"map_provider": "osm"})
+    assert r.json()["amap"]["provider"] == "osm"
+    assert auth.get("/tesla/map/api/config").json()["provider"] == "osm"
+    # 留空 = 保持现值
+    r = auth.post("/tesla/api/settings", json={"map_provider": ""})
+    assert r.json()["amap"]["provider"] == "osm"
+    # 换回高德
+    assert auth.post("/tesla/api/settings",
+                     json={"map_provider": "amap"}).json()["amap"]["provider"] == "amap"
+    # 不认识的 400 且不落库
+    for bad in ("google", "AMAP", "高德"):
+        assert auth.post("/tesla/api/settings",
+                         json={"map_provider": bad}).status_code == 400, bad
+    assert auth.get("/tesla/api/settings").json()["amap"]["provider"] == "amap"
 
 
 def test_settings_tmdb_rollback_also_reverts_style(auth, monkeypatch):
@@ -152,27 +177,23 @@ def test_drivers_crud_and_single_default(auth):
     assert auth.post("/tesla/api/drivers", json={"name": "x" * 31}).status_code == 422
 
 
-def test_settings_page_and_nav_entries(auth):
-    """设置页挂全 (表单/驾驶员/轻提示); 三个页面品牌菜单都有设置入口。"""
-    html = auth.get("/tesla/settings").text
-    # 脚本/样式拆去了 js/ 与 css/ (结构化重构): 断言用的片段全拼接进来查
-    html += auth.get("/tesla/static/css/tesla-settings.css?v=1").text
-    for name in ("settings-connections.js", "settings-drivers.js",
-                 "settings-account.js"):
-        html += auth.get(f"/tesla/static/js/{name}").text
-    for frag in ['id="tm-host"', 'id="tm-save"', "保存并连接", 'id="amap-key"',
+def test_settings_views_and_entries(auth):
+    """设置拆三视图挂全 (数据来源/地图设置/驾驶员, 表单原样搬壳);
+    3.0 的入口是抽屉设置组 (test_shell_wiring 钉住), 账号弹层在
+    test_shell_views 的生命周期用例里。"""
+    html = served_page(auth, "/tesla")
+    for frag in ['id="view-settings-db"', 'id="view-settings-map"',
+                 'id="view-settings-drivers"',
+                 'id="tm-host"', 'id="tm-save"', "保存并连接", 'id="amap-key"',
                  'id="drv-list"', "/tesla/api/settings", "/tesla/api/drivers",
                  'id="toast"', "设为默认", "留空 = 保持现值",
                  # 地图样式选择 (深色默认幻影黑配 App; 提示讲清地名是异步到的)
                  'id="amap-style"', 'value="amap://styles/dark"',
                  'value="amap://styles/darkblue"', '极夜蓝',
                  '幻影黑 (纯黑)</option>', '首次打开过一两秒才出现',
-                 'id="amap-style-custom"', "amap_style:"]:
-        assert frag in html, f"设置页缺少片段 {frag}"
+                 'id="amap-style-custom"', "amap_style:",
+                 # 服务商切换 (高德/OSM): 选 OSM 时 Key/样式整组收起
+                 'id="map-provider"', '<option value="osm">',
+                 'id="amap-rows"', "map_provider:", "syncProviderRows"]:
+        assert frag in html, f"设置视图缺少片段 {frag}"
     assert "无地名" not in html   # 深色样式有地名, 旧说法不许回潮
-    # 顶栏与全站一致: 手机端下拉锚到全宽 header (header 非定位要补 relative)
-    for frag in ["@media (max-width: 479px)", "header { position: relative; }",
-                 ".nav-menu { position: static; }", ".nav-menu .menu { left: 12px; right: 12px; }"]:
-        assert frag in html, f"设置页顶栏缺少片段 {frag}"
-    for page in ("/tesla/charging", "/tesla/map", "/tesla/trips"):
-        assert '<a href="/tesla/settings">软件设置</a>' in auth.get(page).text, page

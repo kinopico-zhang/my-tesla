@@ -1,0 +1,64 @@
+/* tesla-shell-floor — 收口层 (所有 CSS 最后加载): 各视图 CSS 是从旧页整份
+   搬来的, 带着旧页各自的 main 宽度/内边距 (统计 920 / 日志 640 + 两侧 14 /
+   充电 760) 与分组页顶置 #toast —— 谁后加载谁生效, 会把别的视图顶歪。
+   这里最后压一遍: main 还原成壳的满宽视图容器, 宽度改由各视图自己的
+   .view-scroll 上限管 (充电 760 默认, 统计 920, 日志 640), toast 压回壳
+   的屏底样式; 行程多选时屏底槽让给 selbar (筛条藏起); 地图类视图
+   (P5) 的摘要条/画布舞台/左缘抽屉条/驾驶舞台、设置三视图 (P6) 的 560
+   窄栏 (旧顶栏 #refresh-btn 胶囊的压回已随按钮一起撤掉) 也在这。 */
+main { max-width: none; margin: 0; padding: 0; }
+
+/* 视图滚动器: 满宽为默认 (充电 760), 统计宽 920, 日志窄卡 640 + 两侧留白
+   (旧日志页 main 的 14px 侧内边距折到这里, #entries 卡片靠它离屏缘) */
+.view-scroll { width: 100%; max-width: 760px; margin: 0 auto; }
+#view-stats > .view-scroll { max-width: 920px; }
+#view-changelog > .view-scroll {
+  max-width: 640px;
+  padding: calc(var(--top-clear) + 6px) 14px var(--bar-clear);
+}
+
+/* 分组页 CSS 的顶置 toast: 壳只有一个屏底 toast (tesla-base 同款重申,
+   后加载压掉 tesla-groups.css 的顶置版) */
+#toast {
+  position: fixed; left: 50%; bottom: calc(var(--bar-clear) + 6px); top: auto;
+  transform: translateX(-50%) translateY(8px); z-index: var(--z-toast);
+  max-width: 82vw; padding: 9px 18px; border-radius: 999px;
+  background: rgba(58,58,60,.95); color: var(--ink-1); font-size: 13px;
+  text-align: center; opacity: 0; transition: opacity .25s, transform .25s;
+  pointer-events: none;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* 行程多选态: selbar (z 80, tesla-trips-sheet.css) 占屏底槽, 筛条整行
+   藏起让位 (旧页是对着顶栏 refresh-btn 藏, 壳里换屏底条) */
+body.selecting #bar-row { display: none; }
+
+/* ---- 地图类视图 (P5): 足迹/充电地图 ---- */
+/* 摘要条 = 顶部手势面 (右划开抽屉/在顶下拉刷新); .stats 自带 14px 侧距,
+   头部只补顶带留白不再叠侧距。画布舞台接旧页 main 的角色 (全出血) */
+.map-head { padding: calc(var(--top-clear) + 6px) 14px 0; }
+.map-head .stats { padding: 10px 0 0; }
+.map-stage { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
+
+/* 画布左缘 24px 抽屉条: 画布本体 touch-action:none 全给地图引擎, 右划开抽屉
+   只能从这条进 (罩在画布上, 不挡其余区域的地图手势) */
+.drawer-edge {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 24px;
+  z-index: 5; touch-action: none;
+}
+
+/* ---- 驾驶视图 (P5): 旧页 main 的布局折到舞台容器 (壳 main 满宽无内边距);
+   面板区 (仪表/电池/格子) 是手势面, 画布区只有左缘条 ---- */
+.live-stage {
+  flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px;
+  padding: calc(var(--top-clear) + 6px) 14px calc(env(safe-area-inset-bottom) + 10px);
+  overflow: hidden;
+}
+.lv-panels { display: flex; flex-direction: column; gap: 10px; }
+
+/* ---- 设置三视图 (P6): 旧页 main 的 560 窄栏折到这里 (sec-head 自带 16
+   侧距, 卡片补同款侧距对齐) ---- */
+#view-settings-db > .view-scroll, #view-settings-map > .view-scroll,
+#view-settings-drivers > .view-scroll { max-width: 592px; }
+#view-settings-db .card, #view-settings-map .card,
+#view-settings-drivers .card { margin: 0 16px; }

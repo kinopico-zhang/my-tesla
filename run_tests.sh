@@ -65,7 +65,6 @@ node node_modules/c8/bin/c8.js \
   --include 'app/tesla/static/js/track-animation.js' \
   --include 'app/tesla/static/js/format.js' \
   --include 'app/tesla/static/js/trip-playback.js' \
-  --include 'app/tesla/static/js/lastpage.js' \
   --check-coverage --lines 95 --branches 95 --functions 95 \
   --reporter text node --test tests/js/*.test.mjs || rc=1
 

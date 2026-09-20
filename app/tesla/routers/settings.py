@@ -1,10 +1,10 @@
-"""设置 API: 地图配置 + 驾驶员管理 (自有库)。"""
+"""设置 API: 地图配置 + 驾驶员管理 (自有库; 驾驶员 CRUD 在 drivers_store)。"""
 import threading
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ... import database
-from .. import repository, settings_store, tracks_cache
+from .. import drivers_store, repository, settings_store, tracks_cache
 from ..schemas import SettingsState, SettingsUpdate, DriverInfo, DriverIn, DriverUpdate
 from ...schemas import OkResponse
 
@@ -26,7 +26,7 @@ def save_settings(body: SettingsUpdate,
         state, engine_changed = settings_store.save_settings(own, body)
     except settings_store.EngineError as exc:
         raise HTTPException(400, str(exc)) from exc
-    except settings_store.StyleError as exc:
+    except (settings_store.StyleError, settings_store.ProviderError) as exc:
         raise HTTPException(400, str(exc)) from exc
     if engine_changed:
         # 换库了: 旧轨迹缓存全作废, 后台重灌 (不阻塞响应)
@@ -39,7 +39,7 @@ def save_settings(body: SettingsUpdate,
 @settingsapi.get("/drivers")
 def get_drivers(own: Session = Depends(database.get_own_db)) -> list[DriverInfo]:
     """全部驾驶员。"""
-    return settings_store.list_drivers(own)
+    return drivers_store.list_drivers(own)
 
 
 @settingsapi.post("/drivers")
@@ -49,7 +49,7 @@ def add_driver(body: DriverIn,
     name = body.name.strip()
     if not name:
         raise HTTPException(400, "名字不能为空")
-    return settings_store.create_driver(own, name)
+    return drivers_store.create_driver(own, name)
 
 
 @settingsapi.patch("/drivers/{driver_id}")
@@ -60,7 +60,7 @@ def change_driver(driver_id: int, body: DriverUpdate,
     if name == "":
         raise HTTPException(400, "名字不能为空")
     try:
-        return settings_store.update_driver(own, driver_id, name, body.is_default)
+        return drivers_store.update_driver(own, driver_id, name, body.is_default)
     except repository.NotFound as exc:
         raise HTTPException(404, str(exc)) from exc
 
@@ -70,7 +70,7 @@ def remove_driver(driver_id: int,
                   own: Session = Depends(database.get_own_db)) -> OkResponse:
     """删驾驶员。"""
     try:
-        settings_store.delete_driver(own, driver_id)
+        drivers_store.delete_driver(own, driver_id)
     except repository.NotFound as exc:
         raise HTTPException(404, str(exc)) from exc
     return OkResponse(ok=True)

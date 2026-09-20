@@ -90,6 +90,22 @@ def test_migrate_own_db_adds_amap_style_column():
     main_module._migrate_own_db()  # pylint: disable=protected-access  # 再跑不炸
 
 
+def test_migrate_own_db_adds_map_provider_column():
+    """更老的自有库 (只有 amap_style, 无 map_provider) 启动时也补列, 幂等。"""
+    with database.own_engine().begin() as conn:
+        conn.exec_driver_sql("DROP TABLE IF EXISTS app_settings")
+        conn.exec_driver_sql(
+            "CREATE TABLE app_settings (id INTEGER PRIMARY KEY, tmdb_host TEXT,"
+            " tmdb_port TEXT, tmdb_user TEXT, tmdb_password TEXT, tmdb_name TEXT,"
+            " amap_key TEXT, amap_security_code TEXT, amap_style TEXT,"
+            " updated_at DATETIME)")
+    main_module._migrate_own_db()  # pylint: disable=protected-access
+    with database.own_engine().connect() as conn:
+        cols = {r[1] for r in conn.exec_driver_sql("PRAGMA table_info(app_settings)")}
+    assert "map_provider" in cols and "amap_style" in cols
+    main_module._migrate_own_db()  # pylint: disable=protected-access  # 再跑不炸
+
+
 # ---------------------------------------------------------------- 统一错误契约
 def test_sqlalchemy_error_maps_to_503(auth, monkeypatch):
     """路由里的 SQLAlchemyError 统一兜成 503, 不把异常细节裸奔给前端。"""

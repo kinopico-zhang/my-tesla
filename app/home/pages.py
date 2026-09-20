@@ -2,7 +2,7 @@
 验证文件 (静态文件在 app/home/static)。
 
 独立仓没有门厅页 —— 根路径 / 无条件 302 进 Tesla 应用 (未登录会在
-/tesla/charging 被 middleware 再跳一次登录页)。
+/tesla 被 middleware 再跳一次登录页)。
 """
 import re
 from pathlib import Path
@@ -31,7 +31,7 @@ def _page(fname: str) -> FileResponse:
 @router.get("/", response_class=HTMLResponse)
 def root_page() -> RedirectResponse:
     """根路径直接进 Tesla 应用 (独立仓没有门厅)。"""
-    return RedirectResponse("/tesla/charging", status_code=302)
+    return RedirectResponse("/tesla", status_code=302)
 
 
 @router.get("/login", response_class=HTMLResponse)

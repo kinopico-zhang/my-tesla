@@ -158,18 +158,6 @@ $("#invite-list").addEventListener("click", async e => {
   }
 });
 
-/* ---------- 顶栏刷新 ---------- */
-$("#refresh-btn").addEventListener("click", async () => {
-  const btn = $("#refresh-btn");
-  btn.classList.add("busy");
-  if (!$("#denied").hidden) {       // 非管理员: 无可刷新数据
-    btn.classList.remove("busy");
-    return;
-  }
-  try { await loadAll(); } catch (err) { toast(`刷新失败: ${err.message}`, true); }
-  btn.classList.remove("busy");
-});
-
 $("#logout").addEventListener("click", async () => {
   await fetch("/api/logout", { method: "POST" });
   location.replace("/login");

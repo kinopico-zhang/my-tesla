@@ -1,0 +1,124 @@
+/* tesla-base — My Tesla 3.0 单壳底座: 设计令牌 / 重置 / 固定壳与视图层 /
+   顶部模糊带 (--top-clear) / z 阶梯 / toast。音乐壳 (music-base) 同构:
+   文档永不滚, 滚动全在各视图内部; 全应用禁双指缩放 (body 收口 pan-y)。 */
+/* ---------- 设计令牌: iOS 暗色 + dataviz 校验系列色 ----------
+   系列色集 #1fa349 #3987e5 #c98500 #9085e9 #d95926 (槽序 绿-蓝-黄-紫-橙)
+   已通过 dataviz 六项校验 (暗色, 表面 #1c1c1e): 亮度带/彩度/CVD 分离/
+   常态视觉下限/对比度全部通过。实体对应: 绿=SOC, 蓝=功率·电量, 黄=费用,
+   紫=电压, 橙=电流。文字一律用文本色, 不用系列色。 */
+:root {
+  color-scheme: dark;
+  --bg: #000;
+  --surface: #1c1c1e;
+  --surface-2: #2c2c2e;
+  --surface-3: #3a3a3c;
+  --ink-1: #f5f5f7;
+  --ink-2: rgba(235,235,245,.62);
+  --ink-3: rgba(235,235,245,.32);
+  --hairline: rgba(255,255,255,.09);
+  --nav-bg: rgba(10,10,12,.72);
+  --green: #1fa349;    /* SOC */
+  --grid: #2c2c2a;     /* 图表网格线 (细实线) */
+  --chart-ink: #c3c2b7;
+}
+/* 顶带下限: iOS 26+ 主屏独立模式的系统磨砂带比安全区深一截 (music 实测
+   CSS 60-88 仍被栅糊, 116 才全锐)。只在中招形态 (独立模式 + 竖屏 + 触屏)
+   生效 —— 浏览器/横屏/桌面没有那条带子, 下限恒 0。 */
+:root { --top-floor: 0px; }
+@media (display-mode: standalone) and (orientation: portrait)
+       and (pointer: coarse) {
+  :root { --top-floor: 96px; }
+}
+/* 全局上边界: 系统磨砂带的底沿 —— 固定/钉顶的控件 top 一律不低于它
+   (用户点名「最上面的模糊地带不要放固定控件」); 流内内容不受限
+   (滚得走的照旧认糊, 初始位置由 .view-scroll 的 padding-top 让开)。 */
+:root { --top-clear: max(calc(env(safe-area-inset-top, 0px) + 36px),
+                         var(--top-floor)); }
+/* 屏底筛选条让位 (内容一路铺到悬浮条底下) */
+:root { --bar-h: 44px; }
+:root { --bar-clear: calc(var(--bar-h) + 20px + env(safe-area-inset-bottom)); }
+/* z 阶梯 (单壳全层共用): 内容 1-3 · 下拉刷新指示 6 · 筛选条 50 ·
+   多选条 55 · 筛选弹层 85 · sheet 背景板 90/弹层 91 · 抽屉 95/96 ·
+   充电弹层 100 · 回放全屏 110 · alert 120 · toast 130 */
+:root { --z-content: 3; --z-ptr: 6; --z-bar: 50; --z-selbar: 55;
+        --z-fb-pop: 85; --z-sheet-bd: 90; --z-sheet: 91;
+        --z-drawer-mask: 95; --z-drawer: 96; --z-chg-sheet: 100;
+        --z-playback: 110; --z-alert: 120; --z-toast: 130; }
+
+/* ---------- 重置 (与 music-base 同款) ---------- */
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent;
+    scrollbar-width: none; }
+::-webkit-scrollbar { display: none; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; height: 100%; overflow: hidden; }
+     /* 固定壳: 文档本身永不滚 —— 各视图滚动全在 .view-scroll 内部
+        (键盘弹出收起时视口恒定; iOS 26 系统侧滑无历史条目可退:
+        内存路由不碰 pushState)。 */
+body {
+  background: var(--bg); color: var(--ink-1);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
+               "Helvetica Neue", system-ui, sans-serif;
+  font-size: 14px; line-height: 1.45;
+  height: 100vh; height: 100dvh;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  touch-action: pan-y;   /* 全应用禁双指缩放 (用户点名): 在 body 收口,
+                             手势面 (抽屉/下拉刷新) 自带更窄的 touch-action */
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+button, a, summary { touch-action: manipulation; }
+img { display: block; }
+
+/* ---------- 主区与视图层 ---------- */
+main {
+  flex: 1; width: 100%; min-height: 0;   /* min-height:0: flex 子不缩就滚不动 */
+  position: relative;
+}
+.view { position: absolute; inset: 0; display: flex; flex-direction: column; }
+.view-scroll {
+  flex: 1; min-height: 0;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  overscroll-behavior: none;
+  /* 初始状态不越过模糊带 (用户点名); 滚上去照样进带 (padding 随内容滚) */
+  padding: calc(var(--top-clear) + 6px) 0 var(--bar-clear);
+}
+.view-scroll.dim { opacity: .45; pointer-events: none; }
+/* 地图类视图全出血: 画布铺到边, 不让顶带 (内容自己收口) */
+.view-flush .view-scroll { padding: 0; }
+
+/* ---------- 顶部模糊带: 只放列表滚过的内容, 不放任何固定控件 ---------- */
+#top-blur {
+  position: fixed; left: 0; right: 0; top: 0; height: var(--top-clear);
+  z-index: 4; pointer-events: none;
+  background: linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,.18) 70%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  backdrop-filter: blur(18px) saturate(180%);
+}
+/* 全局上边界的量尺 (music 同款): 钉在边界上的隐形件, JS 读它的 offsetTop */
+#top-clear-probe {
+  position: fixed; top: var(--top-clear); visibility: hidden;
+  pointer-events: none; width: 0; height: 0;
+}
+
+/* ---------- 提示 (toast, 屏底筛选条上方) ---------- */
+#toast {
+  position: fixed; left: 50%; bottom: calc(var(--bar-clear) + 6px);
+  transform: translateX(-50%) translateY(8px); z-index: var(--z-toast);
+  max-width: 82vw; padding: 9px 18px; border-radius: 999px;
+  background: rgba(58,58,60,.95); color: var(--ink-1); font-size: 13px;
+  text-align: center; opacity: 0; transition: opacity .25s, transform .25s;
+  pointer-events: none;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---------- 层运动反制 (frosted-ghost) ----------
+   层动起来时变换层会从 fixed+磨砂件 (筛选条/抽屉) 底下扫过 —— WebKit 吐
+   重影的配方; 对策 = 运动期暂撤磨砂换实底 (tesla-common.js 的 layerMotion
+   管加类, 停稳自摘), music 同款。 */
+body.layer-anim #menu-key,
+body.layer-anim #filter-bar,
+body.layer-anim #drawer {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: rgb(24,24,26);
+}

@@ -3,9 +3,10 @@
 .sec-head { display: flex; align-items: baseline; gap: 8px; padding: 16px 16px 4px; }
 .sec-head h2 { font-size: 17px; font-weight: 650; letter-spacing: -.2px; }
 .count-badge { font-size: 12px; color: var(--ink-3); }
-/* 单列列表 (与行程页一致, 手机优先) */
-#masonry { display: flex; flex-direction: column; gap: 8px; padding: 8px 14px 10px; transition: opacity .25s; }
-#masonry.dim { opacity: .45; pointer-events: none; }
+/* 单列列表 (与行程页一致, 手机优先); #chg-masonry 是 3.0 壳里充电视图的
+   同一容器 (壳内多视图并存, id 加前缀防撞 —— 行程页也认 #masonry 级样式) */
+#masonry, #chg-masonry { display: flex; flex-direction: column; gap: 8px; padding: 8px 14px 10px; transition: opacity .25s; }
+#masonry.dim, #chg-masonry.dim { opacity: .45; pointer-events: none; }
 .card-s {
   background: var(--surface); border-radius: 16px; border: 1px solid var(--hairline);
   padding: 10px 12px; cursor: pointer; overflow: hidden;

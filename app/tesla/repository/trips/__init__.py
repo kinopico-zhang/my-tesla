@@ -28,7 +28,6 @@ from .trip_marks import (
     annotate_drivers,
     annotate_tolls,
     driver_scope,
-    filter_map_tracks_by_driver,
     save_trip_toll,
     set_trip_driver,
 )
@@ -50,7 +49,7 @@ __all__ = [
     "MERGED_TRACK_BUDGET", "MERGED_TRACK_PER_MIN", "MergedPlan",
     "TRIP_TRACK_PER", "TripFilter", "_driver_condition", "_utc_seconds",
     "annotate_drivers", "annotate_tolls", "closed_drive_ids_between",
-    "delete_trip_group", "driver_scope", "filter_map_tracks_by_driver",
+    "delete_trip_group", "driver_scope",
     "get_trip", "list_trip_groups", "list_trip_regions", "list_trips",
     "merged_track", "merged_track_plan", "merged_track_segments",
     "rename_trip_group", "save_fill", "save_trip_group", "save_trip_toll",

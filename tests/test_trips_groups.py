@@ -1,11 +1,12 @@
-"""轨迹分组测试: 分组存取改名删除, 跨度, 校验; 页面分组入口 /
+"""轨迹分组测试: 分组存取改名删除, 跨度, 校验; 行程视图分组入口 /
 过路费工具 / 司机选择 / 导出视频。
-拆自 test_trips.py (结构化重构, 代码逐字节未动)。"""
+拆自 test_trips.py (结构化重构; P7 起按 3.0 单壳改口径 —— 分组管理是
+壳内分组视图, 打开分组走内存跳转, 不再有 referrer/back)。"""
 from datetime import datetime, timedelta
 from app.tesla.models import Drive
 from tests.seed_factories import seed_drive
 
-from tests.trips_page_assets import _trips_scripts
+from tests.tesla_static_files import served_page
 
 # ---------------------------------------------------------------- 轨迹分组
 
@@ -75,8 +76,7 @@ def test_trip_group_validation(auth, db):
 
 def test_trips_page_has_toll_tools(auth):
     """高速费: 打开行程自动估价 + 弹层 chip (批量入口/面板已按需求撤掉)。"""
-    html = auth.get("/tesla/trips").text
-    html += _trips_scripts(auth)
+    html = served_page(auth, "/tesla")
     for frag in ['id="sh-toll"', "function calcTripToll(", "function autoCalcToll(",
                  "TOLL_WAYPOINTS", "/toll`", "无高速费"]:
         assert frag in html, f"行程页缺少高速费片段 {frag}"
@@ -87,8 +87,7 @@ def test_trips_page_has_toll_tools(auth):
 
 def test_trips_page_has_driver_picker(auth):
     """行程页驾驶员标注: 弹层选择行 + 卡片 pill + 标注接口都挂在页面上。"""
-    html = auth.get("/tesla/trips").text
-    html += _trips_scripts(auth)
+    html = served_page(auth, "/tesla")
     for frag in ['id="sh-drv"', 'id="sh-drv-sel"', "setupDriverPicker",
                  'class="ct-drv${it.driver_id != null ? "" : " def"}"',
                  ".ct-drv.def", "/tesla/api/drivers",
@@ -98,30 +97,33 @@ def test_trips_page_has_driver_picker(auth):
     # 没配驾驶员时选择器藏 (兜底, 不会闪一个空下拉); 选择器和高速费 chip 都藏才整行藏
     assert "driversCache.length > 0) {" in html
     assert "function metaRowSync()" in html
+    # 查看轨迹按钮已撤 (用户点名): 整行点击就是查看轨迹, 驾驶员 pill 挪右上角
+    assert "查看轨迹" not in html
+    assert "ct-arrow" not in html
+    assert "else openTrip(it)" in html
 
 
-def test_trips_page_group_create_and_groups_page_link(auth):
-    """分组管理已搬去独立分组页 (/tesla/groups), 行程页只留创建入口:
-    多选 → 存为分组; 分组面板 (入口按钮/CSS/DOM) 不许回来。"""
-    html = auth.get("/tesla/trips").text
-    html += _trips_scripts(auth)
+def test_trips_page_group_create_and_open(auth):
+    """分组管理在壳内分组视图 (test_groups.py 钉), 行程视图只留创建入口:
+    多选 → 存为分组; 旧分组面板 (入口按钮/CSS/DOM) 不许回来; 打开分组
+    走内存跳转 navigate + openMerged, 逗号深链 (旧链接 ?ids=a,b) 也认。"""
+    html = served_page(auth, "/tesla")
     for frag in ['id="gp-btn"', "存为分组", 'id="gp-name"', 'id="gp-save"',
-                 "api/groups", "function toast(", 'id="toast"',
-                 "$(\"#sel-go\").addEventListener"]:
+                 "api/groups", 'id="toast"', "$(\"#sel-go\").addEventListener"]:
         assert frag in html, f"行程页缺少分组片段 {frag}"
-    # 分组页跳来 = ?ids= 逗号深链 → openMerged (openByKey 转发)
+    # 合并键两种形式: "首-尾" / 逗号 (旧链) —— openByKey 按含 - 或 , 判合并
     assert "/[-,]/.test(key)" in html
     # 旧分组面板的三件套 (头部按钮 / 面板样式 / 面板 DOM) 全删
     assert 'id="groups-btn"' not in html
     assert 'id="gpanel"' not in html and ".gpanel" not in html
     assert 'id="gp-close"' not in html and "closeGroups" not in html
-    # 关弹层: 分组页跳来的深链回分组页, 分享直开只抹行程参数
-    assert 'document.referrer.endsWith("/tesla/groups")' in html
-    assert "if (cameFromGroups) { history.back(); return; }" in html
+    # 3.0 零历史条目: 没有 referrer 探测 / history.back 回分组页的旧路
+    assert "document.referrer" not in html
+    assert "history.back()" not in html
+
 def test_trips_page_export_video(auth):
     """导出视频: 播放条录制钮 + 成片预览弹层 + 存相册链路都挂在页面上。"""
-    html = auth.get("/tesla/trips").text
-    html += _trips_scripts(auth)
+    html = served_page(auth, "/tesla")
     for frag in ['id="pb-rec"', 'aria-label="导出视频"', 'id="rec-modal"',
                  'id="rec-video"', 'id="rec-save"', 'id="rec-close"',
                  "playsinline", "存到相册", "function recMime(",
@@ -130,7 +132,8 @@ def test_trips_page_export_video(auth):
                  "function recCloseModal(", "out.captureStream(30)",
                  "new MediaRecorder(", "videoBitsPerSecond: 6e6",
                  "navigator.share({ files: [recFile]", "anim.restart();",
-                 "preserveDrawingBuffer: true", "patchGLKeepBuffer();",
+                 "preserveDrawingBuffer: true", "function patchGLKeepBuffer()",
+                 "img.leaflet-tile",   # OSM 底图是 <img> 瓦片, 合成器逐张画进录制画布
                  "此浏览器不支持录制视频", "录制失败 (没有内容)"]:
         assert frag in html, f"行程页缺少导出视频片段 {frag}"
     # 存储分平台: 苹果触屏没有直写相册的 API, 只能拉系统分享单点「存储
@@ -146,9 +149,10 @@ def test_trips_page_export_video(auth):
     assert 'function saveVideoFile()' in html
     assert "a.download = recFile.name;" in html
     assert "rec-hint" not in html   # 提示行已按用户要求撤掉, 别回潮
-    # WebGL 缓冲补丁必须装在高德脚本加载之前 (上下文属性建时即定,
-    # 晚了就是黑帧); 补丁本体定义在 loader 前面
-    assert html.index("function patchGLKeepBuffer()") < html.index("function loadAMapScript(")
+    # WebGL 缓冲补丁收进适配层顶层 (脚本一执行就装, 任何视图建图之前);
+    # 适配层在引用序上必须先于视图脚本 (上下文属性建时即定, 晚了黑帧)
+    assert html.index("function patchGLKeepBuffer()") < html.index("function ensureAMap()")
+    assert "function loadAMapScript(" not in html   # 旧加载器已收编进适配层, 别回潮
     # 关弹层/换行程取消录制; 播完 1.2s (拉远定格入镜) 自动收片,
     # 且只收当次录制 (期间重开的不误杀)
     assert "if (rec) stopRecExport(true);" in html

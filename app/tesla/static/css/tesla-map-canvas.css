@@ -1,11 +1,13 @@
 /* tesla-map-canvas — map 页样式。拆自 map.html 的内联 <style> (结构化重构, 内容逐字节未动)。 */
 /* ---------- 地图 ---------- */
 main { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
-#map {
-  position: absolute; inset: 0;
-  touch-action: none;   /* 关键: 不让 iOS Safari 把双指缩放劫持成整页缩放, 必须交给高德 */
+/* 旧页 #map 与壳版 #fp-map 双选择器 (壳里三张地图画布各带前缀, 防跨视图串) */
+#map, #fp-map {
+  position: absolute; inset: 0; z-index: 0;   /* z-index:0 建层叠上下文, 引擎内部
+     高 z 珊格 (Leaflet pane 400+) 关进来, 不再压过 overlay/缩放钮 */
+  touch-action: none;   /* 关键: 不让 iOS Safari 把双指缩放劫持成整页缩放, 必须交给地图引擎 */
 }
-#map .amap-copyright { display: none !important; }   /* "©…auto navi" 版权文字按需求去掉 */
+#map .amap-copyright, #fp-map .amap-copyright { display: none !important; }   /* "©…auto navi" 版权文字按需求去掉 */
 .overlay {
   position: absolute; inset: 0; z-index: 20;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -37,24 +39,34 @@ main { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
 }
 .hint-card a { color: #7db3f0; }
 
-.spin-s { width: 14px; height: 14px; border-width: 2px; }
-.refine-tip {
-  position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 18px);
-  transform: translateX(-50%); z-index: 30;
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 16px; border-radius: 999px;
-  background: rgba(28,28,30,.85);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid var(--hairline);
-  font-size: 12.5px; color: var(--ink-2); white-space: nowrap;
-  max-width: calc(100% - 32px);
-  pointer-events: none;   /* 纯提示, 不挡地图操作 */
+/* 加载条 (3.0.1 改款, 用户点名「进度条放最底下, 地图不要加模糊遮罩, 也
+   不要转圈」): 不再整屏遮罩蒙住地图 —— 地图全程看得见, 轨迹边下边画;
+   只在最底下浮一条 文字+进度, 不挡地图手势 */
+.fp-load-bar {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 25;
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  padding: 12px 16px calc(env(safe-area-inset-bottom) + 14px);
+  background: linear-gradient(to top, rgba(11,13,16,.94), rgba(11,13,16,0));
+  pointer-events: none;
+}
+.fp-load-bar:not([hidden]) ~ .zoom-ctl {   /* 加载条贴底, 缩放钮往上让位 */
+  bottom: calc(env(safe-area-inset-bottom) + 96px);
+}
+
+/* 下载进度条 (轨迹流式下载时加载层内, 确定值): 轨迹存本地后只在补量时出现 */
+.fp-prog-wrap {
+  width: min(320px, 72%); height: 6px; border-radius: 3px; overflow: hidden;
+  background: rgba(255,255,255,.14);
+}
+.fp-prog {
+  height: 100%; width: 0; border-radius: 3px;
+  background: var(--blue); transition: width .2s;
 }
 
 .zoom-ctl {
   position: absolute; right: 14px; bottom: calc(env(safe-area-inset-bottom) + 18px);
   z-index: 30; display: flex; flex-direction: column; gap: 8px;
+  transition: bottom .25s ease;   /* 加载条出没时让位/回位跟着滑 */
 }
 .zoom-ctl button {
   width: 42px; height: 42px; border-radius: 14px; font-size: 23px; line-height: 1;
@@ -63,6 +75,18 @@ main { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
   backdrop-filter: blur(20px) saturate(180%);
 }
 .zoom-ctl button:active { background: var(--surface-2); }
+
+/* ---------- OSM (Leaflet) 引擎外观: 深色容器 + 版权角标。引擎样式表是
+   运行时才注入 (静态表之后), 这里用地图容器 ID 抬特异性压过它 ---------- */
+#map.leaflet-container, #fp-map.leaflet-container, #cm-map.leaflet-container,
+#lv-map.leaflet-container, #trip-map.leaflet-container {
+  background: #0b0d10;   /* 瓦片未到的空当与 App 底色一致 (默认是浅灰) */
+}
+.leaflet-control-attribution {
+  background: rgba(16,17,20,.72); color: var(--ink-3);
+  font-size: 9px; padding: 2px 7px; border-radius: 8px 0 0;
+}
+.leaflet-container .leaflet-control-attribution a { color: #7db3f0; }
 
 /* ---------- 行程信息底部弹层 ---------- */
 .backdrop {

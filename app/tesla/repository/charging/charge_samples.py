@@ -77,9 +77,13 @@ class ChargeRow:
 
 
 def _charge_rows(session: Session, date_range: DateRange | None,
-                 q: str | None) -> list[ChargeRow]:
-    """按日期区间与地址关键字取充电过程 (不排序不分页, 交由调用方)。"""
+                 q: str | None, car_id: int | None = None) -> list[ChargeRow]:
+    """按日期区间/地址关键字/车辆取充电过程 (不排序不分页, 交由调用方)。
+
+    car_id 缺省 None = 全部车 (多车口径, 与前端车辆切换器一致)。"""
     conds: list[ColumnElement[bool]] = _range_conditions(ChargingProcess.start_date, date_range)
+    if car_id is not None:
+        conds.append(ChargingProcess.car_id == car_id)
     if q:
         # 拼接走 .concat() 运算符而非 func.concat(): 后者按 SQL 函数原样渲染,
         # SQLite 3.44 才有内建 concat() (ubuntu-22.04 的 3.37 直接 no such
@@ -122,21 +126,26 @@ def _attach_aggs(session: Session, rows: list[ChargeRow]) -> None:
         row.agg = aggs.get(row.process.id, _NO_AGG)
 
 
-def charge_efficiency(session: Session) -> float | None:
+def charge_efficiency(session: Session,
+                      car_id: int | None = None) -> float | None:
     """额定续航 km → 桩端 kWh 换算系数: 充电记录 Σ能量 / Σ续航增量。
 
     桩端口径 (含充电损耗), 与充电页对账一致 —— 同期 "充了多少" 和 "开了
-    多少" 能对上。没有可用充电记录 → None, 前端不显示电耗。"""
+    多少" 能对上; 多车时按车算 (各车电池效率不同), 缺省 None = 全部合算。
+    没有可用充电记录 → None, 前端不显示电耗。"""
+    conds = [ChargingProcess.end_date.is_not(None),
+             ChargingProcess.charge_energy_added > 1,
+             ChargingProcess.end_rated_range_km.is_not(None),
+             ChargingProcess.start_rated_range_km.is_not(None),
+             ChargingProcess.end_rated_range_km
+             - ChargingProcess.start_rated_range_km > 1]
+    if car_id is not None:
+        conds.append(ChargingProcess.car_id == car_id)
     kwh, rng = session.execute(
         select(func.sum(ChargingProcess.charge_energy_added),
                func.sum(ChargingProcess.end_rated_range_km
                         - ChargingProcess.start_rated_range_km))
-        .where(ChargingProcess.end_date.is_not(None),
-               ChargingProcess.charge_energy_added > 1,
-               ChargingProcess.end_rated_range_km.is_not(None),
-               ChargingProcess.start_rated_range_km.is_not(None),
-               ChargingProcess.end_rated_range_km
-               - ChargingProcess.start_rated_range_km > 1)).one()
+        .where(*conds)).one()
     if not kwh or not rng or float(rng) <= 0:
         return None
     return float(kwh) / float(rng)

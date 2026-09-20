@@ -45,6 +45,9 @@ def _migrate_own_db() -> None:
         if "amap_style" not in cols:   # v: 高德地图样式 (设置页可换, 三页地图共用)
             conn.exec_driver_sql(
                 "ALTER TABLE app_settings ADD COLUMN amap_style TEXT NOT NULL DEFAULT ''")
+        if "map_provider" not in cols:  # v: 地图服务商 (高德/OSM, 设置页切换)
+            conn.exec_driver_sql(
+                "ALTER TABLE app_settings ADD COLUMN map_provider TEXT NOT NULL DEFAULT ''")
 
 
 @asynccontextmanager

@@ -43,8 +43,11 @@ export default [
   // (用到别处定义的) 与 /* exported */ (本文件定义、别处用的) 注释 ——
   // 配置里不再按文件列举。加载层级见各 html: UMD 纯逻辑 → 页面脚本;
   // 行程页 trips-list (列表/筛选) 在 trips (弹层/播放) 之前。
+  // 3.0 起两族并存: js/*.js = 旧页面脚本 (P7 退役); js/view/*.js = 单壳
+  // (app.html) 里各视图的适配副本 (view/foo.js 是 foo.js 的壳版, 同名
+  // 归一 —— 两份从不同页加载, 全局撞名由 test_js_namespace 棘轮把关)。
   {
-    files: ["app/tesla/static/js/*.js"],
+    files: ["app/tesla/static/js/**/*.js"],
     ...pageScript,
     languageOptions: {
       ecmaVersion: 2022,

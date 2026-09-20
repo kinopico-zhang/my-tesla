@@ -24,19 +24,24 @@ def _db_now() -> datetime:
     return datetime.now(dt_timezone.utc).replace(tzinfo=None)
 
 
-def live_status(session: Session) -> LiveStatus:
+def live_status(session: Session,
+                car_id: int | None = None) -> LiveStatus:
     """当前驾驶状态: 未结束行程里位置点最新的那条, 且位置点足够新。
 
+    car_id 选定时只看那台车 (多车切换); 缺省 None = 全库最新。
     判据见 LIVE_STALE_AFTER_S —— 未关闭 ≠ 在开 (库里躺着十几条
     TeslaMate 中断残留的未关闭行程)。里程 = odometer 差 (与行程页
     distance 同口径, 已在真实库逐位对齐验证); 电耗 = 额定续航差 ×
     充电定标, 续航取"首个/最新非空轮询值" (流式点位大多没有该字段)。
     """
-    cand = session.execute(
+    cand_stmt = (
         select(Drive.id, Drive.start_date, func.max(Position.date).label("last"))
         .join(Position, Position.drive_id == Drive.id)
-        .where(Drive.end_date.is_(None))
-        .group_by(Drive.id, Drive.start_date)
+        .where(Drive.end_date.is_(None)))
+    if car_id is not None:
+        cand_stmt = cand_stmt.where(Drive.car_id == car_id)
+    cand = session.execute(
+        cand_stmt.group_by(Drive.id, Drive.start_date)
         .order_by(func.max(Position.date).desc())).first()
     if cand is None or _utc_seconds(cand.last) < _utc_seconds(_db_now()) \
             - LIVE_STALE_AFTER_S:
@@ -65,7 +70,7 @@ def live_status(session: Session) -> LiveStatus:
           if odo_lo is not None and odo_hi is not None else None)
     kwh: float | None = None
     wh_per_km: int | None = None
-    eff = charge_efficiency(session)
+    eff = charge_efficiency(session, car_id)
     if eff is not None and first_rr is not None and last_rr is not None:
         raw = max(0.0, (float(first_rr) - float(last_rr)) * eff)
         kwh = round(raw, 1)

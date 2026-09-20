@@ -1,0 +1,32 @@
+/* tesla-pull-refresh — 下拉刷新指示: 每个视图的滚动器在顶时下拉,
+   过阈值 (~70px) 松手刷新 (用户点名「每个页面都支持下拉松手后刷新」)。
+   指示器钉在顶部模糊带下沿, 只在拉动时探出来; 滚动本身被手势仲裁
+   preventDefault 掐住, 内容不动, 只有指示器跟手。 */
+#ptr {
+  position: fixed; top: calc(var(--top-clear) - 4px); left: 50%;
+  z-index: var(--z-ptr);
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px; border-radius: 999px;
+  background: rgba(44,44,46,.85);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--hairline);
+  box-shadow: 0 8px 24px rgba(0,0,0,.45);
+  font-size: 12px; color: var(--ink-2);
+  transform: translate(-50%, -58px);   /* 藏进模糊带上沿 */
+  transition: transform .3s cubic-bezier(.32,.72,.35,1);
+  pointer-events: none;
+}
+#ptr.pulling { transition: none; }     /* 拉动中跟手, 松手才弹 */
+/* 拉动时箭头指路 (未过阈值朝下, 过了翻上来); 转圈时换 spinner */
+#ptr .ptr-spin {
+  display: none;
+  width: 15px; height: 15px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid var(--surface-3); border-top-color: #9a9aa0;
+}
+#ptr.spin .ptr-spin { display: block; animation: ptr-rot .8s linear infinite; }
+#ptr.spin .ptr-arrow { display: none; }
+@keyframes ptr-rot { to { transform: rotate(360deg); } }
+#ptr .ptr-arrow { transition: transform .2s; }
+#ptr.armed .ptr-arrow { transform: rotate(180deg); }
+#ptr.armed { color: var(--ink-1); }

@@ -1,4 +1,4 @@
-"""行程标注: 驾驶员归集 (标注/兜底口径/SQL 与缓存两种过滤) + 高速费估价。"""
+"""行程标注: 驾驶员归集 (标注/兜底口径) + 高速费估价。"""
 import json
 
 from sqlalchemy import ColumnElement, delete, or_, select
@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from ...models import Drive, Driver, TripDriver, TripToll
 from ..common import NotFound
-from ...schemas import MapTrack, TripItem, TripTollIn
+from ...schemas import TripItem, TripTollIn
 
 
 def driver_scope(own: Session,
@@ -16,7 +16,8 @@ def driver_scope(own: Session,
     默认驾驶员名)。驾驶员不存在 → None (调用方按空结果处理)。
 
     标注表在自有库, 与 TeslaMate 库不是同一个连接 —— 先取 id 集合再下推
-    条件 (SQL 端) 或后置过滤 (轨迹缓存端), 不能跨库做子查询。"""
+    条件 (SQL 端), 不能跨库做子查询; 轨迹清单的驾驶员标注见
+    tracks_cache.build_manifest (清单每次现算, 不进缓存)。"""
     driver = own.get(Driver, driver_id)
     if driver is None:
         return None
@@ -35,20 +36,6 @@ def _driver_condition(own: Session, driver_id: int) -> ColumnElement[bool]:
     if is_default:
         return or_(Drive.id.in_(marked), Drive.id.not_in(all_marked))
     return Drive.id.in_(marked)
-
-
-def filter_map_tracks_by_driver(tracks: list[MapTrack], own: Session,
-                                driver_id: int) -> list[MapTrack]:
-    """缓存轨迹按驾驶员后置过滤 (口径同 _driver_condition)。
-
-    轨迹缓存只从 TeslaMate 库构建, 标注在自有库且会随标/清变动 —— 缓存里
-    不落 driver_id, 每次请求现算 id 集合过滤 (全量轨迹在内存, 代价可忽略)。"""
-    scope = driver_scope(own, driver_id)
-    if scope is None:
-        return []
-    marked, all_marked, is_default = scope
-    return [t for t in tracks
-            if t.id in marked or (is_default and t.id not in all_marked)]
 
 
 def annotate_drivers(own: Session, items: list[TripItem]) -> None:

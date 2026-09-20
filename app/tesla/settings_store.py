@@ -1,4 +1,5 @@
-"""运行时设置与驾驶员 (自有库): 设置页可改, 未设字段回落 env/.env 默认值。
+"""运行时设置 (自有库): 设置页可改, 未设字段回落 env/.env 默认值。
+驾驶员 CRUD 在 drivers_store (拆模块)。
 
 TeslaMate 连接改动会换引擎重连 (database.rebuild_engine) 并实测 SELECT 1,
 连不上整体回滚 (设置与引擎都退回旧值); 高德 Key 即时生效 (map config
@@ -7,15 +8,14 @@ TeslaMate 连接改动会换引擎重连 (database.rebuild_engine) 并实测 SEL
 import os
 import re
 
-from sqlalchemy import delete, select, text, update
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from .. import database
-from .models import AppSetting, Driver, TripDriver
-from .schemas import (AmapSettings, DriverInfo, SettingsState,
+from .models import AppSetting
+from .schemas import (AmapSettings, SettingsState,
                       SettingsUpdate, TeslaMateSettings)
-from .repository import NotFound
 
 _FIELDS = ("tmdb_host", "tmdb_port", "tmdb_user", "tmdb_password", "tmdb_name",
            "amap_key", "amap_security_code")
@@ -27,6 +27,14 @@ class EngineError(RuntimeError):
 
 class StyleError(ValueError):
     """地图样式格式不合法 (调用方转 400, 未写库)。"""
+
+
+class ProviderError(ValueError):
+    """地图服务商不认识 (调用方转 400, 未写库)。"""
+
+
+# 地图服务商 (用户点名: 可切换, 支持高德 / OpenStreetMap 等; 空串 = 高德)
+MAP_PROVIDERS = ("amap", "osm")
 
 
 # 地图样式: amap://styles/<官方样式名或自定义ID>。默认幻影黑 (dark) —— 底色
@@ -93,6 +101,13 @@ def amap_style_value(own: Session) -> str:
             or AMAP_STYLE_DEFAULT)
 
 
+def map_provider_value(own: Session) -> str:
+    """地图服务商现值 (设置行 > env > 高德): amap / osm。
+    OSM 不需要 Key, 选它即开箱即用; 高德仍用存的 Key/样式。"""
+    value = _row(own).map_provider or os.environ.get("MAP_PROVIDER", "")
+    return value if value in MAP_PROVIDERS else "amap"
+
+
 def settings_state(own: Session) -> SettingsState:
     """设置页状态: 各字段现值 (回落 env 后的效果), 秘密只报在用/打码。"""
     eff = effective_tmdb(own)
@@ -103,8 +118,10 @@ def settings_state(own: Session) -> SettingsState:
         tmdb=TeslaMateSettings(
             host=eff["host"], port=eff["port"], user=eff["user"],
             name=eff["name"], password_set=bool(eff["password"])),
-        amap=AmapSettings(key_masked=_masked(key), security_code_set=bool(code),
-                          style=amap_style_value(own)))
+        amap=AmapSettings(
+            provider=map_provider_value(own),
+            key_masked=_masked(key), security_code_set=bool(code),
+            style=amap_style_value(own)))
 
 
 def save_settings(own: Session, body: SettingsUpdate) -> tuple[SettingsState, bool]:
@@ -113,16 +130,22 @@ def save_settings(own: Session, body: SettingsUpdate) -> tuple[SettingsState, bo
     TeslaMate 连接串变了 → 换引擎并实测 SELECT 1; 连不上抛 EngineError,
     设置行与引擎都回滚到旧值 (服务不断)。返回 (新状态, 是否换了引擎)。"""
     row = _row(own)
+    provider = body.map_provider.strip()
+    if provider and provider not in MAP_PROVIDERS:
+        raise ProviderError(f"地图服务商不认识: {provider} (可选 {'/'.join(MAP_PROVIDERS)})")
     style = body.amap_style.strip()
     if style and not _STYLE_RE.fullmatch(style):
         raise StyleError(f"地图样式不合法: {style} (应为 amap://styles/<样式名或ID>)")
     old_url = database.build_db_url(effective_tmdb(own))
     old_values = {f: getattr(row, f) for f in _FIELDS}
     old_values["amap_style"] = row.amap_style   # 引擎验证失败要一起回滚
+    old_values["map_provider"] = row.map_provider
     for field in _FIELDS:
         value = getattr(body, field).strip()
         if value:
             setattr(row, field, value)
+    if provider:
+        row.map_provider = provider
     if style:
         row.amap_style = style
     own.commit()
@@ -141,52 +164,3 @@ def save_settings(own: Session, body: SettingsUpdate) -> tuple[SettingsState, bo
         detail = str(getattr(exc, "orig", None) or exc)[:200]
         raise EngineError(f"新连接连不上: {detail}") from exc
     return settings_state(own), True
-
-
-# ---------------------------------------------------------------- 驾驶员
-
-def _info(driver: Driver) -> DriverInfo:
-    """ORM 行 → API 条目。"""
-    return DriverInfo(id=driver.id, name=driver.name,
-                      is_default=driver.is_default)
-
-
-def list_drivers(own: Session) -> list[DriverInfo]:
-    """全部驾驶员 (添加顺序)。"""
-    return [_info(d) for d in
-            own.scalars(select(Driver).order_by(Driver.id)).all()]
-
-
-def create_driver(own: Session, name: str) -> DriverInfo:
-    """添加驾驶员。"""
-    driver = Driver(name=name)
-    own.add(driver)
-    own.commit()
-    return _info(driver)
-
-
-def update_driver(own: Session, driver_id: int,
-                  name: str | None, is_default: bool | None) -> DriverInfo:
-    """改驾驶员: 改名 / 设默认 (设默认会把其他人的默认清掉, 全库至多一个)。"""
-    driver = own.get(Driver, driver_id)
-    if driver is None:
-        raise NotFound("驾驶员不存在")
-    if name is not None:
-        driver.name = name
-    if is_default is True:
-        own.execute(update(Driver).values(is_default=False))
-        driver.is_default = True
-    elif is_default is False:
-        driver.is_default = False
-    own.commit()
-    return _info(driver)
-
-
-def delete_driver(own: Session, driver_id: int) -> None:
-    """删驾驶员 (标注联动清掉, 行程展示回默认兜底; 默认被删后暂时无默认)。"""
-    driver = own.get(Driver, driver_id)
-    if driver is None:
-        raise NotFound("驾驶员不存在")
-    own.execute(delete(TripDriver).where(TripDriver.driver_id == driver_id))
-    own.delete(driver)
-    own.commit()

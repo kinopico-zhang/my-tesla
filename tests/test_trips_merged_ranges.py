@@ -100,7 +100,7 @@ def test_merged_budget_proportional_to_segment_size(auth, db):
     for drive_id, cnt in raw.items():
         seed_drive(db, id=drive_id, start_date=t + timedelta(hours=drive_id * 5),
                    end_date=t + timedelta(hours=drive_id * 5, minutes=30))
-        db.add_all(Position(drive_id=drive_id,
+        db.add_all(Position(drive_id=drive_id, car_id=1,
                             date=t + timedelta(hours=drive_id * 5, seconds=i),
                             longitude=114.0 + i * 1e-6, latitude=22.5,
                             speed=50.0, power=None)

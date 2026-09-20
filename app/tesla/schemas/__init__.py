@@ -24,11 +24,10 @@ from .charging_schemas import (
 from .live_schemas import LiveStatus
 from .map_schemas import (
     AmapConfig,
-    MapDetailTrack,
+    MapManifest,
+    MapManifestTrack,
     MapSummary,
     MapTrack,
-    TracksDetailResponse,
-    TracksResponse,
 )
 from .settings_schemas import (
     AmapSettings,
@@ -62,10 +61,9 @@ __all__ = [
     "ChargingSessionsPage", "ChargingSummary", "CityStat", "CostUpdateRequest",
     "CostUpdateResult", "DriverIn", "DriverInfo", "DriverMark", "DriverUpdate",
     "GapFillRequest", "GapFillResponse", "LiveStatus", "LocationStat",
-    "MapDetailTrack",
+    "MapManifest", "MapManifestTrack",
     "MapSummary", "MapTrack", "MergedTrack", "MonthlyStat", "RegionNode",
     "SettingsState", "SettingsUpdate", "TeslaMateSettings", "TollRoad",
     "TripGroupIn", "TripGroupInfo", "TripGroupRename", "TripItem",
     "TripRegions", "TripTollIn", "TripTrack", "TripsPage",
-    "TracksDetailResponse", "TracksResponse",
 ]

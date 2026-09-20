@@ -31,13 +31,15 @@ def test_trips_sessions_paginates(auth, db):
 
 
 def test_trips_sessions_address_cleanup(auth, db):
-    """反向地理编码带来的尾部悬挂逗号/空白要清掉, 空地址兜底 未知位置。"""
-    db.add(Address(id=1, name="a", city="c", display_name="广东省深圳市南山区, "))
+    """地址清洗 (用户点名: 去邮编去"中国", 从大到小拼): OSM 反查链翻转,
+    尾部悬挂逗号/空白清掉, 空地址兜底 未知位置。"""
+    db.add(Address(id=1, name="a", city="c",
+                   display_name="曼旦村, 勐腊县, 云南省, 666300, 中国"))
     db.add(Address(id=2, name="b", city="c", display_name=None))
     db.commit()
     seed_drive(db, id=1)
     it = auth.get("/tesla/trips/api/sessions").json()["items"][0]
-    assert it["from"] == "广东省深圳市南山区"    # 尾部 ", " 已清
+    assert it["from"] == "云南省勐腊县曼旦村"    # 去邮编/中国, 从大到小
     assert it["to"] == "未知位置"
 
 

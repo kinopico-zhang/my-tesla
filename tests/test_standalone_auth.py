@@ -5,10 +5,10 @@ from app import config
 from tests.conftest import TEST_PASS, TEST_USER
 
 
-def test_root_redirects_to_charging(client):
+def test_root_redirects_to_shell(client):
     """根路径无条件进 Tesla 应用 (独立仓没有门厅), 未登录与否都一样。"""
     r = client.get("/", follow_redirects=False)
-    assert r.status_code == 302 and r.headers["location"] == "/tesla/charging"
+    assert r.status_code == 302 and r.headers["location"] == "/tesla"
 
 
 def test_tesla_pages_redirect_to_scope_login(client):
@@ -34,16 +34,16 @@ def test_api_unauthorized_401(client):
 
 
 def test_login_flow(auth):
-    """登录 → 会话 cookie 进 /tesla/charging; /api/me 报账号;
+    """登录 → 会话 cookie 进壳 (旧页地址 302 也落壳); /api/me 报账号;
     登录页再进直接跳应用。"""
     r = auth.get("/tesla/charging")
     assert r.status_code == 200
     me = auth.get("/api/me").json()
     assert me == {"name": TEST_USER, "is_admin": True}
     r = auth.get("/login", follow_redirects=False)
-    assert r.status_code == 302 and r.headers["location"] == "/tesla/charging"
+    assert r.status_code == 302 and r.headers["location"] == "/tesla"
     r = auth.get("/tesla/login", follow_redirects=False)
-    assert r.status_code == 302 and r.headers["location"] == "/tesla/charging"
+    assert r.status_code == 302 and r.headers["location"] == "/tesla"
 
 
 def test_login_wrong_password(client):

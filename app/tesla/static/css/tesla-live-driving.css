@@ -66,9 +66,10 @@
   border-radius: 16px; overflow: hidden; border: 1px solid var(--hairline);
   background: var(--surface);
 }
-#map { position: absolute; inset: 0; touch-action: none; }
-#map .amap-copyright { display: none !important; }   /* "©…auto navi" 版权文字按需求去掉 */
-.map-fallback {   /* 高德不可用: 统计照常, 只在地图位放提示 */
+/* 旧页 #map 与壳版 #lv-map 双选择器 (壳里三张地图画布各带前缀, 防跨视图串) */
+#map, #lv-map { position: absolute; inset: 0; z-index: 0; touch-action: none; }
+#map .amap-copyright, #lv-map .amap-copyright { display: none !important; }   /* "©…auto navi" 版权文字按需求去掉 */
+.map-fallback {   /* 地图引擎不可用: 统计照常, 只在地图位放提示 */
   position: absolute; inset: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 8px;
   color: var(--ink-2); font-size: 13px; padding: 20px; text-align: center;

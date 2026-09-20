@@ -47,15 +47,6 @@ header {
 .nav-row { display: flex; align-items: baseline; gap: 8px; }
 .nav-row > * { flex-shrink: 0; }
 
-/* 顶栏刷新按钮 (与页签胶囊同款样式) */
-#refresh-btn {
-  align-self: center; display: flex; align-items: center; margin-left: 0;
-  color: var(--ink-1); background: var(--surface-2);
-  padding: 5px 9px; border-radius: 999px;
-}
-#refresh-btn:active { background: var(--surface-3); }
-#refresh-btn.busy svg { animation: refresh-spin .8s linear infinite; }
-@keyframes refresh-spin { to { transform: rotate(360deg); } }
 .car-pill {
   font-size: 11px; color: var(--ink-2); font-weight: 500; flex-shrink: 1; min-width: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;

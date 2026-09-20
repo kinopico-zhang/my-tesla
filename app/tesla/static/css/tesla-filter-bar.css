@@ -1,0 +1,87 @@
+/* tesla-filter-bar — 屏底悬浮筛选条: 菜单圆键 (左) + 当前视图的筛选 chips
+   (横滑, 放不下左右滚); 弹层 #fb-pop 锚在条上方 (不放进滚动器, 防裁剪)。
+   用户点名: 筛选按钮调整到屏幕的下方, 显示不开可以左右滑动。 */
+#bar-row {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-bar);
+  display: flex; align-items: center; gap: 10px;
+  max-width: 760px; margin: 0 auto;
+  padding: 0 max(10px, env(safe-area-inset-left))
+           calc(10px + env(safe-area-inset-bottom))
+           max(10px, env(safe-area-inset-right));
+  pointer-events: none;   /* 子件单独放行, 透明区域不挡列表点击 */
+}
+#menu-key {
+  pointer-events: auto; flex-shrink: 0;
+  width: var(--bar-h); height: var(--bar-h); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-1);
+  background: rgba(44,44,46,.7);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--hairline);
+  box-shadow: 0 8px 24px rgba(0,0,0,.45);
+  transform: translateZ(0);   /* 自家合成层: 邻居层动起来时防复印 */
+}
+#menu-key:active { transform: translateZ(0) scale(.92); }
+/* 筛选条本体: 无限宽错觉 (左右 padding 渐隐由渐变遮罩造), 横滑不显示滚动条 */
+#filter-bar {
+  pointer-events: auto;
+  display: flex; align-items: center; gap: 8px;
+  flex: 1; min-width: 0;
+  height: var(--bar-h);
+  padding: 0 10px; border-radius: 22px;
+  overflow-x: auto; scrollbar-width: none;
+  background: rgba(44,44,46,.7);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--hairline);
+  box-shadow: 0 8px 24px rgba(0,0,0,.45);
+  transform: translateZ(0);
+  touch-action: pan-x;   /* 横滑是它的原生滚动, 手势仲裁不掺和 (竖向交还) */
+}
+#filter-bar::-webkit-scrollbar { display: none; }
+/* 视图没有筛选 (如地图页): 条整个让位, 只剩菜单键 */
+#filter-bar.no-chips { display: none; }
+/* chip: 裸文字 (用户点名: 不再框椭圆), 选中靠底色高亮 */
+.fchip {
+  flex-shrink: 0;
+  padding: 6px 13px; font-size: 12.5px; white-space: nowrap;
+  color: var(--ink-2); transition: all .18s;
+}
+.fchip.on {   /* 有非默认筛选的 chip 高亮 */
+  background: rgba(57,135,229,.20); color: #7db3f0;
+}
+
+/* ---------- 筛选弹层: 锚在被点 chip 上方 (fixed 定位, 不受滚动器裁剪) ---------- */
+#fb-pop {
+  position: fixed; z-index: var(--z-fb-pop);
+  min-width: 150px; max-width: min(340px, calc(100vw - 20px));
+  max-height: min(420px, 60vh);
+  display: flex; flex-direction: column;
+  padding: 5px;
+  background: rgba(44,44,46,.92);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--hairline); border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.5);
+  opacity: 0; transform: translateY(8px);
+  transition: opacity .18s, transform .18s;
+  pointer-events: none;   /* 未开时不挡点击 */
+}
+#fb-pop.on { opacity: 1; transform: translateY(0); pointer-events: auto; }
+#fb-pop .fb-scroll { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+#fb-pop button {
+  font-size: 14px; color: var(--ink-1); text-align: left;
+  padding: 9px 12px; border-radius: 10px; white-space: nowrap;
+}
+#fb-pop button.on { color: #7db3f0; }
+#fb-pop button:active { background: var(--surface-3); }
+/* 地点省市区级联 (行程页同款): 返回行/面包屑/层级行 */
+#fb-pop .loc-crumb { font-size: 11px; color: var(--ink-3); padding: 4px 12px 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#fb-pop button.loc-back { color: var(--ink-2); font-size: 13px; padding: 5px 12px 8px; }
+#fb-pop button.loc-row { display: flex; align-items: baseline; gap: 8px; }
+#fb-pop button.loc-row .nm { overflow: hidden; text-overflow: ellipsis; }
+#fb-pop button.loc-row .cnt { color: var(--ink-3); font-size: 12px;
+  margin-left: auto; white-space: nowrap; flex-shrink: 0; }
+#fb-pop button.on .cnt { color: #7db3f0; }

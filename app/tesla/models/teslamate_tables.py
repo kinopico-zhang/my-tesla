@@ -44,6 +44,7 @@ class ChargingProcess(Base):
 
     __tablename__ = "charging_processes"
     id: Mapped[int] = mapped_column(primary_key=True)
+    car_id: Mapped[int]
     start_date: Mapped[datetime]
     end_date: Mapped[datetime | None]
     address_id: Mapped[int | None]
@@ -83,6 +84,7 @@ class Drive(Base):
 
     __tablename__ = "drives"
     id: Mapped[int] = mapped_column(primary_key=True)
+    car_id: Mapped[int]
     start_date: Mapped[datetime]
     end_date: Mapped[datetime | None]
     distance: Mapped[float | None]
@@ -103,6 +105,7 @@ class Position(Base):
 
     __tablename__ = "positions"
     id: Mapped[int] = mapped_column(primary_key=True)
+    car_id: Mapped[int]
     drive_id: Mapped[int]
     date: Mapped[datetime]
     longitude: Mapped[float]
