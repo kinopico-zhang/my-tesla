@@ -9,7 +9,7 @@ from ...models import Address, Drive
 from .trip_marks import _driver_condition, annotate_drivers, annotate_tolls
 from ..charging import _range_conditions, charge_efficiency
 from ..common import DateRange, _clean_addr, fdate, ftime
-from ..region_tree import _acc_region_tree, region_address_ids
+from ..region_tree import _acc_region_tree, region_address_ids, region_chain
 from ...schemas import RegionNode, TripItem, TripRegions
 
 
@@ -26,8 +26,11 @@ def _consumption(drive: Drive, eff: float | None) -> tuple[float | None, float |
             round(raw / dist * 1000) if dist and dist >= 1 else None)
 
 
-def _trip_item(drive: Drive, start_addr: str | None,
-               end_addr: str | None, eff: float | None = None) -> TripItem:
+def _trip_item(drive: Drive, start_addr: Address | None,
+               end_addr: Address | None, eff: float | None = None) -> TripItem:
+    """条目组装: from/to 是清洗后的整链 (播放会话还在用), from_region/
+    from_loc 等是省市区链 + 地名 —— 前端配 fmtPlaceShort 取最小两段
+    (用户点名: 卡片起终点与充电列表同款「区 · 地名」)。"""
     kwh, wh_per_km = _consumption(drive, eff)
     return TripItem(
         id=drive.id,
@@ -37,8 +40,12 @@ def _trip_item(drive: Drive, start_addr: str | None,
         km=round(float(drive.distance), 2) if drive.distance is not None else None,
         min=drive.duration_min,
         speed_max=drive.speed_max,
-        from_=_clean_addr(start_addr),
-        to=_clean_addr(end_addr),
+        from_=_clean_addr(start_addr.display_name if start_addr else None),
+        to=_clean_addr(end_addr.display_name if end_addr else None),
+        from_region=region_chain(start_addr.display_name) if start_addr else None,
+        from_loc=(start_addr.name or None) if start_addr else None,
+        to_region=region_chain(end_addr.display_name) if end_addr else None,
+        to_loc=(end_addr.name or None) if end_addr else None,
         kwh=kwh, wh_per_km=wh_per_km)
 
 
@@ -61,8 +68,9 @@ class TripFilter:
 
 def _trip_rows_stmt(start_addr: type[Address],
                     end_addr: type[Address]) -> Select[Any]:
-    """行程查询骨架: 只取已结束行程, 带起终点地址 (结束时间降序交给调用方)。"""
-    return (select(Drive, start_addr.display_name, end_addr.display_name)
+    """行程查询骨架: 只取已结束行程, 带起终点地址实体 (整链清洗与省市区
+    链/地名都要, display_name 单列不够用; 结束时间降序交给调用方)。"""
+    return (select(Drive, start_addr, end_addr)
             .join(start_addr, Drive.start_address_id == start_addr.id, isouter=True)
             .join(end_addr, Drive.end_address_id == end_addr.id, isouter=True)
             .where(Drive.end_date.is_not(None)))
@@ -135,6 +143,18 @@ def list_trip_regions(session: Session,
     return TripRegions(
         start=_region_tree(session, Drive.start_address_id, car_id),
         end=_region_tree(session, Drive.end_address_id, car_id))
+
+
+def drive_open(session: Session, drive_id: int) -> bool:
+    """该行程是否还在进行中 (end_date 空; 主键一查)。
+
+    单条轨迹接口的缓存口径用 (路由侧 trip_tracks): 已结束行程 positions
+    不可变, 挂 ETag 安全; 进行中的行程 positions 一直在长, ETag 分量
+    (盐值/id/补路版本) 却不随之变 —— 状态页驾驶态 20s 重拉全被 304 成
+    打开时刻的旧缓存 (2026-09-27 用户实报: 轨迹终点冻住, 车位与它之间
+    被尾巴线拉成一条直线)。"""
+    d = session.get(Drive, drive_id)
+    return d is not None and d.end_date is None
 
 
 def get_trip(session: Session, own: Session, drive_id: int) -> TripItem | None:

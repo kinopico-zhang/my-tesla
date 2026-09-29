@@ -1,4 +1,5 @@
-"""足迹地图 API: 汇总/清单/轨迹流/诊断 (全量轨迹缓存与增量由 tracks_cache 提供)。"""
+"""足迹地图 API: 汇总/清单/走过之路流/诊断 (全量轨迹缓存与清单由
+tracks_cache 提供; 2026-09-29 起前端只画走过的路, 原始轨迹流端点退役)。"""
 import json
 from collections.abc import Iterator
 
@@ -7,26 +8,25 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from ... import database
-from .. import repository, tracks_cache, settings_store
-from ..schemas import AmapConfig, MapManifest, MapSummary
+from .. import repository, roads_worker, settings_store, tracks_cache
+from ..schemas import (AmapConfig, MapManifest, MapSummary, RoadStreamRow)
 from ...schemas import OkResponse
 from ._common import date_range_or_400
 
 
 mapapi = APIRouter(prefix="/tesla/map/api")
 
-STREAM_MAX_IDS = 200   # /tracks/stream 单次最多轨迹条数 (客户端 ~50 一批)
+STREAM_MAX_IDS = 200   # stream 单次最多条数 (客户端 ~50 一批)
 
 
 # ---------------------------------------------------------------- 足迹地图 API
 
 @mapapi.get("/config")
 def map_config(own: Session = Depends(database.get_own_db)) -> AmapConfig:
-    """地图前端配置: 服务商 + 高德 Key 与样式; 设置页可改 (存自有库),
+    """地图前端配置: 高德 Key 与样式; 设置页可改 (存自有库),
     未设回落 env; 每次现读, 改完刷新页面即生效。"""
     key, code = settings_store.amap_values(own)
-    return AmapConfig(provider=settings_store.map_provider_value(own),
-                      amap_key=key, security_code=code,
+    return AmapConfig(amap_key=key, security_code=code,
                       style=settings_store.amap_style_value(own))
 
 
@@ -51,25 +51,38 @@ def get_tracks_manifest(
         tracks_cache.load_tracks(database.session_factory()), own)
 
 
-@mapapi.get("/tracks/stream")
-def get_tracks_stream(ids: str) -> StreamingResponse:
-    """按 ids 批量回全精度轨迹: NDJSON 一行一条, 客户端边下载边渲染。
-    上限 STREAM_MAX_IDS 条 (防误把全量塞进一个请求)。"""
+@mapapi.get("/roads/stream")
+def get_roads_stream(
+        ids: str,
+        own: Session = Depends(database.get_own_db)) -> StreamingResponse:
+    """按 ids 批回「走过之路」: NDJSON 一行一条, 只回有几何的行 (ok=证实
+    / guess=推断; failed/skip 没有路可画)。故意不挂 ETag: drive_roads 是
+    upsert 语义 (worker 随时补新行), ETag 的内容不变前提不成立 ——
+    IndexedDB 对账 (清单 rn) 本身就是缓存层。"""
     try:
         wanted = {int(x) for x in ids.split(",") if x.strip()}
     except ValueError:
         raise HTTPException(400, "ids 格式错误") from None
     if len(wanted) > STREAM_MAX_IDS:
-        raise HTTPException(400, f"一次最多 {STREAM_MAX_IDS} 条轨迹")
-    tracks = tracks_cache.load_tracks(database.session_factory())
+        raise HTTPException(400, f"一次最多 {STREAM_MAX_IDS} 条")
+    rows = repository.roads_rows(own, sorted(wanted))
 
     def lines() -> Iterator[str]:
-        for track in tracks:   # 缓存序 (日期升序) 逐条吐, 与清单序一致
-            if track.id in wanted:
-                yield json.dumps(track.model_dump(),
-                                 separators=(",", ":")) + "\n"
+        for row in rows:
+            yield json.dumps(RoadStreamRow(
+                id=row.drive_id, n=row.n, km=row.km,
+                pts=json.loads(row.pts or "[]"),
+                g=json.loads(row.gaps or "[]")).model_dump(),
+                separators=(",", ":")) + "\n"
 
     return StreamingResponse(lines(), media_type="application/x-ndjson")
+
+
+@mapapi.get("/roads/tick")
+def roads_tick() -> OkResponse:
+    """踢一脚拟合 worker (设置页存 Web 服务 key 后调): worker 没起也不算错。"""
+    roads_worker.nudge()
+    return OkResponse(ok=True)
 
 
 @mapapi.post("/diag")

@@ -2,7 +2,7 @@
 // chips —— 起点/终点 (省市区三级级联, 树来自 /trips/api/regions, 按当前车
 // 过滤) / 里程档 / 驾驶员 (设置页驾驶员表, 没配过驾驶员整枚 chip 不出现)。
 // 旧版 (js/trips-list-region-filters.js) 是头部 .filters 下拉菜单族 + 懒
-// 加载观察器/重试/登出 —— 后三者已归 view 底座与抽屉; 级联弹层交互照
+// 加载观察器/重试/登出 —— 后三者已归 view 底座与壳件; 级联弹层交互照
 // 充电视图 buildLocPop 同款 (fb-pop 没有 toggle 事件, 每次打开从当前所
 // 选的父层起钻)。文件名沿用旧名 (命名普查按 basename 折叠)。
 /* global esc, getJSON, KM_BUCKETS, state, driversCache: writable,

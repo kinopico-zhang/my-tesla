@@ -1,5 +1,6 @@
 /* 轨迹播放节拍与描画路径: 白线描画路径替换 / 一步行驶秒 / 每点累计行驶秒 /
-   已播时刻 → 下标与步内进度 / 弧长比例取点 / 瓦片坐标。都从 trackutil.js
+   已播时刻 → 下标与步内进度 / 弧长比例取点 / 断档匀加速进度 / 断档道路前缀 / 瓦片坐标。
+   都从 trackutil.js
    (几何/着色) 按域拆出 —— 只服务播放动画 (trips.js 的 zoomTick/playTrack
    与矢量预载扫路), 几何测量去 trackutil.js。
    UMD: 浏览器挂 window.TrackAnimation, node (测试) 走 module.exports
@@ -97,6 +98,32 @@
     return path[path.length - 1];
   }
 
+  /* ---- 断档步匀加速: 时间进度 τ → 弧长进度 ----
+     断档里没有真实采样, 播放头按两端速度匀加速驶过 (用户点名: 初速 v0
+     终速 v1 都知道, 就匀加速播放过去)。x(τ) = v0·τT + ½a·τ²T², 其中
+     a·T = v1 - v0, 归一化 x(1) = 1:
+       x/s = τ·(2v0 + τ·(v1-v0)) / (v0+v1)
+     两端同速退回线性; 两端都停 (轮渡/拖车, 节拍按 30km/h 保底) 没有可
+     加速的物理, 同样退回线性。v(τ) = v0 + (v1-v0)·τ 恰是匀加速的速度,
+     与调用方按 τ 线性插出的车速读数天然一致。 */
+  function accelArc(tau, v0, v1) {
+    const sum = v0 + v1;
+    return sum > 0 ? tau * (2 * v0 + tau * (v1 - v0)) / sum : tau;
+  }
+
+  /* ---- 断档步内的道路前缀: 规划道路从近岸 a 裁到当前弧长落点 ----
+     蓝实线沿道路跟着头部长 (gapGrow 调): 与 pathPointAt 同一套弧长口径,
+     尾点即调用方算好的插值头位。2026-09-22 补定义: 3.0 拆 trips.js 时名字
+     进了导出清单、函数体却没搬过来, 引用处悬空 —— 首播带断档的行程一进
+     断档步就 ReferenceError 掐死帧循环 (2233 实报: 播到六成停住); 规划回
+     传存档后断档消失, 下一播"自愈", 雷一直埋着。 */
+  function routePrefix(sp, frac, head) {
+    const q = Math.min(Math.max(frac, 0), 1) * sp.rcum[sp.rcum.length - 1];
+    let i = 1;
+    while (i < sp.route.length && sp.rcum[i] < q) i++;   // 头落在 i-1 → i 步内
+    return sp.route.slice(0, i).concat([head]);
+  }
+
   /* ---- Web 墨卡托瓦片坐标 (slippy tile): GCJ 经纬度 → z 层的格 x/y。
      播放前预载沿途瓦片用 (URL 里换 x/y/z 即可复算整条路的瓦片)。 ---- */
   function lngLatToTile(lng, lat, z) {
@@ -109,5 +136,6 @@
   }
 
   return { splicePath: splicePath, animStepSec: animStepSec, animTimes: animTimes,
-           animAt: animAt, pathPointAt: pathPointAt, lngLatToTile: lngLatToTile };
+           animAt: animAt, pathPointAt: pathPointAt, accelArc: accelArc,
+           routePrefix: routePrefix, lngLatToTile: lngLatToTile };
 });

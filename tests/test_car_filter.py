@@ -59,13 +59,14 @@ def test_charging_summary_monthly_locations_filter_by_car(auth, db):
 
 def test_charging_dimensions_map_locations_regions_filter_by_car(auth, db):
     _seed_two_cars(db)
-    # 维度: 车 1 快充 (90kW), 车 2 慢充 (11kW), 合起来 1 快 1 慢
+    # 维度: 车 1 快充 (90kW → 80-100 档), 车 2 慢充 (11kW → <20 档)
+    # (快慢充计数已随环形图退役, 峰值功率分档顶上做车筛探针; 十档 2026-09-27)
     dim = auth.get("/tesla/charging/api/dimensions").json()
-    assert dim["fast_sessions"] == 1 and dim["slow_sessions"] == 1
+    assert dim["by_power"] == [1, 0, 0, 0, 1, 0, 0, 0, 0, 0]
     dim1 = auth.get("/tesla/charging/api/dimensions?car_id=1").json()
-    assert dim1["fast_sessions"] == 1 and dim1["slow_sessions"] == 0
+    assert dim1["by_power"] == [0, 0, 0, 0, 1, 0, 0, 0, 0, 0]
     dim2 = auth.get("/tesla/charging/api/dimensions?car_id=2").json()
-    assert dim2["fast_sessions"] == 0 and dim2["slow_sessions"] == 1
+    assert dim2["by_power"] == [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
     # 充电地图点位: 地址补坐标后, 默认 2 个点, 车 1 只剩深圳那个
     for aid, lat, lng in ((1, 22.55, 114.05), (2, 22.80, 113.75)):

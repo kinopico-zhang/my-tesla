@@ -1,4 +1,6 @@
-/* tesla-chargemap-map — chargemap 页样式。拆自 chargemap.html 的内联 <style> (结构化重构, 内容逐字节未动)。 */
+/* tesla-chargemap-map — chargemap 页样式。拆自 chargemap.html 的内联 <style>;
+   2026-09-27 重排 (用户点名, 两轮): 地图套圆角矩形卡片; 图例住画布内左下
+   角浮卡 (极值随视野动态算), 脚下只留居中的视角档 pills。 */
 /* ---------- 地图 ---------- */
 main { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
 /* 旧页 #map 与壳版 #cm-map 双选择器 (壳里三张地图画布各带前缀, 防跨视图串) */
@@ -6,7 +8,8 @@ main { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
   position: absolute; inset: 0; z-index: 0;   /* 层叠上下文: 引擎内部高 z 不压 overlay */
   touch-action: none;   /* 不让 iOS Safari 把双指缩放劫持成整页缩放, 交给地图引擎 */
 }
-#map .amap-copyright, #cm-map .amap-copyright { display: none !important; }
+#map .amap-copyright, #cm-map .amap-copyright,
+#map .amap-logo, #cm-map .amap-logo { display: none !important; }   /* 版权与 logo 按需求去掉 */
 .overlay {
   position: absolute; inset: 0; z-index: 20;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -38,26 +41,47 @@ main { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
 }
 .hint-card a { color: #7db3f0; }
 
-/* 热力图例: 颜色梯度条 (蓝→红) + 当前视图的最小/中位/最大值 */
+/* 地图圆角矩形 (2026-09-27 用户点名「充电地图的地图要放在一个圆角矩形
+   里」): 舞台从全出血改卡片 —— 侧距 16px 对齐 .map-head, 圆角/发丝线/
+   底色与状态页地图卡 (.map-wrap) 同款; overflow hidden 让画布四角裁圆 */
+#view-chargemap .map-stage {
+  margin: 10px 16px 0;
+  border-radius: 16px; border: 1px solid var(--hairline);
+  background: var(--surface); overflow: hidden;
+}
+
+/* ---------- 地图脚下: 视角档 pills 居中 ---------- */
+/* (2026-09-27 用户点名「视图切换按钮居中放在地图外部下方」: 图例搬进画布
+   后脚下只剩这一件, 整行居中。底距吃 --bar-clear: 本视图没有筛选 chips,
+   菜单圆键退役后悬浮条整条收起, 让位自动退回安全区高度 (body.no-bar)) */
+.cm-foot {
+  display: flex; align-items: center; justify-content: center; flex: none;
+  padding: 10px 16px var(--bar-clear);
+}
+.cm-views { flex: none; }   /* mini-seg 样式与充电曲线档位条同款 (充电页 css) */
+
+/* 热力图例 (画布内左下角浮卡, 2026-09-27 用户点名「图例放在地图内部左下
+   角」): 少 → 多 梯度条 + 视野内的最小 / 中位 / 最大值 (极值随视野动态算,
+   左端蓝右端红); 磨砂暗底与缩放钮同款, 压得住底图杂色 */
 .legend {
-  position: absolute; left: 14px; bottom: calc(env(safe-area-inset-bottom) + 18px);
-  z-index: 30;
+  position: absolute; left: 14px; bottom: 14px; z-index: 30;
+  width: 150px; padding: 8px 10px; border-radius: 12px;
   background: rgba(28,28,30,.85); border: 1px solid var(--hairline);
-  border-radius: 14px; padding: 10px 14px;
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   backdrop-filter: blur(20px) saturate(180%);
-  pointer-events: none;   /* 纯图例, 不挡地图操作 */
+  display: flex; flex-direction: column; gap: 4px;
 }
-.legend .lg-mode { font-size: 12px; font-weight: 600; color: var(--ink-1); }
-.legend .lg-ramp { width: 148px; height: 8px; border-radius: 4px; margin-top: 8px;
+.legend .lg-ramp-row { display: flex; align-items: center; gap: 5px; }
+.legend .lg-cap { font-size: 10px; color: var(--ink-2); }
+.legend .lg-ramp { flex: 1; height: 8px; border-radius: 4px;
                    border: 1px solid var(--hairline); }
-.legend .lg-row { display: flex; justify-content: space-between; width: 148px; margin-top: 5px; }
+.legend .lg-row { display: flex; justify-content: space-between; }
 .legend .lg-row span { font-size: 10px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.zoom-ctl {
-  position: absolute; right: 14px; bottom: calc(env(safe-area-inset-bottom) + 18px);
-  z-index: 30; display: flex; flex-direction: column; gap: 8px;
-}
-.zoom-ctl button {
+/* 缩放钮收口到 #view-chargemap (2026-09-27): 裸 .zoom-ctl 会漏进足迹地图
+   (那边 tesla-map-canvas 有一份带安全区的, 本文件后加载会把它盖掉); 卡
+   内 bottom:14px, 安全区让位由卡片底距出 */
+#view-chargemap .zoom-ctl { position: absolute; right: 14px; bottom: 14px; z-index: 30; display: flex; flex-direction: column; gap: 8px; }
+#view-chargemap .zoom-ctl button {
   width: 42px; height: 42px; border-radius: 14px; font-size: 23px; line-height: 1;
   background: rgba(28,28,30,.85); border: 1px solid var(--hairline); color: var(--ink-1);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
@@ -71,16 +95,26 @@ main { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
   opacity: 0; pointer-events: none; transition: opacity .2s;
 }
 .backdrop.show { opacity: 1; pointer-events: auto; }
-.sheet {
+/* 基座收口到 #cm-sheet (3.0 四张弹层共用 .sheet 类名互相漏样式, 充电侧先
+   收口): 并入漏进来的固定高度/宽屏居中/描边/阴影/纵向排布, 渲染不变 */
+#cm-sheet {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 91;
+  height: 82vh; height: calc(var(--shell-h, 100dvh) * .82);
+  margin: 0 auto; max-width: 640px; max-height: 92vh; max-height: calc(var(--shell-h, 100dvh) * .92);
+  display: flex; flex-direction: column;
   background: var(--surface-2); border-radius: 20px 20px 0 0;
+  border: 1px solid var(--hairline); border-bottom: 0;
+  box-shadow: 0 -12px 48px rgba(0,0,0,.5);
   padding: 10px 20px calc(env(safe-area-inset-bottom) + 22px);
   transform: translateY(105%); transition: transform .28s cubic-bezier(.32,.72,.33,1);
 }
-.sheet.show { transform: translateY(0); }
+#cm-sheet.show { transform: none; }   /* 开态 none: 闲置不顶变换层 (见 charging-sheet 同注) */
 .sh-title { font-size: 17px; font-weight: 700; margin-top: 10px; }
 .sh-sub { font-size: 12px; color: var(--ink-3); margin-top: 2px; margin-bottom: 14px; }
-.sh-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sh-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+/* ↑ margin-top 显式钉住 (2026-09-29): 原先吃足迹地图 css 里裸 .sh-grid 漏
+   过来的 14px —— 弹层是 flex 列, 上下 margin 不折叠, 撤了泄漏间距会从
+   28px 缩到 14px; 在此把生效值收编成自己的 */
 .sh-cell { background: var(--surface); border-radius: 12px; padding: 10px 12px; }
 .sh-cell .lb { font-size: 11px; color: var(--ink-2); }
 .sh-cell .val { font-size: 18px; font-weight: 650; margin-top: 2px; font-variant-numeric: tabular-nums; }

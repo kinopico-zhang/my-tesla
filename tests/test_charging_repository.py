@@ -20,6 +20,7 @@ def test_session_fields_and_price(db):
     assert row.location == "华为立体车库"         # 无 geofence 时退回 address
     assert row.price_per_kwh == round(25.5 / 48.0, 3)
     assert row.is_fast is True                   # charges 有 90kW 采样
+    assert row.tesla_supercharger is True        # 默认采样 Tesla+Gb = 超充
     assert row.outside_temp == 28.5
     assert row.city == "深圳市"
 

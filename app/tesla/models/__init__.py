@@ -4,13 +4,14 @@
 自有表在 mytesla_tables; 调用方统一 from ..models import …, 不感知内部分层。
 """
 from .model_bases import Base, OwnBase
-from .mytesla_tables import (AppSetting, Driver, TrackFill, TripDriver,
-                             TripGroup, TripToll)
+from .mytesla_tables import (AppSetting, DriveHistCache, DriveRoad, Driver,
+                             TrackFill, TripDriver, TripGroup, TripToll)
 from .teslamate_tables import (Address, Car, Charge, ChargingProcess, Drive,
                                Geofence, Position)
 
 __all__ = [
-    "Address", "AppSetting", "Base", "Car", "Charge", "ChargingProcess",
-    "Drive", "Driver", "Geofence", "OwnBase", "Position", "TrackFill",
-    "TripDriver", "TripGroup", "TripToll",
+    "Address", "AppSetting", "Base", "Car", "Charge",
+    "ChargingProcess", "Drive", "DriveHistCache", "DriveRoad", "Driver",
+    "Geofence", "OwnBase", "Position", "TrackFill", "TripDriver", "TripGroup",
+    "TripToll",
 ]

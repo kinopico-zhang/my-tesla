@@ -70,6 +70,19 @@ def parse_region(display_name: str) -> tuple[str | None, str | None, str | None]
     return (prov, city, dist)
 
 
+def region_chain(display_name: str | None) -> str | None:
+    """display_name → 省市区链 (大→小, " · " 连); 解析不出省 = None。
+
+    充电列表/详情与行程起终点同一口径 (用户点名信息量对齐 + 从大到小排),
+    前端配 fmtPlaceShort 再取最小两段。"""
+    if not display_name:
+        return None
+    prov, city, dist = parse_region(display_name)
+    if not prov:
+        return None
+    return " · ".join(p for p in (prov, city, dist) if p)
+
+
 def region_address_ids(session: Session, path: str) -> list[int]:
     """省市区路径 → 命中的地址 id 列表 (段数即精确到哪一级)。
 

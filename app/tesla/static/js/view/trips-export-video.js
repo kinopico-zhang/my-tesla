@@ -49,22 +49,8 @@ function recCompose() {    // 每帧合成: 环形容器比可视区大, 各画�
       (sx1 - sx0) / (wr.width * kx) * out.width,
       (sy1 - sy0) / (wr.height * ky) * out.height);
   }
-  /* OSM (Leaflet): 底图是 <img> 瓦片不是画布 (矢量线在 preferCanvas 的
-     画布上, 上面已画); 瓦片带 crossOrigin, drawImage 不污染录制画布 */
-  for (const im of wrap.querySelectorAll("img.leaflet-tile")) {
-    if (!im.complete || !im.naturalWidth) continue;
-    const r = im.getBoundingClientRect();
-    if (r.width < 2 || r.height < 2) continue;
-    const x0 = Math.max(0, wr.left - r.left), y0 = Math.max(0, wr.top - r.top);
-    const x1 = Math.min(r.width, wr.left + wr.width - r.left);
-    const y1 = Math.min(r.height, wr.top + wr.height - r.top);
-    if (x1 <= x0 || y1 <= y0) continue;
-    ctx.drawImage(im,
-      (r.left + x0 - wr.left) / wr.width * out.width,
-      (r.top + y0 - wr.top) / wr.height * out.height,
-      (x1 - x0) / wr.width * out.width,
-      (y1 - y0) / wr.height * out.height);
-  }
+  /* OSM (Leaflet) 底图是 <img> 瓦片的合成路 2026-09-25 随服务商退役拆除
+     (地图只留高德, 底图在 WebGL 画布上, 上一循环已画全) */
   rec.raf = requestAnimationFrame(recCompose);
 }
 

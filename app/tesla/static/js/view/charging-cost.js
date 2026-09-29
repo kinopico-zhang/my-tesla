@@ -2,8 +2,7 @@
 // 详情格都能补录 (iOS alert 风格弹窗), 保存后卡片/详情就地更新。
 // 壳版差异: 元素/导出名加 chg- 前缀。
 /* global $, money, chgItemsById, chgMasonry, chgRenderCard, detailCache,
-          chgSheetOpen, chgCurrentDetailId, chgAlertBd, chgAlInput, chgSheetBody,
-          chgOpenNavChooser */
+          chgSheetOpen, chgCurrentDetailId, chgAlertBd, chgAlInput, chgSheetBody */
 /* exported editCost, chgCloseAlert */
 "use strict";
 /* ============================ 费用编辑 ============================ */
@@ -92,6 +91,4 @@ chgAlInput.addEventListener("keydown", e => {
 chgSheetBody.addEventListener("click", e => {
   if (e.target.closest("#st-cost-tile") && chgCurrentDetailId != null)
     editCost(detailCache.get(chgCurrentDetailId));
-  if (e.target.closest("#nav-go") && chgCurrentDetailId != null)
-    chgOpenNavChooser(detailCache.get(chgCurrentDetailId));
 });

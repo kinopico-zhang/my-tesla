@@ -17,7 +17,15 @@ js_namespace_census, 撞名全景 ALLOWED 数据在 js_namespace_allowed):
 **安全不变式**: 壳内一个顶层名只许一个文件声明 (test_shell_runtime_
 names_unique 按加载清单逐个点名, const+let 跨文件是 SyntaxError 直接
 杀整个后加载文件, P5 真踩过 detailCache)。
+
+**悬空名守卫** (test_exported_and_writable_names_have_bodies): 名字进了
+某文件的 /* exported */ 清单或 /* global */ 的可写标注, 却没有任何脚本
+给出真身 —— eslint 把导出清单当"本文件已定义"闭嘴, 这类雷只有普查抓
+得住 (2026-09-22 routePrefix: 3.0 拆 trips.js 时函数体没跟着搬, 首播
+带断档的行程一进断档步当场 ReferenceError 掐死帧循环)。
 """
+import re
+
 from tests.js_namespace_allowed import ALLOWED
 from tests.js_namespace_census import _census, top_level_names
 from tests.tesla_static_files import page_refs, served_page
@@ -60,3 +68,36 @@ def test_shell_runtime_names_unique(auth):
             else:
                 owners[name] = base
     assert not dups, "壳侧顶层名撞名 (后加载者覆盖):\n" + "\n".join(sorted(dups))
+
+
+def test_exported_and_writable_names_have_bodies(auth):
+    """悬空名守卫: 名字进了 /* exported */ 清单或 /* global */ 的可写标注,
+    却没有任何脚本给出真身 (routePrefix 雷, 2026-09-22)。eslint 把导出
+    清单当"本文件已定义"闭嘴; 真雷长这样 —— 3.0 拆 trips.js 时名字进了
+    overlays 的导出清单、函数体没搬, 引用处悬空: 首播带断档的行程一进
+    断档步当场 ReferenceError 掐死帧循环 (2233 实报: 播到六成停住, 补路
+    回传存档后断档消失才像"自愈")。普查列首口径为主, 续行声明/多声明符
+    census 看不见的, 用声明或赋值痕迹兜底认领。"""
+    html = served_page(auth, "/tesla")
+    sources = {r: auth.get(r).text for r in page_refs(html) if r.endswith(".js")}
+    top = set()
+    for text in sources.values():
+        top |= top_level_names(text)
+    bad: list[str] = []
+    for ref, text in sources.items():
+        names = set()
+        m = re.search(r"/\*\s*exported\s+(.*?)\*/", text, re.S)
+        if m:
+            names |= {n for n in re.split(r"[,\s]+", m.group(1).strip()) if n}
+        g = re.search(r"/\*\s*global\s+(.*?)\*/", text, re.S)
+        if g:   # 可写全局 (如 "animRaf: writable"): 跨文件赋值目标, 没真身必炸
+            names |= {e.split(":")[0].strip() for e in g.group(1).split(",")
+                      if e.strip().endswith("writable")}
+        missing = sorted(
+            n for n in names if n not in top and not any(
+                re.search(rf"function\s+{n}\s*\(|class\s+{n}\b|\b{n}\s*=(?!=)", t)
+                for t in sources.values()))
+        if missing:
+            bad.append(f"{ref.rsplit('/', 1)[-1]}: {missing}")
+    assert not bad, "导出清单/可写全局悬空 (引用处 ReferenceError):\n" \
+        + "\n".join(bad)

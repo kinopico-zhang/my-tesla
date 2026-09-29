@@ -42,18 +42,51 @@ body.selecting .card-t.picked .pick::after {
 .ct-cell .val { font-size: 17px; font-weight: 650; letter-spacing: -.3px; margin-top: 1px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ct-cell .val small { font-size: 10.5px; color: var(--ink-2); font-weight: 500; }
-.ct-addr { margin-top: 8px; display: flex; flex-direction: column; gap: 3px; }
-.ct-addr .line {
-  font-size: 12px; color: var(--ink-2); display: flex; gap: 6px; align-items: baseline;
+.ct-addr {   /* 起终点并成一行 (用户点名): 绿点起 → 橙点终, 中间箭头 */
+  margin-top: 8px; font-size: 12px; color: var(--ink-2);
 }
-.ct-addr .dot { flex: none; width: 6px; height: 6px; border-radius: 50%; align-self: center; }
-.ct-addr .from .dot { background: var(--green, #1fa349); }
-.ct-addr .to .dot { background: #d95926; }
-.ct-addr .txt {
-  -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
-  display: -webkit-box; min-width: 0;
+.ct-addr .dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  vertical-align: 1px;
 }
-.ct-sub { font-size: 11.5px; color: var(--ink-3); margin-top: 8px; }
+.ct-addr .dot.f { background: var(--green, #1fa349); margin-right: 5px; }
+.ct-addr .dot.t { background: #d95926; margin: 0 5px 0 7px; }
+.ct-addr .arr { color: var(--ink-3); }
+/* 起终点一行放不下就来回滚 (音乐迷你条同款): 放得下静止 (对齐起点),
+   两端各停一拍 (10% 行程) 再往回走; 量宽挂类在 trips-list-page */
+.mq-line { overflow: hidden; white-space: nowrap; }
+.mq-run { display: inline-block; }
+.mq-run.marquee {
+  animation: mq-scroll var(--mq-dur, 12s) linear infinite alternate;
+}
+@keyframes mq-scroll {
+  0%, 10% { transform: translateX(0); }
+  90%, 100% { transform: translateX(var(--mq-dx, 0)); }
+}
+
+/* ---------- 卡片驾驶员直选小选单 (点右上角 pill 弹出) ---------- */
+.drv-pop {
+  position: fixed; inset: 0; z-index: 95; background: rgba(0,0,0,.45);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.drv-pop[hidden] { display: none; }
+.drv-pop-card {
+  width: 100%; max-width: 400px; margin: 0 12px calc(env(safe-area-inset-bottom) + 14px);
+  background: var(--surface-2); border: 1px solid var(--hairline);
+  border-radius: 16px; overflow: hidden;
+}
+.drv-pop-t { font-size: 12px; color: var(--ink-3); text-align: center; padding: 12px 0 6px; }
+.drv-pop-list { max-height: 46vh; overflow-y: auto; }
+.drv-pop-row {
+  display: block; width: 100%; font-size: 15px; text-align: center;
+  padding: 13px 0; border-bottom: 1px solid var(--hairline);
+}
+.drv-pop-row:last-child { border-bottom: 0; }
+.drv-pop-row.on { color: var(--blue); font-weight: 650; }
+.drv-pop-x {
+  width: 100%; font-size: 15px; font-weight: 600; color: var(--ink-2);
+  padding: 13px 0; border-top: 1px solid var(--hairline);
+}
 
 /* ---------- 尾部状态 ---------- */
 .tail { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 18px 0 40px; }

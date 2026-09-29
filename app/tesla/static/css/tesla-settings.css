@@ -20,7 +20,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
                "Helvetica Neue", system-ui, sans-serif;
   font-size: 14px; line-height: 1.45;
-  min-height: 100vh; min-height: 100dvh;
+  /* body 尺寸只在 tesla-base.css 定 (var(--shell-h)): 这里再定 100dvh 会盖掉钉高 */
   display: flex; flex-direction: column;
 }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
@@ -162,3 +162,38 @@ input::placeholder { color: var(--ink-3); }
   text-decoration: none; color: var(--ink-1); font-size: 15px; padding: 4px 2px; }
 .about-link:active { opacity: .6; }
 .about-link .chev { color: var(--ink-3); font-size: 17px; line-height: 1; }
+
+/* ---------- 账号卡 (3.3.0 从抽屉底部搬来, 住数据来源页顶部) ----------
+   当前登录 (名字/管理员徽章) + 两钮: 改名称/改密码开底部弹层 #acct-sheet,
+   登出走 /api/logout; 标记都是抽屉时代的 id (acct-name/acct-badge/acct-row/
+   logout), JS 在 view/settings-account.js。 */
+#acct-card .acct-acts { display: flex; gap: 10px; margin-top: 4px; }
+#acct-card .acct-acts button {
+  flex: 1; padding: 10px 8px; border-radius: 12px;
+  background: var(--surface-2);
+}
+#acct-card .acct-acts button:active { background: var(--surface-3); }
+#acct-card .acct-out { color: #e5484d; }
+#acct-card em { font-style: normal; font-size: 11px; color: #7db3f0; }
+
+/* ---------- 账号弹层 (第五张, 抽屉账号行点开) ----------
+   3.0 并页时裸了两天: 没定位没隐藏, 平时被 body 裁在屏外没人发现;
+   键盘解锁期 (body 高 auto) main 被它挤矮, 表单顶到最前面盖住所有视图
+   (2026-09-21 用户实报)。补齐与其他弹层同款基座: 固定底板 / 105% 藏 /
+   开态不顶变换层 / 封顶吃 --shell-h; 表单内容 (hint/label/row2/drv-add)
+   上面设置卡片的通用规则已在画。 */
+#acct-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 91;
+  margin: 0 auto; max-width: 640px;
+  max-height: 92vh; max-height: calc(var(--shell-h, 100dvh) * .92);
+  display: flex; flex-direction: column;
+  background: var(--surface-2); border-radius: 20px 20px 0 0;
+  border: 1px solid var(--hairline); border-bottom: 0;
+  box-shadow: 0 -12px 48px rgba(0,0,0,.5);
+  padding: 10px 20px calc(env(safe-area-inset-bottom) + 22px);
+  transform: translateY(105%); transition: transform .28s cubic-bezier(.32,.72,.33,1);
+}
+#acct-sheet.show { transform: none; }   /* 开态 none: 闲置不顶变换层 (见 trips-sheet 同注) */
+/* 句柄 (3.0 四弹层共用 .grab 类名, 此前一直靠别家规则漏过来画 —— 两套互串
+   画出重影, 2026-09-21 用户在轨迹弹层实报后各弹层各归各): 实色胶囊同款 */
+#acct-sheet .grab { width: 36px; height: 5px; border-radius: 3px; background: #48484a; margin: 0 auto 14px; }

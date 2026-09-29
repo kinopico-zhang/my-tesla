@@ -1,12 +1,11 @@
-"""充电详情测试: 单条详情, 导航坐标, 国标标签撤除, 月度统计,
-地点聚合。
+"""充电详情测试 (API 口径): 单条详情, 站点坐标, 国标标签撤除, 月度统计,
+地点聚合。页面接线断言在 test_charging_detail_page.py (2026-09-21 超
+200 行硬上限拆出)。
 拆自 test_charging.py (结构化重构, 代码逐字节未动)。"""
 from datetime import datetime
 
 from app.tesla.models import Address
 from tests.seed_factories import seed_addresses, seed_charge, seed_charging
-from tests.charging_page_scripts import CHARGING_ASSETS, _page_scripts
-from tests.tesla_static_files import served_page
 
 def test_session_detail(auth, db):
     seed_addresses(db)
@@ -22,15 +21,18 @@ def test_session_detail(auth, db):
     assert d["curve"]["minutes"] == [10.0, 20.0]    # 距 start (15:50) 的分钟数
     assert d["curve"]["soc"] == [20, 30]
     assert d["curve"]["kw"] == [90.0, 80.0]
+    assert d["curve"]["tabs"] == ["kw", "voltage", "current"]   # 真值齐全
     assert d["cable"] == "CCS"
     assert d["charger_brand"] is None               # <invalid> 已过滤
     assert d["charger_type"] == "Tesla"
+    assert d["tesla_supercharger"] is False         # 第三方桩: brand 不是 Tesla
     assert d["start_rated_range"] == 120.0
     assert d["end_rated_range"] == 330.0
 
 
 def test_session_detail_nav_coords(auth, db):
-    """详情带充电站坐标 (WGS-84) —— 前端导航换算的原料; 没坐标的地址给 None。"""
+    """详情带充电站坐标 (WGS-84); 没坐标的地址给 None (地理编码成功与否
+    照实反映, 前端导航按钮已撤, 字段留给往后再用)。"""
     db.add(Address(id=1, name="华为立体车库", city="深圳市",
                    display_name="深圳市华为立体车库",
                    latitude=22.55, longitude=114.05))
@@ -41,43 +43,54 @@ def test_session_detail_nav_coords(auth, db):
 
 
 def test_session_detail_no_coords(auth, db):
-    """没反向地理编码过的地址: 坐标字段是 None (前端不渲染导航按钮)。"""
+    """没反向地理编码过的地址: 坐标字段是 None。"""
     seed_addresses(db)                     # 默认地址没有坐标
     seed_charging(db)
     d = auth.get("/tesla/charging/api/sessions/1").json()
     assert d["lat"] is None and d["lng"] is None
 
 
-def test_charging_detail_nav_button(auth):
-    """详情「导航到充电站」: 先弹选单让用户挑地图 App, 点一个只拉一个。"""
-    html = served_page(auth, "/tesla")
-    for frag in [
-        'id="nav-go"', "🧭 导航到充电站",
-        'id="chg-nav-bd"', 'id="chg-nav-apps"', 'id="chg-nav-cancel"',   # 选单
-        '{ app: "amap", label: "高德地图" }', '{ app: "baidu", label: "百度地图" }',
-        '{ app: "tencent", label: "腾讯地图" }', '{ app: "apple", label: "苹果地图" }',
-        "chgOpenNavChooser",               # 点按钮先弹选单
-        # 没装的地图长按隐藏 (localStorage 记住), ＋ 胶囊恢复 —— 网页枚举不了装了哪些 App
-        "navHiddenApps", "function renderNavApps()", "data-restore",
-        "长按一行隐藏掉", "长按隐藏后的 click 吞掉",
-        "function navAppUrl(",                # 一个 App 一个 URL
-        "GCJ02.wgs84ToGcj02",                 # WGS-84 → GCJ-02, 不转偏几百米
-        "iosamap://navi", "androidamap://navi",    # 高德 (iOS / 安卓 scheme)
-        "baidumap", "://map/direction", "coord_type=gcj02",   # 百度 (iOS/安卓 scheme 前缀不同)
-        "qqmap://map/routeplan", "fromcoord=CurrentLocation",   # 腾讯
-        "maps.apple.com/?daddr",                   # 苹果地图
-    ]:
-        assert frag in html, f"充电详情导航缺少 {frag}"
-    # 不自动探测连环拉起: iOS 拉 scheme 前先弹「在 xx 中打开」确认框,
-    # 确认前页面不切后台, 探测窗口一过就把装了的 App 连环拉起 (用户实测)
-    # (守卫只对充电视图自有脚本 —— 壳内 live/trips 视图自己听
-    # visibilitychange 切后台暂停, 是合法用法)
-    js = _page_scripts(auth, *CHARGING_ASSETS)
-    for gone in ["NAV_PROBE_MS", "visibilitychange", "uri.amap.com/navigation"]:
-        assert gone not in js, f"自动探测链残留: {gone}"
-    # 坐标换算库要先于视图脚本加载
-    page = auth.get("/tesla").text
-    assert page.index("gcj02.js") < page.index("view/charging-page.js")
+def test_session_detail_pw_tabs(auth, db):
+    """曲线档位 (tabs) 只发有真数据的 —— 2026-09-21 查真库定位 "充电曲线
+    为啥一直是0": 车辆直流快充不回报电压/电流, TeslaMate 原样落库成恒 2V /
+    0A 的死字段 (家充 AC 的 400V / 220A 是真的)。死档不下发, 前端不画 0 平线。"""
+    seed_addresses(db)
+    seed_charging(db)                      # 快充: 电压电流死字段
+    seed_charge(db, 1, charger_voltage=2.0, charger_actual_current=0.0)
+    seed_charge(db, 1, id=None, date=datetime(2026, 9, 7, 16, 10),
+                battery_level=30, charger_power=93.0,
+                charger_voltage=2.0, charger_actual_current=0.0)
+    d = auth.get("/tesla/charging/api/sessions/1").json()
+    assert d["curve"]["tabs"] == ["kw"]            # 只剩功率
+
+    seed_charging(db, id=2, start_date=datetime(2026, 9, 8, 15, 50),
+                  end_date=datetime(2026, 9, 8, 23, 2))
+    seed_charge(db, 2, date=datetime(2026, 9, 8, 16, 0),
+                charger_power=7.0, charger_voltage=220.0,
+                charger_actual_current=0.0)        # 电压真, 电流死
+    d = auth.get("/tesla/charging/api/sessions/2").json()
+    assert d["curve"]["tabs"] == ["kw", "voltage"]
+
+
+def test_session_region_field(auth, db):
+    """省市区链 (大→小, " · " 连) 列表与详情同一口径 (用户点名信息量
+    对齐 + 从大到小排): 连写与 OSM 链都剥得出; 解析不出省 = None,
+    前端退化到市级字段。"""
+    seed_addresses(db)                       # 1=广东省深圳市龙岗区坂田街道
+    db.add(Address(id=3, name="翠湖边", city="昆明市",
+                   display_name="翠湖西路, 华山街道, 五华区, 昆明市, 云南省, 650031, 中国"))
+    db.add(Address(id=4, name="无名地", city=None, display_name="某处"))
+    db.commit()
+    seed_charging(db, id=1, address_id=1)
+    seed_charging(db, id=2, address_id=3)
+    seed_charging(db, id=3, address_id=4)
+    items = {i["id"]: i for i in auth.get(
+        "/tesla/charging/api/sessions").json()["items"]}
+    assert items[1]["region"] == "广东省 · 深圳市 · 龙岗区"   # 旧版连写
+    assert items[2]["region"] == "云南省 · 昆明市 · 五华区"   # OSM 逗号链
+    assert items[3]["region"] is None                        # 解析不出省
+    d = auth.get("/tesla/charging/api/sessions/1").json()
+    assert d["region"] == "广东省 · 深圳市 · 龙岗区"          # 详情同口径
 
 
 def test_session_detail_hides_national_standard_tags(auth, db):
@@ -92,6 +105,7 @@ def test_session_detail_hides_national_standard_tags(auth, db):
     d = auth.get("/tesla/charging/api/sessions/1").json()
     assert d["cable"] is None and d["charger_type"] is None
     assert d["charger_brand"] == "Tesla"       # 国标过滤不殃及品牌
+    assert d["tesla_supercharger"] is True     # Tesla+Gb 采样 = 特斯拉超充
 
 
 def test_session_detail_404(auth):

@@ -27,7 +27,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
                "Helvetica Neue", system-ui, sans-serif;
   font-size: 14px; line-height: 1.45;
-  min-height: 100vh; min-height: 100dvh;
+  /* body 尺寸只在 tesla-base.css 定 (var(--shell-h)): 这里再定 100dvh 会盖掉钉高 */
 }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
 /* 触屏双击控件不再触发整页放大 (manipulation 保留平移/捏合, 只去掉双击缩放) */
@@ -116,7 +116,7 @@ header {
 .nav-menu .menu button.on .cnt { color: #7db3f0; }
 /* 时间菜单的自定义日历: 月历网格, 同一个日历连点两次 (第一下起点, 第二下终点) */
 .time-menu .tm-custom { border-top: 1px solid var(--hairline); margin-top: 5px; padding-top: 5px; }
-.time-menu .menu { max-height: calc(100vh - 130px); overflow-y: auto; }  /* 矮屏展开日历时兜底滚动 */
+.time-menu .menu { max-height: calc(var(--shell-h, 100vh) - 130px); overflow-y: auto; }  /* 矮屏展开日历时兜底滚动 */
 .tm-dates { padding: 6px 8px 3px; }
 .tm-cal-top { display: flex; align-items: center; gap: 4px; padding: 0 2px 5px; }
 .tm-cal-top b { flex: 1; text-align: center; font-size: 13px; font-weight: 600; }

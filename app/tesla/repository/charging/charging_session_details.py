@@ -37,6 +37,16 @@ def charging_session_detail(session: Session,
     charger_type = _clean_national(next(
         (c.fast_charger_type for c in samples if c.fast_charger_type), None))
     base = _session_item(row)
+    voltage = [_fnum(c.charger_voltage) for c in samples]
+    current = [_fnum(c.charger_actual_current) for c in samples]
+    # 车辆直流快充不回报电压/电流, TeslaMate 原样落库成恒 2V / 0A 的死字段
+    # (2026-09-21 查库定位: 快充会话全死, 家充 AC 全真) —— 档位只发有真数据的,
+    # 前端不再把死字段画成 0 平线
+    tabs = ["kw"]
+    if max((v for v in voltage if v is not None), default=0) > 10:
+        tabs.append("voltage")
+    if max((a for a in current if a is not None), default=0) > 0.5:
+        tabs.append("current")
     return ChargingSessionDetail(
         **base.model_dump(),
         start_rated_range=_fnum(cp.start_rated_range_km),
@@ -49,9 +59,9 @@ def charging_session_detail(session: Session,
                      for c in samples],
             soc=[c.battery_level for c in samples],
             kw=[_fnum(c.charger_power) for c in samples],
-            voltage=[_fnum(c.charger_voltage) for c in samples],
-            current=[_fnum(c.charger_actual_current) for c in samples],
-            energy=[_fnum(c.charge_energy_added) for c in samples]))
+            voltage=voltage, current=current,
+            energy=[_fnum(c.charge_energy_added) for c in samples],
+            tabs=tabs))
 
 
 def update_charging_cost(session: Session, session_id: int,

@@ -1,12 +1,23 @@
 /* tesla-charging-cards — index 页样式。拆自 index.html 的内联 <style> (结构化重构, 内容逐字节未动)。 */
 /* ---------- 瀑布流 ---------- */
-.sec-head { display: flex; align-items: baseline; gap: 8px; padding: 16px 16px 4px; }
-.sec-head h2 { font-size: 17px; font-weight: 650; letter-spacing: -.2px; }
-.count-badge { font-size: 12px; color: var(--ink-3); }
+.sec-head { display: flex; align-items: baseline; gap: 8px; padding: 0 16px 4px; }
+/* 页面级标题 26px (用户点名对齐音乐 App 的大标题, 同 music .pane-title);
+   三份副本 (charging-cards/groups/trips-page) 一起改, 落一份就是大小不一 */
+.sec-head h2 { font-size: 26px; font-weight: 700; letter-spacing: -.5px; }
+/* 条数副题 (共 N 次) 加大 (2026-09-22 用户点名: 12px 太小, 14px 还嫌小,
+   再放大到 16px; 三份副本 charging-cards/groups/trips-page 一起改) */
+.count-badge { font-size: 16px; color: var(--ink-3); }
 /* 单列列表 (与行程页一致, 手机优先); #chg-masonry 是 3.0 壳里充电视图的
    同一容器 (壳内多视图并存, id 加前缀防撞 —— 行程页也认 #masonry 级样式) */
 #masonry, #chg-masonry { display: flex; flex-direction: column; gap: 8px; padding: 8px 14px 10px; transition: opacity .25s; }
 #masonry.dim, #chg-masonry.dim { opacity: .45; pointer-events: none; }
+/* 月份分组头 (用户点名按月分组): 栏 gap 是匀的 8px, 组间气口靠 margin 顶开;
+   首组紧贴页头不出大缝 */
+.month-head {
+  font-size: 13px; font-weight: 650; letter-spacing: -.1px; color: var(--ink-2);
+  margin: 10px 2px 0;
+}
+.month-head:first-child { margin-top: 0; }
 .card-s {
   background: var(--surface); border-radius: 16px; border: 1px solid var(--hairline);
   padding: 10px 12px; cursor: pointer; overflow: hidden;
@@ -22,6 +33,16 @@
 }
 .tag-fast { color: #f0b13d; background: rgba(237,161,0,.14); }
 .tag-slow { color: #7db3f0; background: rgba(57,135,229,.14); }
+/* 卡片右上角标组: Tesla 官方桩的附加文字标 + 快慢充 pill (2026-09-27 用户
+   两轮点名「tesla 的tag是额外的tag, 该是快充和慢充还是要打对应的 tag」+
+   「换个位置, 快慢充一直在右上角」: pill 常驻组内最右 (卡右上角), 字标
+   立到它左边) */
+.cs-tags { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+/* Tesla 文字标 (tesla-common 的 TESLA_MARK) 附加标样式, 用户点名「白色字体,
+   没有 border」: 不套 pill 底色 —— 白字裸标立在快慢充 pill 旁 (长宽比
+   7.67:1, 高 9.5px ≈ pill 字面高); fill=currentColor 吃这里的白 */
+.tesla-mark { display: inline-flex; color: var(--ink-1); }
+.tesla-mark svg { display: block; height: 9.5px; width: 72.9px; }
 /* SOC 轴: 量程固定 0-100%, 标签钉在真实百分比位置 (左标签左缘=充电起点, 右标签右缘=终点);
    不做 space-between 贴边 —— 那样读起来像轴随数据自适应 */
 .soc-axis { position: relative; height: 18px; margin-top: 2px; }
@@ -32,10 +53,12 @@
   font-size: 14.5px; font-weight: 600; line-height: 1.32; margin: 5px 0 6px;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
+/* 地点大→小 (用户点名): 省市区链前缀与地名同字号同字重 (用户点名不要
+   两种字号), 只用弱色分层 */
+.cs-loc .cs-region { color: var(--ink-2); }
 .cs-main { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-top: 4px; }
 .cs-energy { font-size: 20px; font-weight: 650; letter-spacing: -.4px; }
 .cs-energy small { font-size: 11.5px; font-weight: 500; color: var(--ink-2); margin-left: 3px; letter-spacing: 0; }
-.cs-sub { font-size: 11px; color: var(--ink-3); margin-top: 4px; }
 
 /* ---------- 加载态 ---------- */
 .tail { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 18px 0 40px; }

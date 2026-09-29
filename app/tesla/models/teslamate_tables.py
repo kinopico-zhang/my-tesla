@@ -77,6 +77,9 @@ class Charge(Base):
     fast_charger_brand: Mapped[str | None]
     fast_charger_type: Mapped[str | None]
     fast_charger_present: Mapped[bool | None] = mapped_column(Boolean)
+    # 电池健康度估算 (满电续航 = 额定续航 ÷ 可用电量 × 100, TeslaMate 同口径)
+    usable_battery_level: Mapped[float | None]
+    rated_battery_range_km: Mapped[float | None]
 
 
 class Drive(Base):
@@ -101,17 +104,21 @@ class Position(Base):
 
     speed/power 是流式数据 (每秒多条); battery_level 同样全程有值,
     而 rated_battery_range_km / odometer 等车 API 轮询字段约每 12 秒
-    才有一个非空值 (当前驾驶页按"最新非空"取)。"""
+    才有一个非空值 (当前驾驶页按"最新非空"取)。停车充电也照写点位
+    (drive_id 为空 —— 真库 4.4 万条, 驻车电量实时靠这段采样)。"""
 
     __tablename__ = "positions"
     id: Mapped[int] = mapped_column(primary_key=True)
     car_id: Mapped[int]
-    drive_id: Mapped[int]
+    drive_id: Mapped[int | None]
     date: Mapped[datetime]
     longitude: Mapped[float]
     latitude: Mapped[float]
     speed: Mapped[float | None]
     power: Mapped[float | None]
+    # 海拔 (米): 车报才有, 近 60 天 98% 的点都有 (固件升级后开始报);
+    # 行程回放的实时海拔格吃这一列 (2026-09-21 用户点名加)
+    elevation: Mapped[float | None]
     battery_level: Mapped[int | None]
     rated_battery_range_km: Mapped[float | None]
     odometer: Mapped[float | None]

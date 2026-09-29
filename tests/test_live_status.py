@@ -1,4 +1,4 @@
-"""实时驾驶状态测试: 字段口径, 在开判据, 电耗标定边界。
+"""实时驾驶状态测试: 字段口径, 在开判据, 电耗标定边界, 驻车带的最后行程。
 拆自 test_live.py (结构化重构, 代码逐字节未动)。"""
 from datetime import datetime, timedelta, timezone
 
@@ -41,12 +41,11 @@ def test_live_status_fields(auth, db):
     j = auth.get("/tesla/live/api/status").json()
     assert j["driving"] is True
     assert j["drive_id"] == 500
-    assert j["speed"] == 62 and j["speed_max"] == 62   # 最新点 / 全程最高
+    assert j["speed"] == 62                                 # 最新点车速
     assert j["soc"] == 90
     assert j["rated_range_km"] == 377.2                # 最新非空轮询值
     assert j["km"] == 24.8                             # odometer 差
     assert j["kwh"] == 5.3                             # (402-377.2) × 3/14
-    assert j["wh_per_km"] == 214
     assert j["lng"] == 114.26 and j["lat"] == 22.61
     assert j["pos_utc"] == _epoch(now - timedelta(seconds=30))
     assert j["started_utc"] == _epoch(now - timedelta(minutes=40))
@@ -58,7 +57,8 @@ def test_live_status_fields(auth, db):
 # ---------------------------------------------------------------- 在开判据
 
 def test_live_status_stale_open_drive_is_not_driving(auth, db):
-    """未关闭但位置点在几个月前 (TeslaMate 中断残留) → 不算在开。"""
+    """未关闭但位置点在几个月前 (TeslaMate 中断残留) → 不算在开;
+    仍报最后已知电量/续航/位置 (状态页不开车常显, 2026-09-26 用户点名)。"""
     old = datetime(2026, 8, 21, 9, 8)
     seed_drive(db, id=1838, start_date=old, end_date=None, distance=None)
     seed_position(db, drive_id=1838, date=old, longitude=114.0, latitude=22.5,
@@ -66,6 +66,9 @@ def test_live_status_stale_open_drive_is_not_driving(auth, db):
                   rated_battery_range_km=300.0)
     j = auth.get("/tesla/live/api/status").json()
     assert j["driving"] is False and j["drive_id"] is None
+    assert j["soc"] == 90 and j["rated_range_km"] == 300.0
+    assert j["lng"] == 114.0 and j["lat"] == 22.5
+    assert j["pos_utc"] == _epoch(old)
 
 
 def test_live_status_picks_freshest_open_drive(auth, db):
@@ -85,7 +88,8 @@ def test_live_status_picks_freshest_open_drive(auth, db):
 
 
 def test_live_status_ignores_just_closed_drive(auth, db):
-    """位置点再新, 行程已闭合 (end_date 非空) 就不是当前驾驶。"""
+    """位置点再新, 行程已闭合 (end_date 非空) 就不是当前驾驶
+    (但最后已知位置照报, 状态页常显)。"""
     now = _utcnow()
     seed_drive(db, id=1, start_date=now - timedelta(minutes=10),
                end_date=now - timedelta(seconds=60), distance=5.0)
@@ -93,6 +97,64 @@ def test_live_status_ignores_just_closed_drive(auth, db):
                   longitude=114.0, latitude=22.5, speed=10, odometer=100.0)
     j = auth.get("/tesla/live/api/status").json()
     assert j["driving"] is False and j["drive_id"] is None
+    assert j["lng"] == 114.0 and j["lat"] == 22.5
+    assert j["pos_utc"] == _epoch(now - timedelta(seconds=61))
+
+
+def test_live_status_parked_returns_last_known(auth, db):
+    """常态停车: 最后已知电量/续航/位置照报 (状态页常显, 全库最新位置点,
+    行程开没开完不管); 电量/续航取最新非空值 (流式点位大多缺席);
+    car_id 选定只看那台车。"""
+    now = _utcnow()
+    seed_drive(db, id=1, start_date=now - timedelta(hours=2),
+               end_date=now - timedelta(hours=1), distance=5.0)
+    # 行程末点: 有位置无电量无续航 (流式点常态)
+    seed_position(db, drive_id=1, date=now - timedelta(hours=1),
+                  longitude=114.30, latitude=22.70, speed=0, odometer=200.0)
+    # 行程早段: 电量/续航都在 (取这俩的最新非空值)
+    seed_position(db, drive_id=1, date=now - timedelta(hours=2),
+                  longitude=114.0, latitude=22.5, speed=30, odometer=190.0,
+                  battery_level=78, rated_battery_range_km=310.0)
+    # 另一台车位置更新: 缺省 (全库) 看它, car_id=1 不串台
+    seed_drive(db, id=2, car_id=2, start_date=now - timedelta(minutes=30),
+               end_date=now - timedelta(minutes=10))
+    seed_position(db, drive_id=2, car_id=2, date=now - timedelta(minutes=10),
+                  longitude=113.0, latitude=23.5, battery_level=55)
+    j = auth.get("/tesla/live/api/status").json()
+    assert j["driving"] is False and j["drive_id"] is None
+    assert j["lng"] == 113.0 and j["lat"] == 23.5    # 全库最新位置 = 车 2 (更新)
+    assert j["soc"] == 55                            # 电量同口径: 最新非空 (车 2)
+    assert j["rated_range_km"] == 310.0              # 全库最新非空续航只有车 1 有
+    j1 = auth.get("/tesla/live/api/status?car_id=1").json()
+    assert j1["lng"] == 114.3 and j1["lat"] == 22.7  # 车 1: 行程末点 (无电量常态)
+    assert j1["soc"] == 78 and j1["rated_range_km"] == 310.0
+    j2 = auth.get("/tesla/live/api/status?car_id=2").json()
+    assert j2["lng"] == 113.0 and j2["soc"] == 55
+    assert j2["rated_range_km"] is None              # 车 2 从没有过非空续航
+
+
+def test_live_status_parked_last_drive(auth, db):
+    """驻车带最后一段已结束行程 (2026-09-27 用户点名「驻车的时候, 显示
+    最后一段行程」): 条目走行程列表同一条目组装 (_trip_item), car_id
+    选定只看那台车。"""
+    now = _utcnow()
+    seed_drive(db, id=1, start_date=now - timedelta(hours=2),
+               end_date=now - timedelta(hours=1), distance=5.0, duration_min=30)
+    seed_position(db, drive_id=1, date=now - timedelta(hours=1),
+                  longitude=114.0, latitude=22.5, odometer=100.0)
+    d = auth.get("/tesla/live/api/status").json()["last_drive"]
+    assert d["id"] == 1 and d["km"] == 5.0 and d["min"] == 30
+    assert d["date"] and d["start"] and d["end"]   # 副行「最后行程 日期 起–止」
+    assert auth.get("/tesla/live/api/status?car_id=2").json()["last_drive"] is None
+
+
+def test_live_status_parked_empty_db(auth, db):
+    """空库: 不开车也没任何已知量 —— 全部 None (前端各格显 –)。"""
+    j = auth.get("/tesla/live/api/status").json()
+    assert j["driving"] is False
+    for k in ("soc", "rated_range_km", "lng", "lat", "pos_utc", "drive_id",
+              "last_drive"):
+        assert j[k] is None, k
 
 
 # ---------------------------------------------------------------- 电耗口径边界
@@ -111,11 +173,12 @@ def test_live_status_without_calibration_hides_kwh(auth, db):
     j = auth.get("/tesla/live/api/status").json()
     assert j["driving"] is True
     assert j["km"] == 1.5
-    assert j["kwh"] is None and j["wh_per_km"] is None
+    assert j["kwh"] is None
 
 
 def test_live_status_short_drive_and_regen_clamp(auth, db):
-    """里程不足 1km 平均电耗无意义 → None; 续航回弹 (校准/回收) 夹到 0。"""
+    """续航回弹 (校准/回收) 夹到 0。(原先还带里程 <1km 平均电耗 → None 的
+    边界断言, 该字段随平均电耗格 2026-09-29 用户点名删除一并退役。)"""
     now = _utcnow()
     seed_charging(db)
     seed_drive(db, id=7, start_date=now - timedelta(minutes=1),
@@ -129,4 +192,3 @@ def test_live_status_short_drive_and_regen_clamp(auth, db):
     j = auth.get("/tesla/live/api/status").json()
     assert j["km"] == 0.4
     assert j["kwh"] == 0.0
-    assert j["wh_per_km"] is None

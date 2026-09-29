@@ -108,10 +108,19 @@ async def auth_middleware(
     else:
         resp = await call_next(request)
     if is_api:
-        # API 数据 (如 map config) 禁止缓存, 否则配置更新后浏览器仍用旧响应
-        resp.headers["Cache-Control"] = "no-store"
+        # API 数据 (如 map config) 禁止缓存, 否则配置更新后浏览器仍用旧响应;
+        # 接口自带 Cache-Control 的 (2026-09-25 起轨迹类接口带 ETag 走 304
+        # 重校验) 尊重接口自己发的 —— no-store 一盖 304 就永远命中不了
+        if "cache-control" not in resp.headers:
+            resp.headers["Cache-Control"] = "no-store"
     elif path.startswith(_STATIC_PREFIXES):
         # JS 工具 (trackutil 等) 迭代频繁, 必须重新校验; ETag 命中时 304 很便宜。
         # 只发 Last-Modified 时浏览器走启发式缓存, 会继续用旧 JS (动画因此冻住过)。
-        resp.headers["Cache-Control"] = "no-cache"
+        # 带版本参数 (?v=N) 的资源是例外: 版本号一改 URL 就换, 同一 URL 的内容
+        # 永不回头 (门禁测试钉着 HTML 里的版本串) → immutable 长缓存, 重开页面
+        # 不再整排 304 校验 (2026-09-25 用户点名充分利用浏览器缓存)。
+        if "v" in request.query_params:
+            resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        else:
+            resp.headers["Cache-Control"] = "no-cache"
     return resp

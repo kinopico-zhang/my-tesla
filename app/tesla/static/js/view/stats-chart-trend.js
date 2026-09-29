@@ -1,11 +1,20 @@
 // view/stats-chart-trend.js — 充电统计视图 (壳版 2/3): 图表底座 (echarts 实例
-// 注册表/tooltip 样式) + 月度趋势 (上电量柱/下费用线, 联动) + 常去充电点
-// (横向条形, 前 7 + 其他) + 图表/表格切换、注入失败落表格与窗口变化重绘。
-// 与旧版 (js/stats-chart-trend.js) 的差异: echarts 由壳按需注入 (hasEcharts
-// 在 view/stats-page.js 里注入成功后才置真), 其余逐字节同源。
-/* global $, esc, num, money, moneyInt, hasEcharts, monthlyData, locData */
+// 注册表/tooltip 样式) + 月度趋势 (充电量/充电费用两幅柱状, 共享一个 12 个月
+// 时间窗滑块 —— 轨道是全部历史, 拖圆钮把窗口平移到任意 12 个月) + 常去充电点
+// (竖排柱状, 前 7 + 其他) 与窗口变化重绘。
+// 2026-09-27 用户点名「都不需要表格视图」: 表格/图表切换整链退役, echarts 注入
+// 失败改由 stats-page 的错误盒亮灯 (不再有落表格兜底)。
+// 2026-09-28 常去充电点横向条形改竖排柱状 (用户点名「统计的柱状图竖着放吧,
+// 下面的文字竖着排列」), 名字竖排铺柱底 (stackLabel 每字一行, 两统计视图共用)。
+// 同日行程统计视图入壳: 图表实例注册表 (CHART_ELS/mkChart/statsResize) 是
+// 两统计视图共用的底座 —— 行程的 8 张图也登记在这里 (ts- 键), ResizeObserver
+// 一份管全部; 窗口滑块状态各自独立 (行程那份在 trips-stats-charts.js)。
+// v9 (2026-09-27): 司机里程分布图补登注册表 —— tsDrv 键漏了, mkChart 拿到
+// undefined 选择器, echarts 在 null 上炸成一串「null is not an object」,
+// 行程统计整页报数据加载失败 (对账钉在 test_tripstats_view)。
+/* global $, esc, num, money, moneyInt, thousands, hasEcharts, monthlyData, locData */
 /* exported chartText, tooltipStyle, mkChart, renderMonthly, renderLocations,
-            statsResize, forceTableMode */
+            statsResize, stackLabel */
 "use strict";
 /* ============================ 图表 ============================ */
 const chartText = { axis: "#898781", ink: "#c3c2b7" };
@@ -14,30 +23,63 @@ const tooltipStyle = {
   textStyle: { color: "#f5f5f7", fontSize: 12 },
 };
 const CHART_ELS = { monthlyKw: "#chart-monthly-kwh", monthlyCost: "#chart-monthly-cost",
-                    loc: "#chart-loc", fastslow: "#chart-fastslow", hour: "#chart-hour",
-                    soc: "#chart-socdist", power: "#chart-powerdist", city: "#chart-city" };
+                    loc: "#chart-loc", hour: "#chart-hour",
+                    soc: "#chart-socdist", power: "#chart-powerdist",
+                    price: "#chart-price", dur: "#chart-dur", city: "#chart-city",
+                    tsKm: "#chart-ts-km", tsKwh: "#chart-ts-kwh", tsLoc: "#chart-ts-loc",
+                    tsDrv: "#chart-ts-drv", tsHour: "#chart-ts-hour",
+                    tsDist: "#chart-ts-dist", tsDur: "#chart-ts-dur",
+                    tsSpd: "#chart-ts-spd", tsWh: "#chart-ts-wh",
+                    bhCurve: "#chart-bh-curve" };
 const charts = {};   // 名字 → echarts 实例 (ResizeObserver 统一 resize)
 
 function shortMonth(ym) { return ym.slice(2).replace("-", "/"); }
 function truncateName(s, n) { return s.length > n ? s.slice(0, n) + "…" : s; }
+/* 名字类轴标竖排 (2026-09-28 用户点名「下面的文字竖着排列」): 每字一行,
+   中文直立着读, 比侧躺 90° 自然; 与 truncateName 组合用 */
+function stackLabel(s) { return s.split("").join("\n"); }
 function mkChart(name) {
   if (!charts[name]) charts[name] = echarts.init($(CHART_ELS[name]));
   return charts[name];
 }
 
-/* ---------- 月度趋势: 上充电量柱 / 下费用线 (联动) ---------- */
+/* ---------- 月度趋势: 充电量/费用两幅柱状, 共享 12 个月时间窗 ---------- */
+const MONTH_WINDOW = 12;    // 窗口宽 (月); 历史不足一年时整段全显、滑块藏起
+let monthStart = 0;         // 当前窗口首月在 monthlyData 里的下标
+
 function renderMonthly() {
-  if (!monthlyData.length) return;
-  const months = monthlyData.map(d => d.month);
-  const kw = monthlyData.map(d => Math.round((d.energy_used || 0) * 10) / 10);
-  const cost = monthlyData.map(d => d.cost == null ? 0 : d.cost);
-  const total = monthlyData.reduce((a, d) => a + (d.cost || 0), 0);
-  $("#monthly-sub").textContent = `共 ${months.length} 个月 · 合计 ${moneyInt(total)}`;
-  $("#table-monthly").innerHTML = `<table>
-    <thead><tr><th>月份</th><th>kWh</th><th>费用</th><th>次数</th></tr></thead>
-    <tbody>${monthlyData.map(d => `<tr>
-      <td>${esc(d.month)}</td><td>${num(d.energy_used)}</td>
-      <td>${money(d.cost)}</td><td>${d.sessions}</td></tr>`).join("")}</tbody></table>`;
+  const n = monthlyData.length;
+  const row = $("#monthly-slider-row");
+  if (!n) {
+    $("#monthly-sub").textContent = "暂无数据";
+    $("#mkwh-total").textContent = "–";
+    $("#mcost-total").textContent = "–";
+    row.hidden = true;
+    return;
+  }
+  monthStart = Math.max(0, n - MONTH_WINDOW);   // 默认落在最近 12 个月
+  row.hidden = n <= MONTH_WINDOW;               // 一年都没满: 没得滑
+  if (!row.hidden) {
+    const slider = $("#monthly-window");
+    slider.max = String(n - MONTH_WINDOW);
+    slider.value = String(monthStart);
+    slider.style.setProperty("--win", (MONTH_WINDOW / n * 100) + "%");
+    $("#win-first").textContent = shortMonth(monthlyData[0].month);
+    $("#win-last").textContent = shortMonth(monthlyData[n - 1].month);
+  }
+  drawMonthlyWindow();
+}
+
+/* 滑块平移窗口: 两幅柱状 + 副题/窗口合计一起跟着走 */
+function drawMonthlyWindow() {
+  const win = monthlyData.slice(monthStart, monthStart + MONTH_WINDOW);
+  const months = win.map(d => d.month);
+  const kw = win.map(d => Math.round((d.energy_used || 0) * 10) / 10);
+  const cost = win.map(d => d.cost == null ? 0 : d.cost);
+  $("#monthly-sub").textContent =
+    shortMonth(months[0]) + " – " + shortMonth(months[months.length - 1]);
+  $("#mkwh-total").textContent = thousands(kw.reduce((a, b) => a + b, 0)) + " kWh";
+  $("#mcost-total").textContent = moneyInt(cost.reduce((a, b) => a + b, 0));
   if (!hasEcharts) return;
   if (!charts.monthlyKw) {
     echarts.connect([mkChart("monthlyKw"), mkChart("monthlyCost")]);
@@ -50,8 +92,10 @@ function renderMonthly() {
   charts.monthlyKw.setOption({
     animationDuration: 250,
     grid: { left: 6, right: 8, top: 10, bottom: 2, containLabel: true },
-    tooltip: { ...tooltipStyle, trigger: "axis", axisPointer: { type: "shadow" } },
-    xAxis: { ...xBase, axisLabel: { show: false } },
+    tooltip: { ...tooltipStyle, trigger: "axis", axisPointer: { type: "shadow" },
+      formatter: ps => { const d = win[ps[0].dataIndex];
+        return `<b>${ps[0].name}</b><br/>充电量 ${num(d.energy_used)} kWh<br/>${d.sessions} 次`; } },
+    xAxis: { ...xBase, axisLabel: { show: false } },   // 月份只在下面那幅标 (两图同轴联动)
     yAxis: { type: "value", splitLine: { lineStyle: { color: "#2c2c2a" } },
              axisLabel: { color: chartText.axis, fontSize: 10 } },
     series: [{ type: "bar", name: "充电量", data: kw, barMaxWidth: 16,
@@ -59,21 +103,87 @@ function renderMonthly() {
   });
   charts.monthlyCost.setOption({
     animationDuration: 250,
-    grid: { left: 6, right: 8, top: 8, bottom: 0, containLabel: true },
-    tooltip: { ...tooltipStyle, trigger: "axis",
-               axisPointer: { type: "line", lineStyle: { color: "#898781" } } },
-    xAxis: { ...xBase, axisLabel: { color: chartText.axis, fontSize: 10,
-              interval: months.length > 14 ? 1 : 0, formatter: shortMonth } },
+    grid: { left: 6, right: 8, top: 10, bottom: 0, containLabel: true },
+    tooltip: { ...tooltipStyle, trigger: "axis", axisPointer: { type: "shadow" },
+      formatter: ps => { const d = win[ps[0].dataIndex];
+        return `<b>${ps[0].name}</b><br/>费用 ${money(d.cost)}<br/>${d.sessions} 次`; } },
+    xAxis: { ...xBase, axisLabel: { color: chartText.axis, fontSize: 10, interval: 0,
+              // 月份轴防重叠 (2026-09-27 用户点名「日期重叠了」): 首格和每个
+              // 一月带年份 "26/01", 其余只标月份数 —— 12 连月必含一个一月,
+              // 年份上下文总在, 12 个标签在手机宽度也排得下
+              formatter: (v, i) => i === 0 || v.endsWith("-01")
+                ? shortMonth(v) : v.slice(5) } },
     yAxis: { type: "value", splitLine: { lineStyle: { color: "#2c2c2a" } },
              axisLabel: { color: chartText.axis, fontSize: 10,
                           formatter: v => v >= 1000 ? (v / 1000) + "k" : v } },
-    series: [{ type: "line", name: "费用", data: cost, showSymbol: false,
-               lineStyle: { color: "#c98500", width: 2 },
-               itemStyle: { color: "#c98500" } }],
+    series: [{ type: "bar", name: "充电费用", data: cost, barMaxWidth: 16,
+               itemStyle: { color: "#c98500", borderRadius: [4, 4, 0, 0] } }],
   });
 }
 
-/* ---------- 常去充电点: 横向条形 (前 7 + 其他) ---------- */
+/* ---------- 时间窗滑块: 宽钮 = 窗口本体 ---------- */
+/* 钮宽定为 12/N 轨道宽时, 原生 range 的线性映射恰好让钮身 [左缘, 右缘]
+   对准 [窗口首月, 末月] —— 滑块看起来就是那 12 个月本身 (轨道 = 全部
+   历史)。原生拖拽会把钮心吸到手指 (宽钮 = 半个窗口的跳变), 指针改自己
+   管: 按在窗口里抓住带着走 (抓点偏移全程保持), 点在窗口外先整窗跳过去;
+   键盘方向键照走原生 input 事件。 */
+const mSlider = $("#monthly-window");
+
+function sliderGeom() {                 // 轨道左缘/宽、钮宽、可走步数
+  const r = mSlider.getBoundingClientRect();
+  const n = monthlyData.length;
+  return { left: r.left, w: r.width, thumb: r.width * MONTH_WINDOW / n,
+           span: n - MONTH_WINDOW };
+}
+function thumbCenterX() {               // 钮心横坐标 (页面坐标)
+  const g = sliderGeom();
+  return g.left + g.thumb / 2 + monthStart / g.span * (g.w - g.thumb);
+}
+function valueFromCenter(cx) {          // 想让钮心落在 cx (页面坐标) → 窗口首月下标
+  const g = sliderGeom();
+  const rel = (cx - g.left - g.thumb / 2) / (g.w - g.thumb);
+  return Math.round(Math.min(1, Math.max(0, rel)) * g.span);
+}
+
+mSlider.addEventListener("pointerdown", e => {
+  if (!e.isPrimary || e.button !== 0) return;
+  e.preventDefault();                     // 原生拖拽 (钮心吸手指) 不要
+  mSlider.focus();
+  const cx = thumbCenterX();
+  const g = sliderGeom();
+  const inside = Math.abs(e.clientX - cx) <= g.thumb / 2 + 4;   // 抓在窗口内 (±4px 容差)
+  const off = inside ? e.clientX - cx : 0;    // 窗外点下: 窗口先跳到指下再跟手
+  const pid = e.pointerId;
+  const move = ev => {
+    if (ev.pointerId !== pid) return;
+    const v = valueFromCenter(ev.clientX - off);
+    if (v !== monthStart) {
+      monthStart = v; mSlider.value = String(v);
+      drawMonthlyWindow();
+    }
+  };
+  if (!inside) move(e);
+  // move/up 挂 window 级不捕获 (弹层拖拽同款: iOS Safari 对 touch 指针
+  // capture 会当场 pointercancel, 手指出界 window 级照样收)
+  const up = () => {
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", up);
+    window.removeEventListener("pointercancel", up);
+  };
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
+  window.addEventListener("pointercancel", up);
+});
+mSlider.addEventListener("touchstart", e => e.preventDefault(), { passive: false });
+mSlider.addEventListener("input", e => {     // 键盘方向键走原生
+  monthStart = Number(e.target.value);
+  drawMonthlyWindow();
+});
+
+/* ---------- 常去充电点: 竖排柱状 (前 7 + 其他) ----------
+   2026-09-28 用户点名「统计的柱状图竖着放吧，下面的文字竖着排列」: 横向
+   条形退役, 柱子竖起来 (次数降序从左到右), 充电点名竖排 (每字一行) 铺在
+   柱子底下; 气泡按下标取行 (旧版按名字 find, 截断过的名字对不上会炸) */
 function renderLocations() {
   if (!locData.length) return;
   const top = locData.slice(0, 7);
@@ -84,65 +194,26 @@ function renderLocations() {
                  cost: rest.reduce((a, d) => a + (d.cost || 0), 0),
                  fast_sessions: rest.reduce((a, d) => a + d.fast_sessions, 0) }] : top;
   $("#loc-sub").textContent = `共 ${locData.length} 个充电点`;
-  $("#table-loc").innerHTML = `<table>
-    <thead><tr><th>地点</th><th>次数</th><th>kWh</th><th>费用</th></tr></thead>
-    <tbody>${locData.map(d => `<tr>
-      <td>${esc(truncateName(d.location, 10))}</td><td>${d.sessions}</td>
-      <td>${num(d.energy_used)}</td><td>${money(d.cost)}</td></tr>`).join("")}</tbody></table>`;
   if (!hasEcharts) return;
   mkChart("loc").setOption({
     animationDuration: 250,
-    grid: { left: 6, right: 44, top: 6, bottom: 0, containLabel: true },
+    grid: { left: 6, right: 16, top: 16, bottom: 0, containLabel: true },
     tooltip: { ...tooltipStyle, trigger: "axis", axisPointer: { type: "shadow" },
       formatter: (ps) => {
-        const d = locData.find(x => x.location === ps[0].name) ||
-                  rows.find(x => x.location === ps[0].name);
-        return `<b>${esc(ps[0].name)}</b><br/>次数 ${d.sessions} · 快充 ${d.fast_sessions}` +
+        const d = rows[ps[0].dataIndex];
+        return `<b>${esc(d.location)}</b><br/>次数 ${d.sessions} · 快充 ${d.fast_sessions}` +
                `<br/>电量 ${num(d.energy_used)} kWh<br/>费用 ${money(d.cost)}`;
       } },
-    xAxis: { type: "value", splitLine: { lineStyle: { color: "#2c2c2a" } },
-             axisLabel: { color: chartText.axis, fontSize: 10 } },
-    yAxis: { type: "category", inverse: true,
-             data: rows.map(d => truncateName(d.location, 7)),
+    xAxis: { type: "category", interval: 0,
+             data: rows.map(d => stackLabel(truncateName(d.location, 7))),
              axisTick: { show: false }, axisLine: { lineStyle: { color: "#383835" } },
-             axisLabel: { color: chartText.ink, fontSize: 10.5, width: 76,
-                          overflow: "truncate" } },
-    series: [{ type: "bar", data: rows.map(d => d.sessions), barMaxWidth: 14,
-               itemStyle: { color: "#3987e5", borderRadius: [0, 4, 4, 0] },
-               label: { show: true, position: "right", color: chartText.ink,
+             axisLabel: { color: chartText.ink, fontSize: 10.5, lineHeight: 12 } },
+    yAxis: { type: "value", minInterval: 1, splitLine: { lineStyle: { color: "#2c2c2a" } },
+             axisLabel: { color: chartText.axis, fontSize: 10 } },
+    series: [{ type: "bar", data: rows.map(d => d.sessions), barMaxWidth: 16,
+               itemStyle: { color: "#3987e5", borderRadius: [4, 4, 0, 0] },
+               label: { show: true, position: "top", color: chartText.ink,
                         fontSize: 10.5, formatter: "{c} 次" } }],
-  });
-}
-
-/* 图表/表格切换 */
-function bindViewToggle(segId, chartEls, tableEl) {
-  $(segId).addEventListener("click", e => {
-    const b = e.target.closest("button"); if (!b) return;
-    $(segId + " .on").classList.remove("on"); b.classList.add("on");
-    const table = b.dataset.v === "table";
-    chartEls.forEach(el => el.hidden = table);
-    tableEl.hidden = !table;
-    if (!table) chartEls.forEach(el => { const c = echarts.getInstanceByDom(el); c && c.resize(); });
-  });
-}
-bindViewToggle("#monthly-view", [$(CHART_ELS.monthlyKw), $(CHART_ELS.monthlyCost)], $("#table-monthly"));
-bindViewToggle("#fastslow-view", [$(CHART_ELS.fastslow)], $("#table-fastslow"));
-bindViewToggle("#hour-view", [$(CHART_ELS.hour)], $("#table-hour"));
-bindViewToggle("#loc-view", [$(CHART_ELS.loc)], $("#table-loc"));
-bindViewToggle("#soc-view", [$(CHART_ELS.soc)], $("#table-socdist"));
-bindViewToggle("#power-view", [$(CHART_ELS.power)], $("#table-powerdist"));
-bindViewToggle("#city-view", [$(CHART_ELS.city)], $("#table-city"));
-
-/* echarts 注入失败 → 全部卡片直接落表格视图, 不留白框 (statsBoot 调) */
-function forceTableMode() {
-  document.querySelectorAll("#view-stats .chart-card").forEach(card => {
-    card.querySelectorAll(".chart-box").forEach(el => { el.hidden = true; });
-    const t = card.querySelector(".chart-table"); if (t) t.hidden = false;
-    const seg = card.querySelector(".mini-seg");
-    if (seg) {
-      seg.querySelector('[data-v="chart"]').classList.remove("on");
-      seg.querySelector('[data-v="table"]').classList.add("on");
-    }
   });
 }
 

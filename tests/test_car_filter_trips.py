@@ -2,7 +2,6 @@
 全部, ?car_id=N = 子集; kwh 换算按各自车的充电定标。充电域见
 test_car_filter.py。
 """
-import json
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -58,16 +57,11 @@ def test_map_summary_and_manifest_filter_by_car(auth, db):
     s2 = auth.get("/tesla/map/api/summary?car_id=2").json()
     assert s2["drives"] == 1 and s2["distance_km"] == 100.0
 
-    # 清单带 c/t 字段, 车辆/时间筛选在客户端按清单本地做
+    # 清单带 c/t 字段, 车辆筛选在客户端按清单本地做 (原始轨迹流端点已随
+    # 「只画走过的路」退役, 轨迹本体不再有服务端查询面)
     m = auth.get("/tesla/map/api/tracks/manifest").json()
     assert [(t["id"], t["c"], t["t"]) for t in m["tracks"]] == [
         (1, 1, "2026-09-10"), (2, 2, "2026-09-11")]
-    # 轨迹本体按 id 流式下发, 带自己的 car_id
-    r = auth.get("/tesla/map/api/tracks/stream", params={"ids": "2"})
-    lines = [json.loads(x) for x in r.text.splitlines()]
-    assert [t["id"] for t in lines] == [2]
-    assert lines[0]["car_id"] == 2
-    assert lines[0]["pts"] == [113.75, 22.8, 113.76, 22.81]
 
 
 # ---------------------------------------------------------------- 当前驾驶域

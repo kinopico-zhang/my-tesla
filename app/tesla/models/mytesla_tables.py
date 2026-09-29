@@ -62,7 +62,8 @@ class AppSetting(OwnBase):
     amap_key: Mapped[str] = mapped_column(String, default="")
     amap_security_code: Mapped[str] = mapped_column(String, default="")
     amap_style: Mapped[str] = mapped_column(String, default="")
-    map_provider: Mapped[str] = mapped_column(String, default="")  # 空=高德
+    amap_web_key: Mapped[str] = mapped_column(String, default="")  # Web服务 key (轨迹拟合)
+    map_provider: Mapped[str] = mapped_column(String, default="")  # 已退役: 列留而不用 (只留高德)
     updated_at: Mapped[datetime] = mapped_column(default=datetime.now,
                                                  onupdate=datetime.now)
 
@@ -109,4 +110,47 @@ class TripDriver(OwnBase):
     id: Mapped[int] = mapped_column(primary_key=True)
     drive_id: Mapped[int] = mapped_column(unique=True)
     driver_id: Mapped[int]
+    created_at: Mapped[datetime] = mapped_column(default=datetime.now)
+
+
+class DriveHistCache(OwnBase):
+    """速度档直方图的每段聚合原料 (统计页三卡, 口径见 trip_hist 模块注)。
+
+    已结束行程的 positions 不可变 → 原料算一次永久有效; 合并分组在
+    原始点位上聚合要 ~10s (NAS 实测 68.6 万点), 不缓存挡不起弹层。
+    payload 为 JSON {"v": 2, "rows": [[档, 地形(-1下坡/0平地/1上坡),
+    n功率, Σpower, Σpw·speed, Σspeed, Σ秒, Σ里程差], ...]} —— v2 起
+    公式原料按官方面板口径收 (AVG(power) 要 Σpower/n); v1 (裸 list)
+    读不回, 作废重算。"""
+
+    __tablename__ = "drive_hist_cache"
+
+    drive_id: Mapped[int] = mapped_column(primary_key=True)
+    payload: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.now)
+
+
+class DriveRoad(OwnBase):
+    """足迹「走过之路」: 一条记录 = 一段行程拟合到实际道路的结果。
+
+    后台 worker 用高德轨迹纠偏 (grasproad) 把原始 1s 采样拟合成路网
+    折线, 断档用驾车规划 (距离优先) 补全; pts 为 DP 压缩后的 WGS-84
+    平铺 JSON [lng,lat,...]。一程一行写一次 (v=算法版本, 不变不重算);
+    status: ok=有路 / guess=可能走过 (推断层虚线, 几何保留不进计数) /
+    failed=拟合失败(err 记因) / skip=境外或点太少 —— failed/skip 同 v
+    都算已处理, 水位增量只补新行程。gaps 为推断层顶点闭区间 JSON
+    [[i0,i1],...] (规划补的/直连的; guess 行覆盖全程)。读取全走
+    UNIQUE(drive_id) 点查/IN 查 (清单拼标注 + 流式下发), 无聚合热路径。"""
+
+    __tablename__ = "drive_roads"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    drive_id: Mapped[int] = mapped_column(unique=True)
+    status: Mapped[str] = mapped_column(String, default="ok")
+    v: Mapped[int] = mapped_column(default=1)
+    pts: Mapped[str] = mapped_column(String, default="")
+    n: Mapped[int] = mapped_column(default=0)
+    km: Mapped[float] = mapped_column(default=0.0)
+    err: Mapped[str] = mapped_column(String, default="")
+    gaps: Mapped[str] = mapped_column(String, default="[]")
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)

@@ -2,7 +2,7 @@
 // 现值载入 + 保存并实测 (真打一枪数据接口, 而不只 SELECT 1)。旧版底座
 // ($/esc/toast/api) 在 settings-connections.js, 壳版由 tesla-common 的
 // getJSON/sendJSON/toast 接管; 地图卡拆去 view/settings-map.js (旧页
-// 一文件两卡, 壳里按抽屉导航拆成两个视图, 新 basename)。
+// 一文件两卡, 壳里按导航分组拆成两个视图, 新 basename)。
 /* global $, toast, getJSON, sendJSON, bindGestures, registerView */
 "use strict";
 

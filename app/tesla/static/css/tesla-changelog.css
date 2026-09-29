@@ -20,7 +20,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
                "Helvetica Neue", system-ui, sans-serif;
   font-size: 14px; line-height: 1.45;
-  min-height: 100vh; min-height: 100dvh;
+  /* body 尺寸只在 tesla-base.css 定 (var(--shell-h)): 这里再定 100dvh 会盖掉钉高 */
   display: flex; flex-direction: column;
 }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }

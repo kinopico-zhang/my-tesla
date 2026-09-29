@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 from .charge_samples import ChargeRow, _charge_rows
 from .charging_regions import _match_region
 from ..common import DateRange, _clean_addr, _fnum, fdate, ftime
+from ..region_tree import region_chain
+from ...models import Address
 from ...schemas import ChargingSession
 
 
@@ -15,6 +17,14 @@ def _location_name(row: ChargeRow) -> str:
     if row.address is not None and row.address.name:
         return row.address.name
     return "未知位置"
+
+
+def _region_of(address: Address | None) -> str | None:
+    """省市区链 (大→小, " · " 连), 列表与详情同一口径 (用户点名信息量
+    对齐 + 大到小排); 解析不出省 = None, 前端退化到市字段。"""
+    if address is None:
+        return None
+    return region_chain(address.display_name or "")
 
 
 def _session_item(row: ChargeRow) -> ChargingSession:
@@ -31,6 +41,7 @@ def _session_item(row: ChargeRow) -> ChargingSession:
         location=_location_name(row),
         city=row.address.city if row.address else None,
         address=_clean_addr(row.address.display_name) if row.address else None,
+        region=_region_of(row.address),
         start_soc=cp.start_battery_level,
         end_soc=cp.end_battery_level,
         energy_added=energy_added,
@@ -40,11 +51,21 @@ def _session_item(row: ChargeRow) -> ChargingSession:
         duration_min=cp.duration_min,
         outside_temp=_fnum(cp.outside_temp_avg),
         power_max=row.agg.power_max,
-        is_fast=row.agg.is_fast)
+        is_fast=row.agg.is_fast,
+        tesla_supercharger=row.agg.tesla_dc)
 
 
 def _cost_of(row: ChargeRow) -> float | None:
     return row.process.cost
+
+
+def _has_energy(row: ChargeRow) -> bool:
+    """卡片口径的充入电量 (energy_added ?? energy_used) 不为 0: 刚插枪就
+    断/记录缺口留下的 0 kWh 幽灵会话不进列表 (用户点名「充电电量 0 的
+    默认不显示」)。added 有值 (哪怕是 0) 就以它为准, 与卡片显示同口径。"""
+    added = _fnum(row.process.charge_energy_added)
+    used = _fnum(row.process.charge_energy_used)
+    return bool(added if added is not None else used)
 
 
 def _energy_of(row: ChargeRow) -> float | None:
@@ -102,8 +123,10 @@ class SessionFilter:
 
 def list_charging_sessions(session: Session,
                            flt: SessionFilter) -> tuple[int, list[ChargingSession]]:
-    """充电列表: 日期/类型/搜索/车辆过滤 → 排序 → 分页; total 为过滤后总数。"""
+    """充电列表: 0 kWh 幽灵会话剔除 → 日期/类型/搜索/车辆过滤 → 排序 →
+    分页; total 为过滤后总数。"""
     rows = _charge_rows(session, flt.date_range, flt.query, flt.car_id)
+    rows = [row for row in rows if _has_energy(row)]
     if flt.charge_type == "fast":
         rows = [row for row in rows if row.agg.is_fast]
     elif flt.charge_type == "slow":

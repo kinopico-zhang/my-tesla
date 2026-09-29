@@ -22,6 +22,7 @@ class ChargingSession(BaseModel):
     location: str
     city: str | None
     address: str | None
+    region: str | None       # 省市区链 (大→小, " · " 连); 解析不出省为 None
     start_soc: int | None
     end_soc: int | None
     energy_added: float | None
@@ -32,10 +33,15 @@ class ChargingSession(BaseModel):
     outside_temp: float | None
     power_max: float | None
     is_fast: bool
+    tesla_supercharger: bool   # 采样里有 Tesla+Gb = 特斯拉超充 (列表打标用)
 
 
 class ChargeCurve(BaseModel):
-    """充电过程采样曲线 (各数组下标对齐)。"""
+    """充电过程采样曲线 (各数组下标对齐)。
+
+    tabs 是曲线有哪些档可看 (kw / voltage / current 的子集, kw 恒在):
+    车辆直流快充时不回报电压/电流 (TeslaMate 里恒为 2V / 0A 的死字段),
+    没有真数据的档不下发, 前端就不画那条 0 平线。"""
 
     minutes: list[float]
     soc: list[int | None]
@@ -43,6 +49,7 @@ class ChargeCurve(BaseModel):
     voltage: list[float | None]
     current: list[float | None]
     energy: list[float | None]
+    tabs: list[str]
 
 
 class ChargingSessionDetail(ChargingSession):
@@ -122,14 +129,26 @@ class CityStat(BaseModel):
     cost: float         # 已记录费用合计 (未记录算 0)
 
 
-class ChargeDims(BaseModel):
-    """充电统计多维聚合: 快慢充 / 开始时段 / 起充 SOC / 峰值功率 / 城市。"""
+class DistrictStat(BaseModel):
+    """城市下钻的二级地区 (区/县/镇) 聚合 —— 双击城市柱展开 (2026-09-27)。"""
 
-    fast_sessions: int
-    slow_sessions: int
-    by_hour: list[int]        # 24 档: 0~23 点开始的充电次数 (本地时区)
-    by_soc: list[int]         # 起充 SOC 五档: 0-20/20-40/…/80-100 (未知不进档)
-    by_power: list[int]       # 峰值功率五档: <60/60-100/100-150/150-200/≥200 kW
+    district: str
+    sessions: int
+    energy: float
+    cost: float
+
+
+class ChargeDims(BaseModel):
+    """充电统计多维聚合: 开始时段 / 起充 SOC / 峰值功率 / 单价 / 时长 / 城市。
+    (快慢充占比图 2026-09-27 退役, 快慢充计数不再吐 —— 汇总的
+    fast_sessions 仍供顶部统计卡; 城市只到市, 区/县并进上级市,
+    双击城市柱走 /districts 下钻区县。)"""
+
+    by_hour: list[int]        # 12 档: 每 2 小时一组, 开始小时 // 2 (本地时区)
+    by_soc: list[int]         # 起充 SOC 十档: 每 10% 一档 (未知不进档)
+    by_power: list[int]       # 峰值功率十档: 每 20kW 一档, ≥180 收尾 (无采样不进档)
+    by_price: list[int]       # 单次单价十档 ¥/kWh: 每 0.25 一档, ≥2.25 收尾 (未记费用不进档)
+    by_duration: list[int]    # 时长十档: <30/30-60/60-90/90-120 分起步, 后面按小时变粗
     by_city: list[CityStat]   # 次数降序, 最多 10 城
 
 

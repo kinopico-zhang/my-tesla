@@ -11,7 +11,7 @@ const shellState = {
 };
 
 const CAR_CHANGE_FNS = [];
-/** 订阅车辆切换 (抽屉切换器触发; 订阅方 = 壳的 refreshCurrent, 整体刷新)。 */
+/** 订阅车辆切换 (车辆 chip 触发; 订阅方 = 壳的 refreshCurrent, 整体刷新)。 */
 function onCarChange(fn) { CAR_CHANGE_FNS.push(fn); }
 
 function saveShell() {
@@ -30,9 +30,9 @@ try {
   }
 } catch (_error) { /* 坏档当没存过 */ }
 
-/* 冷启消费旧充电页链接的筛选参数 (?type=/?region=/?cost=), 折进本会话偏好;
-   时间参数 (?range=/?from=&to=) 归 tesla-time-range.js。参数优先于存档
-   (旧语义: URL 是事实来源); app-boot 随后把地址栏洗成裸 /tesla。 */
+/* 冷启消费旧充电页链接的筛选参数 (?type=/?region=/?cost=), 折进本会话偏好。
+   参数优先于存档 (旧语义: URL 是事实来源); app-boot 随后把地址栏洗成裸
+   /tesla (时间链接 ?range=/?from=&to= 的筛选语义 3.3.0 下线, 直接洗掉)。 */
 {
   const qs = new URLSearchParams(location.search);
   const f = shellState.filters.charging || (shellState.filters.charging = {});

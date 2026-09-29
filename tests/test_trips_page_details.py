@@ -14,12 +14,24 @@ def test_trips_page_has_url_deeplink(auth):
         # 再编码的 %2C 也不用手工 decode 了), 抠到就直接开行程视图
         'bootQs.get("id") || bootQs.get("ids")',
         "if (tripKey) openByKey(tripKey)",
-        # 打开弹层: 地址栏镜像 (单条 id= / 合并 ids=), 不留历史
-        '"/tesla?view=trips&" + (/[-,]/.test(curKey) ? "ids=" : "id=") + curKey',
+        # 打开弹层: 地址栏镜像 (单条 id= / 合并 ids=), 不留历史; 分组页
+        # 打开的合并镜像 view=groups (宿主是分组页, 刷新落在分组背后)
+        'const v = it.merged && sheetFrom === "groups" ? "groups" : "trips";',
+        "`/tesla?view=${v}&` + (/[-,]/.test(curKey) ? \"ids=\" : \"id=\") + curKey",
         "openByKey",
         "/tesla/trips/api/sessions/${",
-        # 单条行程头部立即填 (字段随卡片/接口齐), 占位只留给合并流式
-        "if (it.pts || !it.merged) fillSheetHeader(it)",
+        # 单条行程头部立即填 (字段随卡片/接口齐); 合并带着汇总 (分组页条目/
+        # 多选聚合, 2026-09-23 用户点名不等地图) 也先填 —— 占位只留给取不到
+        # 汇总的深链
+        "if (it.pts || !it.merged || it.km != null) fillSheetHeader(it)",
+        # 合并深链先取轻量汇总再开弹层 (2026-09-24 用户再报「加载地图时平
+        # 均电耗空着, 过一会儿才出来」: 2026-09-23 的 info 直填盖住了分组/
+        # 多选, 深链重开还在全程占位 —— 流式汇总头要等地图引擎装载后才随
+        # 流发出): 服务端只查 drives 不碰轨迹点; 取不到照旧无 info 占位,
+        # 错误收场交给后面的流式
+        "try { info = await getJSON(`/tesla/trips/api/merged_summary?ids=${key}`); }",
+        "catch { info = null; }",
+        "await openMerged(key, true, info);",
         # 坏合并深链: 关弹层 + 洗掉行程参数回列表 (单条卡片打开的错留在弹层里)
         "hideSheet(); throw e",
         "history.replaceState(null, \"\", \"/tesla\");"]:
@@ -32,24 +44,25 @@ def test_trips_page_preloads_tiles(auth):
     TileCache, 收尾补整轨拉远视野); 时长公式抽 animDurMs 与播放同口径。"""
     html = served_page(auth, "/tesla")
     for frag in ["function followZoom(", "async function tileTemplate(",
-                 "return tileTplCache = (x, y, z) =>",   # 模板返回造 URL 的函数 (OSM 合成 Carto 地址 / 高德抄 DOM)
-                 "basemaps.cartocdn.com/dark_all/${z}/${x}/${y}.png",
+                 # 模板返回造 URL 的函数 (从高德地图 DOM 抄一张真实瓦片
+                 # URL 当模板, lang/style/scale 跟实际渲染走)
+                 "return tileTplCache = (x, y, z) => tpl",
                  "function preloadTiles(", "正在预载地图", "TrackAnimation.lngLatToTile",
-                 "appmaptile", "playTrack(c.pts, c.ts || [], it, zoom)",
-                 "setTimeout(resolve, 8000)", "track-animation.js?v=1",
+                 "appmaptile", "playTrack(c.pts, c.ts || [], it, zoom, false, true)",
+                 "setTimeout(resolve, 8000)", "track-animation.js?v=3",
                  # 矢量扫路预取 (隐藏图拉过不认, 只能驱动主图自己扫)
                  "async function preloadVectorTrack(",
                  "const animDurMs = (n, km) =>",
                  "let dur = TripPlayback.animDurMs(N, cum[N - 1]);",
-                 "dur = TripPlayback.animDurMs(N, cum[N - 1]);",
+                 # 流式开播把 dur 换成全程里程档 (节拍开播定死, append 不再重算)
+                 "dur = TripPlayback.animDurMs(N, kmFull);",
                  "tripMap.setZoomAndCenter(z, p, true)",
                  # 环形前瞻: 容器四周扩出 (wrap 裁掉可视区不变), 播放中四周
-                 # 瓦片提前 4~13s 进缓存 = 真正的边播边下; logo 推回可视区
+                 # 瓦片提前 4~13s 进缓存 = 真正的边播边下; logo 也按需求去掉
                  "width: calc(100% + 320px); height: calc(100% + 640px);",
                  "left: -160px; top: -320px;",
-                 "#trip-map .amap-logo {",
+                 "#trip-map .amap-logo { display: none !important; }",
                  "#trip-map .amap-copyright { display: none !important; }",
-                 "transform: translate(160px, -320px);",
                  "const MAP_RING_X = 160, MAP_RING_Y = 320;",
                  "const FIT_AVOID = [46 + MAP_RING_Y, 46 + MAP_RING_Y,"
                  " 46 + MAP_RING_X, 46 + MAP_RING_X];",
@@ -85,20 +98,29 @@ def test_trips_page_style_block_balanced(auth):
 
 
 def test_trips_page_has_multiselect(auth):
-    """多选连续行程: 长按卡片进选择模式 + 底栏 (全选/上限提示) + 合并接口直开。"""
+    """多选连续行程: 长按卡片进选择模式 + 底栏 (全选/合并) + 合并接口直开。
+    100 段上限 2026-09-25 撤掉: sel-cap 提示与 MERGE_MAX 不应再出现。"""
     html = served_page(auth, "/tesla")
     for frag in ['id="selbar"', 'id="sel-go"', 'id="sel-cancel"',
-                 'id="sel-count"', 'id="sel-all"', 'id="sel-cap"', "MERGE_MAX = 100",
+                 'id="sel-count"', 'id="sel-all"',
                  "body.selecting", "pickCard", "enterSelect", "exitSelect",
                  "openMerged", "/tesla/trips/api/merged_stream?ids=",
-                 "mergedCache", "loadMergedStream(", "sess.append(d.pts, d.ts)",
+                 "mergedCache", "loadMergedStream(",
+                 "sess.append(d.pts, d.ts, d.gaps, d.t0)",   # 第 4 参段首时刻 (标题随段切换)
                  "setupLongPress", "HOLD_MS = 480",
                  'addEventListener("contextmenu"']:
         assert frag in html, f"行程页缺少多选片段 {frag}"
+    # 上限退役: 提示元素/封顶常量不再接线 (撤元素防孤儿引用)
+    assert 'id="sel-cap"' not in html
+    assert "MERGE_MAX" not in html
     # 多选按钮已撤: 长按卡片是唯一入口 (触屏长按/桌面按住)
     assert 'id="merge-btn"' not in html
     # 合并弹层复用播放: pts 随 it 一起传入 (不走单条轨迹接口)
     assert "it.pts ? it : trackCache.get(it.id)" in html
+    # 多选聚合 (2026-09-23 用户点名弹层一开就显数, 不等地图): 列表新→旧,
+    # 时间上首段在末尾; ΣkWh÷Σkm 与合并汇总头同口径, 没电耗的段不计入
+    assert "const kws = picked.map(it => it.kwh).filter(v => v != null);" in html
+    assert "start: picked[picked.length - 1].start, end: picked[0].end," in html
     # 合并轨迹按段做断档识别 (各段采样密度不同), 单段照旧全局一套
     assert "function splitSegments(" in html
     assert "splitSegments(pts, it.seg_starts)" in html

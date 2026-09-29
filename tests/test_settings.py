@@ -40,7 +40,7 @@ def test_settings_save_amap_and_map_config_reflects(auth, monkeypatch):
     assert r.status_code == 200
     assert r.json()["amap"]["key_masked"] == "abcd****5678"
     assert auth.get("/tesla/map/api/config").json() == {
-        "provider": "amap", "amap_key": "abcd1234efgh5678",
+        "amap_key": "abcd1234efgh5678",
         "security_code": "9182ac3b", "style": "amap://styles/dark"}
     # 留空 = 保持现值
     auth.post("/tesla/api/settings", json={"amap_key": "", "amap_security_code": ""})
@@ -78,28 +78,19 @@ def test_settings_save_map_style_and_validation(auth, monkeypatch):
     assert r.json()["amap"]["style"] == "amap://styles/normal"
 
 
-def test_settings_save_map_provider_and_validation(auth, monkeypatch):
-    """地图服务商切换 (用户点名: 支持高德 / OpenStreetMap 等): 存自有库,
-    map config 即时反映; 留空保持; 不认识的值 400 不落库。
-
-    选 OSM 不需要 Key —— 前端配置端点带 provider, 各地图视图据此选渲染层
-    (OSM=Leaflet 瓦片 + WGS-84 原生坐标; 高德=GCJ-02)。"""
-    monkeypatch.delenv("MAP_PROVIDER", raising=False)
-    assert auth.get("/tesla/api/settings").json()["amap"]["provider"] == "amap"
+def test_settings_map_provider_field_retired(auth, monkeypatch):
+    """地图服务商字段退役 (2026-09-25 用户点名「地图只保留高德」): 状态与
+    配置端点都不再有 provider; 旧客户端再 POST map_provider 是无效字段,
+    不炸不落库 (pydantic 忽略), 样式/Key 保存照常。"""
+    monkeypatch.setenv("MAP_PROVIDER", "osm")   # env 也不再看 (有也不生效)
+    state = auth.get("/tesla/api/settings").json()["amap"]
+    assert set(state) == {"key_masked", "security_code_set", "style",
+                          "web_key_masked"}   # 3.3.3 起加轨迹拟合 Web 服务 Key
+    cfg = auth.get("/tesla/map/api/config").json()
+    assert set(cfg) == {"amap_key", "security_code", "style"}
     r = auth.post("/tesla/api/settings", json={"map_provider": "osm"})
-    assert r.json()["amap"]["provider"] == "osm"
-    assert auth.get("/tesla/map/api/config").json()["provider"] == "osm"
-    # 留空 = 保持现值
-    r = auth.post("/tesla/api/settings", json={"map_provider": ""})
-    assert r.json()["amap"]["provider"] == "osm"
-    # 换回高德
-    assert auth.post("/tesla/api/settings",
-                     json={"map_provider": "amap"}).json()["amap"]["provider"] == "amap"
-    # 不认识的 400 且不落库
-    for bad in ("google", "AMAP", "高德"):
-        assert auth.post("/tesla/api/settings",
-                         json={"map_provider": bad}).status_code == 400, bad
-    assert auth.get("/tesla/api/settings").json()["amap"]["provider"] == "amap"
+    assert r.status_code == 200
+    assert "provider" not in r.json()["amap"]
 
 
 def test_settings_tmdb_rollback_also_reverts_style(auth, monkeypatch):
@@ -178,22 +169,27 @@ def test_drivers_crud_and_single_default(auth):
 
 
 def test_settings_views_and_entries(auth):
-    """设置拆三视图挂全 (数据来源/地图设置/驾驶员, 表单原样搬壳);
+    """设置拆视图挂全 (账号设置/数据来源/地图设置/驾驶员, 表单原样搬壳;
+    账号 2026-09-27 从数据来源页拆出独立页, 用户点名排设置组前两页);
     3.0 的入口是抽屉设置组 (test_shell_wiring 钉住), 账号弹层在
     test_shell_views 的生命周期用例里。"""
     html = served_page(auth, "/tesla")
-    for frag in ['id="view-settings-db"', 'id="view-settings-map"',
+    for frag in ['id="view-settings-account"', '<h2>账号设置</h2>',
+                 'id="view-settings-db"', 'id="view-settings-map"',
                  'id="view-settings-drivers"',
                  'id="tm-host"', 'id="tm-save"', "保存并连接", 'id="amap-key"',
                  'id="drv-list"', "/tesla/api/settings", "/tesla/api/drivers",
                  'id="toast"', "设为默认", "留空 = 保持现值",
-                 # 地图样式选择 (深色默认幻影黑配 App; 提示讲清地名是异步到的)
+                 # 地图样式选择 (深色默认幻影黑配 App; 样式说明长段 2026-09-27
+                 # 退役, 预设 + 自定义入口已足够 —— 用户点名删的)
                  'id="amap-style"', 'value="amap://styles/dark"',
                  'value="amap://styles/darkblue"', '极夜蓝',
-                 '幻影黑 (纯黑)</option>', '首次打开过一两秒才出现',
-                 'id="amap-style-custom"', "amap_style:",
-                 # 服务商切换 (高德/OSM): 选 OSM 时 Key/样式整组收起
-                 'id="map-provider"', '<option value="osm">',
-                 'id="amap-rows"', "map_provider:", "syncProviderRows"]:
+                 '幻影黑 (纯黑)</option>',
+                 'id="amap-style-custom"', "amap_style:"]:
         assert frag in html, f"设置视图缺少片段 {frag}"
+    # 服务商切换已退役 (只留高德): 下拉/收组逻辑不许回潮
+    for gone in ('id="map-provider"', "map_provider:", "syncProviderRows",
+                 'id="amap-rows"', '<option value="osm">',
+                 "首次打开过一两秒才出现"):   # 样式说明长段 (2026-09-27 删)
+        assert gone not in html, f"退役的片段回潮: {gone}"
     assert "无地名" not in html   # 深色样式有地名, 旧说法不许回潮

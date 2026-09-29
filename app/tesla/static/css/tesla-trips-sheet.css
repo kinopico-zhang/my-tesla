@@ -20,7 +20,6 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .sel-info b { color: var(--ink-1); font-weight: 650; }
-.sel-info #sel-cap { color: #e08a2e; }   /* 划选超上限: 提示为什么按钮置灰 */
 .sel-go {
   flex: none; background: var(--blue); color: #fff; font-size: 13.5px; font-weight: 600;
   padding: 9px 16px; border-radius: 999px;
@@ -60,77 +59,181 @@
 }
 #toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
 #toast[hidden] { display: none; }
-.sheet {
+/* 基座收口到 #sheet (3.0 四张弹层共用 .sheet 类名互相漏样式, 充电侧先
+   收口): 这里并入此前漏进来的宽屏居中/描边/阴影与现行内衬, 渲染不变 */
+#sheet {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 91;
-  height: 82vh; height: 82dvh;
-  display: flex; flex-direction: column;
+  height: 82vh; height: calc(var(--shell-h, 100dvh) * .82);
+  margin: 0 auto; max-width: 640px; max-height: 92vh; max-height: calc(var(--shell-h, 100dvh) * .92);
+  display: flex; flex-direction: column; overflow: hidden;   /* 紧凑: 四向不可滚 (用户点名) */
   background: var(--surface-2); border-radius: 20px 20px 0 0;
-  padding: 10px 16px calc(env(safe-area-inset-bottom) + 12px);
+  border: 1px solid var(--hairline); border-bottom: 0;
+  box-shadow: 0 -12px 48px rgba(0,0,0,.5);
+  /* 底衬收窄 (2026-09-23 用户点名把最下方的空白用起来): 原来的 +22px 空
+     白改放弹层底一行页标题+页标 (.tp-foot, 在 .tp-pager-zone 里) */
+  padding: 10px 20px calc(env(safe-area-inset-bottom) + 8px);
   transform: translateY(105%); transition: transform .28s cubic-bezier(.32,.72,.33,1);
 }
-.sheet.show { transform: translateY(0); }
-/* 手柄改成整行命中区 (5px 的胶囊本体根本点不中), 胶囊用 ::before 画 */
-.grab { flex: none; padding: 7px 0 3px; margin-bottom: 8px; cursor: pointer;
-        touch-action: none; -webkit-user-select: none; user-select: none; }
-.grab::before { content: ""; display: block; width: 38px; height: 5px;
-                border-radius: 3px; background: var(--hairline); margin: 0 auto; }
-.sh-head { flex: none; display: flex; align-items: baseline; gap: 10px; padding: 0 4px 10px; }
-.sh-title { font-size: 17px; font-weight: 700; }
-.sh-sub { font-size: 12px; color: var(--ink-3); min-width: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sh-drv { flex: none; display: flex; align-items: center; gap: 8px; padding: 0 4px 8px; }
-#sh-drv-pick { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.sh-drv .lb { font-size: 11px; color: var(--ink-2); flex: none; }
-.sh-drv select {
-  font: inherit; font-size: 12.5px; color: var(--ink-1);
-  background: var(--surface); border: 1px solid var(--hairline);
-  border-radius: 999px; padding: 5px 10px; outline: none; max-width: 62%;
+#sheet.show { transform: none; }   /* 开态 none: 闲置不顶变换层 (见 charging-sheet 同注) */
+/* 手柄改成整行命中区 (5px 的胶囊本体根本点不中), 胶囊用 ::before 画。
+   胶囊实色 #48484a (充电侧同款): 9% 白的 hairline 在深底上像糊的 (用户报)。
+   scoped 到 #sheet: .grab 类名四弹层共用, 裸规则互相漏 —— map-canvas 的
+   38px hairline 胶囊叠进来 = 实色胶囊垫一圈虚影 (用户报「重影」) */
+#sheet .grab { flex: none; padding: 7px 0 3px; margin-bottom: 8px; cursor: pointer;
+               touch-action: none; -webkit-user-select: none; user-select: none; }
+#sheet .grab::before { content: ""; display: block; width: 36px; height: 5px;
+                       border-radius: 3px; background: #48484a; margin: 0 auto; }
+/* 头部一行 (2026-09-22 用户点名再排): 日期带年份 + 出发时刻并到左边一串;
+   右上角 2026-09-24 用户点名让给驾驶员 (原是当前页标题, 页标题退役 ——
+   切页点底行页标区)。两栏 1fr auto: 左串 min-width: 0, 日期位独扛收缩
+   省略号; 两项同一套字 (13px/600), 同一水平线 (行高钉 25px, 按钮同高)。
+   .sh-title/.sh-sub 收进 #sheet (同 .grab 的老病): 类名与充电地图/足迹
+   明细共用, 那两张是两行堆叠头 (17px 标题 + 12px 副行), 样式表又排在
+   本文件后面 —— 裸规则同特异度后来者胜, 行程弹层的日期被顶成 17px/700
+   还下沉 10px、时间被压成 12px, 三样字体凑不齐、高低不齐 (用户报) */
+.sh-head { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto;
+           align-items: center; gap: 10px; padding: 0 4px 8px; }
+/* 盒模型也要声明死: 后加载的 chargemap/map-canvas 裸 .sh-title/.sh-sub 带
+   竖向 margin, 头部改 flex 后这些属性真生效 (v13 时间还是内联 span, 竖向
+   margin 被内联化吞掉无感) —— 漏进来把时间顶出日期线 (2026-09-22 用户
+   实报「时间突出来了」), margin 一律归零/只留左间距 */
+#sheet .sh-title { font-size: 13px; font-weight: 600; display: flex;
+                   align-items: center; min-width: 0; line-height: 25px;
+                   margin: 0; }
+/* 左串里日期位独扛收缩 (分组名最长 30 字, 省略号兜底), 时间/驾驶员不缩 */
+#sh-date {
+  flex: 0 1 auto; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.sh-toll {
-  margin-left: auto; flex: none; font-size: 12.5px; color: #7db3f0;
-  background: rgba(57,135,229,.14); padding: 4px 10px; border-radius: 999px;
-  white-space: nowrap; max-width: 52%; overflow: hidden; text-overflow: ellipsis;
+/* 时间并进左侧日期串 (span 内嵌): 同一套字, 颜色压一档分层, 定宽不缩;
+   margin 只留左间距 (顶掉后加载裸规则的 2px/14px 竖向 margin) */
+#sheet .sh-sub { font-size: 13px; font-weight: 600; color: var(--ink-2);
+                 white-space: nowrap; margin: 0 0 0 6px; line-height: 25px; flex: none; }
+/* 驾驶员 = 真文字按钮 (原生 select 退场), 2026-09-24 用户点名挪右上角
+   (原并进左串时间后面, 该位让给它的正是同日退役的页标题): 蓝色示意可
+   点, 背景边框全撤, 定高 25px 与日期同一水平线; 名字过长省略号, 最宽
+   40vw 别挤走日期; 没配驾驶员/合并多段时整颗藏 (JS setupDriverPicker) */
+.sh-drv {
+  appearance: none; -webkit-appearance: none;
+  font: inherit; font-size: 13px; font-weight: 600; color: var(--blue);
+  height: 25px; line-height: 25px; background: none; border: 0; padding: 0 4px;
+  flex: none; max-width: 40vw; justify-self: end;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.sh-cells {   /* 单行横滑: 放不下就滑, 不折行挤地图 (里程/时长/车速/功耗 实时格排前) */
-  flex: none; display: flex; gap: 8px; padding-bottom: 10px;
-  overflow-x: auto; scrollbar-width: none;
+.sh-cells {   /* 数字带 = 轨迹页自己的一行 (2026-09-27 用户点名三页独立:
+  布局恒定 —— 地图/图卡大小全程不变; 2026-09-25 三页等高修平时曾挪出分页
+  当公共带 + 二三页整带收放, 带子一收一还地图就变一次大小 ——
+  「地图大小变来变去」正是这么来的, 整套撤掉)。横滑切页走转发
+  (trips-sheet-stats: touch-action 拦滚的区原生不滚)。贴地图下方, 播放条
+  出来时底下让一行 (播放条的 margin-top 就是缝) */
+  flex: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  margin: 8px 0 0;
 }
-.sh-cells::-webkit-scrollbar { display: none; }
-.sh-cell { flex: none; background: var(--surface); border-radius: 12px; padding: 8px 12px; }
-.sh-cell .lb { font-size: 11px; color: var(--ink-2); }
-.sh-cell .val { font-size: 17px; font-weight: 650; margin-top: 2px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.sh-cell .val small { font-size: 11px; color: var(--ink-2); font-weight: 500; }
-/* 实时数字位数变化 (0.0→4.9→12.3 / 0:00→1:02:45 / 回收 -12.3) 不许在横滑条里
-   挤动邻居格: 数字进定宽盒右对齐 (ch = 一个 tabular 数字宽), 变长只向左长 */
-.sh-cell .val .n { display: inline-block; text-align: right; }
+/* .sh-cell 族同样收进 #sheet (撞名同上): 裸规则会被后面充电地图明细的
+   同名规则压掉 —— 数字 15px 变 18px、内衬 6/10 变 10/12 */
+#sheet .sh-cell { background: var(--surface); border-radius: 12px; padding: 6px 10px; }
+#sheet .sh-cell .lb { font-size: 11px; color: var(--ink-2); text-align: center; }   /* 数据居中 (用户点名) */
+#sheet .sh-cell .val { font-size: 15px; font-weight: 650; margin-top: 2px; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: center; }
+#sheet .sh-cell .val small { font-size: 11px; color: var(--ink-2); font-weight: 500; }
+/* 实时数字位数变化 (0.0→4.9→12.3 / 0:00→1:02:45 / 回收 -12.3) 不许在网格里
+   挤动邻居格: 数字进定宽盒 (ch = 一个 tabular 数字宽), 盒宽不随位数变 */
+#sheet .sh-cell .val .n { display: inline-block; text-align: center; }
 #sh-km .n, #sh-kwh .n { min-width: 4.5ch; }
 #sh-dur .n { min-width: 7ch; }
 #sh-spd .n { min-width: 3ch; }
 #sh-pw .n { min-width: 5ch; }    /* 可负 (动能回收 "-12.3") */
 #sh-avg .n { min-width: 4ch; }   /* 播放初期每公里成本高, 平均值可冲 4 位 */
-.trip-map-wrap {   /* 底部让位浮层播放条 (62px = 胶囊高50+距底16+净距8 − 弹层底padding12):
-  跟车的动态轨迹不再被控制条压住, AMap logo 也完整露出 */
-  position: relative; flex: 1; min-height: 0; margin-bottom: 62px;
+/* 地图↔动态横滑分页 (2026-09-22 用户点名「往左划显示行程统计页面」→ 后点
+   名「统计改成动态, 整个页面都换掉」): 原生 snap 滚动 (音乐 App 设置/搜索
+   子页同款), 两页整页对换。地图横滑归地图平移 —— 切页全靠横滑 (头部转发 +
+   数字带/播放条转发 —— 两者 2026-09-27 随三页独立住回轨迹页, touch-action
+   拦滚的区原生不滚, 转发是主路; 后两页往回滑原生滚回); 页底页签 2026-09-22
+   用户点名撤掉 (右上角页标题同日起接管, 2026-09-24 又退役让位给驾驶员 ——
+   页位回显只剩底行 .tp-foot); touch-action 链式约束只落在动态页上
+   (给容器声明会把地图自己的手势也劫去滚页) */
+/* 竖排: 分页在上吃满主区, 弹层底一行 (.tp-foot) 在下 —— 2026-09-23 用户点
+   名把最下方的空白用起来 (页标题 + iOS 桌面同款白点页标) */
+.tp-pager-zone { position: relative; flex: 1; min-height: 0;
+                 display: flex; flex-direction: column; }
+.tp-pager {
+  flex: 1; min-height: 0; display: flex;
+  overflow-x: auto; overflow-y: hidden;
+  scroll-snap-type: x mandatory; overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.tp-pager::-webkit-scrollbar { display: none; }
+/* 弹层底一行 (2026-09-23 用户点名: 最下方的空白放当前页标题 + 白点页标,
+   类似 iOS 桌面的白点): 标题跟当前页走 (轨迹页「行驶轨迹」/ 动态页「行
+   驶数据」), 三枚圆点亮当前页 —— trips-sheet-stats.js 切页时同步换字换
+   点; 2026-09-24 用户点名竖排 (圆点在上标题在下) + 点整块切下一页 (末
+   页绕回第一页); 同日用户点名标题字放大 (12→14px 加粗 —— 它是页面
+   标题, 不是脚注) */
+.tp-foot { flex: none; display: flex; flex-direction: column; align-items: center;
+           justify-content: center; gap: 6px; padding: 8px 0 2px;
+           cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.tp-foot-lb { font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.tp-dots { flex: none; display: inline-flex; align-items: center; gap: 5px; }
+.tp-dots i { width: 6px; height: 6px; border-radius: 50%;
+             background: rgba(235,235,245,.25); }
+.tp-dots i.on { background: #f5f5f7; }   /* iOS 桌面同款: 当前页白点 */
+/* 轨迹页 = 地图 + 数字带 + 播放条 (2026-09-27 用户点名三页独立: 页面自有
+   布局恒定, 翻页不收不还 —— 地图比两页图卡矮一截是常态, 换来的是全程尺寸
+   不变; 播放条不播整行收掉不占位, 见 tesla-trips-playback.css .playbar) */
+.tp-track {
+  flex: 0 0 100%; min-width: 0; height: 100%;
+  scroll-snap-align: start;
+  display: flex; flex-direction: column;
+}
+.trip-map-wrap {   /* 地图区: 轨迹页主区 (独占弹层主区 → 裹分页 → 裹轨迹页,
+  高度只随页高变); 右下角视角基线 (pb-zoom) 浮在这
+  层里, relative 做它的定位基 */
+  position: relative; flex: 1; min-height: 0;
   border-radius: 14px; overflow: hidden; background: var(--surface);
 }
+/* 动态页: 一页塞下不滚屏 (2026-09-22 用户点名「搞扁一点, 放到一个页面
+   里, 不要滚屏」) —— 图卡 flex:1 均分页高, 两卡/三卡都自动铺满, 曲线高
+   度跟着卡走, 什么屏都不出滚动条; 二三页只有自己的图 (2026-09-27 三页
+   独立: 各页布局与别页无关, 恒定不变) */
+.tp-stats {
+  flex: 0 0 100%; min-width: 0; height: 100%; scroll-snap-align: start;
+  overflow: hidden;
+  /* 纯横轴 (2026-09-27 用户实报「还是不灵敏, 卡卡的, 响应不及时」): 竖向
+     整链没得滚 (分页器 overflow-y hidden、文档 overflow hidden), 放行 pan-y
+     只是喂了 iOS 仲裁一个认不出的轴 —— 横滑定轴慢半拍、斜起手先竖后横
+     半路死掉, 只能等松手转发兜底 (跟手没了)。收成 pan-x: 可认领的轴只剩
+     一个, 起手即跟手; 竖拉 (下拉关闭) 无人认领, 指针流全量给弹层拖拽 */
+  touch-action: pan-x;
+  display: flex; flex-direction: column; gap: 8px; padding: 2px;
+}
+.tps-card {
+  flex: 1; min-height: 0; background: var(--surface); border-radius: 14px;
+  border: 1px solid var(--hairline); padding: 8px 12px 6px;
+  display: flex; flex-direction: column;
+}
+.tps-card[hidden] { display: none; }
+/* 第三页「行驶统计」(2026-09-23 用户点名): 与动态页同款整页布局 —— 一张
+   直方图卡吃满页高不滚屏, 复用 .tps-card/.tps-chart/.tps-empty */
+.tp-hist {
+  flex: 0 0 100%; min-width: 0; height: 100%; scroll-snap-align: start;
+  overflow: hidden;
+  touch-action: pan-x;   /* 同 tp-stats: 纯横轴 (见上) */
+  display: flex; flex-direction: column; gap: 8px; padding: 2px;
+}
+/* 图卡不带标题 (2026-09-23 用户点名撤): 轴名顶带画进 canvas, 卡里只剩图 */
+.tps-chart { position: relative; flex: 1; min-height: 0; }
+.tps-chart canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.tps-empty { text-align: center; color: var(--ink-3); font-size: 13px; padding: 40px 0; }
 #trip-map {   /* 环形前瞻: 容器四周扩出 (上下 ±320, 左右 ±160, 与 MAP_RING_* 一致),
   wrap overflow 裁掉, 可视区不变 —— 引擎按容器矩形取瓦, 播放中四周瓦片提前
   4~13 秒进缓存 (随速档下视野米宽与镜头扫速同比例缩放, 领先量近似恒定),
   地名/道路不迟到, 边播边下天然成立 (流式分组播放也靠它)。代价: 渲染像素
   ~4× (现代手机 GPU 无压力)。配套: setFitView 避让边距补环宽 (FIT_AVOID),
-  高德 logo 推回可视区, 版权文字隐藏 */
+  logo 与版权文字都按需求去掉 */
   position: absolute; width: calc(100% + 320px); height: calc(100% + 640px);
   left: -160px; top: -320px; z-index: 0;   /* 层叠上下文: 引擎内部高 z 不压 .trip-msg */
 }
-#trip-map .amap-logo {
-  /* logo 贴容器左缘 (dbg81 实测 left:4px), 平移环带偏移量 (对称补偿
-     #trip-map 的 -160/-320) 推回可视区 */
-  transform: translate(160px, -320px);
-}
+#trip-map .amap-logo { display: none !important; }   /* logo 按需求去掉 (旧版是平移环带偏移推回可视区) */
 #trip-map .amap-copyright { display: none !important; }   /* 版权文字按需求去掉 */
-#trip-map .leaflet-bottom.leaflet-right {
-  /* OSM 版权角标挂在扩容器的右下角 (可视区外), 平移环带偏移量推回可视区 */
-  transform: translate(-160px, -320px);
-}
 .trip-msg {
   position: absolute; inset: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 12px;

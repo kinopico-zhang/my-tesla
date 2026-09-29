@@ -8,9 +8,10 @@ from sqlalchemy.orm import Session, aliased
 
 from ...models import Address, Drive, Position
 from .gap_fills import _track_points
+from .track_gaps import detect_gap_pairs, keep_with_gaps
 from .trip_listing import _consumption, _trip_rows_stmt
 from ..charging import charge_efficiency
-from ..common import NotFound, _clean_addr, _keep_indices, fdate, ftime
+from ..common import NotFound, _clean_addr, fdate, ftime
 from ...schemas import MergedTrack, TripTrack
 
 
@@ -18,7 +19,7 @@ TRIP_TRACK_PER = 5000
 
 
 def trip_track(session: Session, own: Session, drive_id: int) -> TripTrack:
-    """单条行程轨迹 (含速度/功耗), 下采样到 TRIP_TRACK_PER 点。
+    """单条行程轨迹 (含速度/功耗/海拔), 下采样到 TRIP_TRACK_PER 点。
 
     自有库里的断档补路先拼进原始轨迹再下采样, 前端拿到的就是
     沿真实道路的连续轨迹 (无需再客户端补路)。
@@ -29,14 +30,20 @@ def trip_track(session: Session, own: Session, drive_id: int) -> TripTrack:
     if len(positions) < 2:
         raise NotFound("该行程没有轨迹数据")
     pts_all, fill_idx = _track_points(own, positions)
-    # 补路点全保留: 它们是整段稀疏折线, 被等间隔抽掉一点就重新露出断档
-    keep = set(_keep_indices(len(pts_all), TRIP_TRACK_PER)) | fill_idx
-    kept = [pts_all[i] for i in sorted(keep)]
+    # 断档在原始密度上检出 (抽稀后测不出, 见 track_gaps 模块注), 端点
+    # 连同补路点一起强制保留过下采样, 下标随载荷下发
+    gaps_raw = detect_gap_pairs(pts_all)
+    kept_idx, gaps = keep_with_gaps(len(pts_all), TRIP_TRACK_PER,
+                                    fill_idx, gaps_raw)
+    kept = [pts_all[i] for i in kept_idx]
     t0 = kept[0].date
     return TripTrack(
         id=drive_id,
-        pts=[[p.lng, p.lat, p.speed, p.power] for p in kept],
-        ts=[int(round((p.date - t0).total_seconds())) for p in kept])
+        # 每点 [lng, lat, speed_km_h, power_kW, elevation_m] (功耗原生就是
+        # 千瓦, 2026-09-22 纠正过单位误读; 海拔可 None: 车不报/补路点)
+        pts=[[p.lng, p.lat, p.speed, p.power, p.elevation] for p in kept],
+        ts=[int(round((p.date - t0).total_seconds())) for p in kept],
+        gaps=[[a, b, drive_id] for a, b in gaps])
 
 
 MERGED_TRACK_BUDGET = 12000   # 多段合并的总点数预算, 按各段原始点数占比分配
@@ -66,15 +73,21 @@ def merged_track(session: Session, own: Session,
     pts: list[list[float | None]] = []
     ts: list[int] = []
     seg_starts: list[int] = []
-    for seg_pts, seg_ts in merged_track_segments(session, own, plan):
+    seg_t0s: list[str] = []
+    gaps: list[list[int]] = []
+    for seg_pts, seg_ts, seg_gaps, seg_t0 in merged_track_segments(session, own, plan):
         seg_starts.append(len(pts))
+        seg_t0s.append(seg_t0)
         pts += seg_pts
         ts += seg_ts
+        gaps += seg_gaps      # 段内下标已带前段累计偏移 (见 merged_track_segments)
     if len(pts) < 2:
         raise NotFound("这些行程没有轨迹数据")
     plan.header.pts = pts
     plan.header.ts = ts
     plan.header.seg_starts = seg_starts
+    plan.header.seg_t0s = seg_t0s
+    plan.header.gaps = gaps
     return plan.header
 
 
@@ -103,7 +116,7 @@ def merged_track_plan(session: Session, ids: Sequence[int]) -> MergedPlan:
                   for d, _, _ in drive_rows)
     total_km = sum(float(d.distance or 0) for d, _, _ in drive_rows)
     header = MergedTrack(
-        ids=id_list, n=len(id_list), pts=[], ts=[], seg_starts=[],
+        ids=id_list, n=len(id_list), pts=[], ts=[], seg_starts=[], seg_t0s=[],
         date=fdate(first.start_date), start=ftime(first.start_date),
         end=ftime(last.end_date) if last.end_date else None,
         km=round(total_km, 2),
@@ -112,19 +125,26 @@ def merged_track_plan(session: Session, ids: Sequence[int]) -> MergedPlan:
         kwh=round(raw_kwh, 1) if any(effs.values()) else None,
         wh_per_km=(round(raw_kwh / total_km * 1000)
                    if any(effs.values()) and total_km >= 1 else None),
-        from_=_clean_addr(drive_rows[0][1]),
-        to=_clean_addr(drive_rows[-1][2]))
+        from_=_clean_addr(drive_rows[0][1].display_name if drive_rows[0][1] else None),
+        to=_clean_addr(drive_rows[-1][2].display_name if drive_rows[-1][2] else None))
     return MergedPlan(header, id_list, budgets)
 
 
 def merged_track_segments(session: Session, own: Session, plan: MergedPlan
-                          ) -> Iterator[tuple[list[list[float | None]], list[int]]]:
-    """逐段产出 (pts, ts): ts 为跨段累计行驶秒 (行程间停驶剔除)。
+                          ) -> Iterator[tuple[list[list[float | None]], list[int],
+                                              list[list[int]], str]]:
+    """逐段产出 (pts, ts, gaps, t0): ts 为跨段累计行驶秒 (行程间停驶剔除),
+    gaps 为段内断档对 [a, b, drive_id] —— 下标已加上前面各段的累计点数,
+    前端追加段时直接当全量下标用 (首段偏移为 0, 恰是首段自己的下标);
+    t0 为该段起始时刻 (本地 "YYYY-MM-DD HH:MM", ts 推不出墙钟日期,
+    弹层标题随段切换用)。
 
     每段独立查询/下采样: 流式接口一段一段往外发, 前端拿到第一段就能
-    开播, 不必等几十 MB 全下完; 断档补路已在段内拼好。
+    开播, 不必等几十 MB 全下完; 断档补路已在段内拼好, 没存档的断档
+    在原始密度上检出 (track_gaps), 端点强制保留下采样。
     """
     base = 0.0
+    base_pts = 0                       # 已产出段的总点数 (gaps 偏移用)
     for did in plan.id_list:
         positions = session.scalars(
             select(Position).where(Position.drive_id == did)
@@ -132,24 +152,26 @@ def merged_track_segments(session: Session, own: Session, plan: MergedPlan
         points, fill_idx = _track_points(own, positions)
         if not points:
             continue
-        # 补路点全保留 (理由同 trip_track), 只对原始点做等间隔下采样
-        keep = set(_keep_indices(len(points),
-                                 plan.budgets.get(did, MERGED_TRACK_PER_MIN))) \
-            | fill_idx
+        # 补路点全保留 (理由同 trip_track) + 断档端点保留, 只对原始点等间隔
+        kept_idx, seg_gaps = keep_with_gaps(
+            len(points), plan.budgets.get(did, MERGED_TRACK_PER_MIN),
+            fill_idx, detect_gap_pairs(points) if len(points) >= 3 else [])
         seg_pts: list[list[float | None]] = []
         seg_ts: list[int] = []
         t0 = _utc_seconds(points[0].date)   # 段首 (keep_indices 首点必留)
         prev_stamp = t0
-        for i, tp in enumerate(points):
-            if i not in keep:
-                continue
+        for i in kept_idx:
+            tp = points[i]
             stamp = _utc_seconds(tp.date)
             prev_stamp = stamp
-            seg_pts.append([tp.lng, tp.lat, tp.speed, tp.power])
+            seg_pts.append([tp.lng, tp.lat, tp.speed, tp.power, tp.elevation])
             seg_ts.append(int(round(base + stamp - t0)))
         base += prev_stamp - t0    # 段行驶时长并入累计 (最后保留点 - 段首)
         if seg_pts:
-            yield seg_pts, seg_ts
+            yield seg_pts, seg_ts, \
+                [[base_pts + a, base_pts + b, did] for a, b in seg_gaps], \
+                ftime(points[0].date)   # 段首时刻 (keep_indices 首点必留, 与 ts 基线同点)
+            base_pts += len(seg_pts)
 
 
 def closed_drive_ids_between(session: Session, first: int, last: int) -> list[int]:

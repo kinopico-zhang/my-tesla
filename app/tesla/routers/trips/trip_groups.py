@@ -28,7 +28,7 @@ def save_group(body: TripGroupIn,
                own: Session = Depends(database.get_own_db)) -> TripGroupInfo:
     """多选行程存成命名分组; 段数/里程/日期跨度展示时现算, 不落库。"""
     if len(set(body.ids)) < 2:
-        raise HTTPException(400, "ids 去重后需为 2~100 个行程")
+        raise HTTPException(400, "ids 去重后需至少 2 个行程")
     name = body.name.strip()
     if not name:
         raise HTTPException(400, "名字不能为空")

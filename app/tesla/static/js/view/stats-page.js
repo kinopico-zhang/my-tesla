@@ -1,14 +1,14 @@
 // view/stats-page.js — 充电统计视图 (壳版 1/3): 视图底座 —— 金额千分位 +
-// 统计卡片行 + 查询参数 (时间档来自全局抽屉, 车辆来自 shellState.carId) +
-// 数据加载 (汇总/月度/地点/维度四路并发) + registerView 生命周期 (echarts
-// 进视图才按需注入, 注入失败整页落表格视图)。
+// 统计卡片行 + 查询参数 (车辆来自 shellState.carId; 时间筛选 3.3.0 下线,
+// 全时段) + 数据加载 (汇总/月度/地点/维度四路并发) + registerView 生命周期
+// (echarts 进视图才按需注入; 表格视图 2026-09-27 退役, 注入失败亮错误盒)。
 // 旧版 (js/stats-page.js / stats-time-filters.js) 的 $/esc/getJSON/格式化/
-// TIME_RANGES/日历/syncURL/顶栏刷新/登出全部上移壳模块或删除; 时间筛选
-// 档位改由抽屉里的 tesla-time-range 全局驱动 (换档 → refreshCurrent)。
+// TIME_RANGES/日历/syncURL/顶栏刷新/登出全部上移壳模块或删除。
 /* global $, esc, getJSON, num, parseLocal, loadEcharts,
-          timeRangeParams, shellState, registerView, bindGestures,
-          renderMonthly, renderLocations, renderFastSlow, renderHour,
-          renderSoc, renderPower, renderCity, statsResize, forceTableMode */
+          shellState, registerView, bindGestures,
+          renderMonthly, renderLocations, renderHour,
+          renderSoc, renderPower, renderPrice, renderDuration,
+          renderCity, statsResize */
 /* exported moneyInt, thousands, statsParams, summaryData, renderSummary,
             hasEcharts, monthlyData, locData, dimsData, loadAll, statsRefetch */
 "use strict";
@@ -16,12 +16,21 @@
 const moneyInt = v => v == null ? "—" : "¥" + Math.round(v).toLocaleString("zh-CN");
 const thousands = v => Math.round(v).toLocaleString("zh-CN");
 
-/* echarts 按需注入后置真; 注入失败 (网络) 整页落表格视图, 不留白框 */
+/* echarts 按需注入后置真; 拉不下来不拦数据 (副题/合计仍能亮),
+   loadAll 收尾统一亮错误盒 (表格视图已退役, 没有落表格兜底了) */
 let hasEcharts = false;
 
-/* 时间档 (抽屉) + 车辆 (抽屉) → 四路统计接口的公共查询参数 */
+async function ensureEcharts() {
+  if (hasEcharts) return;
+  try {
+    await loadEcharts();
+    hasEcharts = true;
+  } catch (_e) { /* 留给 loadAll 收尾亮灯 */ }
+}
+
+/* 车辆 (抽屉全局) → 四路统计接口的公共查询参数 (时间不筛, 全时段) */
 function statsParams() {
-  const p = new URLSearchParams(timeRangeParams());
+  const p = new URLSearchParams();
   if (shellState.carId != null) p.set("car_id", String(shellState.carId));
   return p.toString();
 }
@@ -58,6 +67,7 @@ async function loadAll() {
   $("#charts-grid").classList.add("dim");
   $("#loader-spin").hidden = false;
   $("#errbox").hidden = true;
+  let err = null;
   try {
     const [summary, monthly, locations, dims] = await Promise.all([
       getJSON("/tesla/charging/api/summary?" + statsParams()),
@@ -67,14 +77,21 @@ async function loadAll() {
     ]);
     renderSummary(summary);
     monthlyData = monthly; locData = locations; dimsData = dims;
-    renderMonthly(); renderLocations(); renderFastSlow();
-    renderHour(); renderSoc(); renderPower(); renderCity();
+    renderMonthly(); renderLocations();
+    renderHour(); renderSoc(); renderPower(); renderPrice(); renderDuration();
+    renderCity();
   } catch (e) {
-    $("#errmsg").textContent = "数据加载失败: " + e.message;
-    $("#errbox").hidden = false;
+    err = e.message;
   }
   $("#loader-spin").hidden = true;
   $("#charts-grid").classList.remove("dim");
+  if (err) {
+    $("#errmsg").textContent = "数据加载失败: " + err;
+    $("#errbox").hidden = false;
+  } else if (!hasEcharts) {
+    $("#errmsg").textContent = "图表库加载失败";   // 图表全空, 如实亮灯等重试
+    $("#errbox").hidden = false;
+  }
 }
 
 async function statsRefetch() { await loadAll(); }
@@ -82,20 +99,19 @@ async function statsRefetch() { await loadAll(); }
 let statsBooted = false;
 async function statsBoot() {          // 首次进视图: 注入 echarts 再拉数据
   statsBooted = true;
-  try {
-    await loadEcharts();
-    hasEcharts = true;
-  } catch (_e) {
-    forceTableMode();                 // 图表库拉不到: 全部卡片直接落表格
-  }
+  await ensureEcharts();
   await loadAll();
 }
 
-/* 手势: 列表滚动器右划开抽屉 / 在顶下拉刷新 (与充电视图同款) */
+/* 手势: 列表滚动器在顶下拉刷新 (与充电视图同款) */
 const statsScroll = $("#stats-scroll");
 bindGestures(statsScroll, { drawer: true, ptr: true, onRefresh: statsRefetch });
 
-$("#retry").addEventListener("click", () => { $("#errbox").hidden = true; loadAll(); });
+$("#retry").addEventListener("click", async () => {
+  $("#errbox").hidden = true;
+  await ensureEcharts();              // 图表库失败过的连注入一起重试
+  await loadAll();
+});
 
 registerView("stats", {
   title: "充电统计",

@@ -71,30 +71,55 @@ test("gapsBetween: 孤立野点被 splitGaps 丢弃后的伪断档 (<160m) 不�
 });
 
 
-/* ---------------- meanPowerW: 按时间加权的平均功耗 ---------------- */
+/* ---------------- meanPowerKw: 按时间加权的平均功率 ---------------- */
 
-test("meanPowerW: 按时间加权, 段功耗取两端平均", () => {
+test("meanPowerKw: 按时间加权, 段功耗取两端平均", () => {
   // 段1 0→10s: (1000+1000)/2×10; 段2 10→30s: (1000+4000)/2×20
   // → (10000 + 50000)/30 = 2000W
   const pts = [[114, 22.5, 10, 1000], [114.001, 22.5, 20, 1000],
                [114.002, 22.5, 30, 4000]];
   const ts = [0, 10, 30];
-  assert.equal(TrackUtil.meanPowerW(pts, ts), 2000);
+  assert.equal(TrackUtil.meanPowerKw(pts, ts), 2000);
 });
 
-test("meanPowerW: 单端缺失用另一端, 双缺段不计入", () => {
+test("meanPowerKw: 单端缺失用另一端, 双缺段不计入", () => {
   // 0-10s: a=1000 b=null → 1000; 10-20s: 双 null 跳过; 20-40s: a=null b=6000 → 6000
   // → (1000×10 + 6000×20) / 30
   const pts = [[114, 22.5, 10, 1000], [114.001, 22.5, 20, null],
                [114.002, 22.5, 30, null], [114.003, 22.5, 30, 6000]];
   const ts = [0, 10, 20, 40];
-  assert.equal(TrackUtil.meanPowerW(pts, ts), (1000 * 10 + 6000 * 20) / 30);
+  assert.equal(TrackUtil.meanPowerKw(pts, ts), (1000 * 10 + 6000 * 20) / 30);
 });
 
-test("meanPowerW: 全无数据/零时长返回 null", () => {
-  assert.equal(TrackUtil.meanPowerW([[114, 22.5, 10, null], [114.001, 22.5, 20, null]],
+test("meanPowerKw: 全无数据/零时长返回 null", () => {
+  assert.equal(TrackUtil.meanPowerKw([[114, 22.5, 10, null], [114.001, 22.5, 20, null]],
                                     [0, 10]), null);
-  assert.equal(TrackUtil.meanPowerW([[114, 22.5, 10, 5000]], [0]), null);
+  assert.equal(TrackUtil.meanPowerKw([[114, 22.5, 10, 5000]], [0]), null);
+});
+
+/* ---------------- elevClimbM: 总爬升 (±3m 迟滞带滤 GPS 噪声) ---------------- */
+
+test("elevClimbM: 过带顶才累计, 带内抖动不计", () => {
+  // 82 → 82.5 → 83 (带内, 不计) → 86 (过 82+3, 计 86-82=4) → 84 (带内回落) → 80 (跌过带底, 只降基准)
+  const pts = [[114, 22.5, 10, 0, 82], [114.001, 22.5, 20, 0, 82.5],
+               [114.002, 22.5, 30, 0, 83], [114.003, 22.5, 40, 0, 86],
+               [114.004, 22.5, 50, 0, 84], [114.005, 22.5, 60, 0, 80]];
+  assert.equal(TrackUtil.elevClimbM(pts), 4);
+});
+
+test("elevClimbM: 缺海拔的点跳过, 全缺返回 null", () => {
+  // null 点直接略过: 82 → (null) → 88 计 6
+  const pts = [[114, 22.5, 10, 0, 82], [114.001, 22.5, 20, 0, null],
+               [114.002, 22.5, 30, 0, 88]];
+  assert.equal(TrackUtil.elevClimbM(pts), 6);
+  assert.equal(TrackUtil.elevClimbM([[114, 22.5, 10, 0, null]]), null);
+  assert.equal(TrackUtil.elevClimbM([]), null);
+});
+
+test("elevClimbM: 连续长坡分段累计 (基准跟走)", () => {
+  // 0 → 10 (计 10) → 20 (计 10) → 25 (计 5) = 25; 中途带内小回落不重复计
+  const pts = [0, 1.5, 10, 11, 20, 21.5, 25].map((e, i) => [114 + i * 1e-3, 22.5, 10, 0, e]);
+  assert.equal(TrackUtil.elevClimbM(pts), 25);
 });
 
 /* ---- ptDistKm / bearingDeg (断档补路的方向校验) ---- */

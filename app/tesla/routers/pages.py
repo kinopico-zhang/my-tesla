@@ -41,8 +41,13 @@ def shell_dev_address(request: Request) -> RedirectResponse:
 
 @router.get("/tesla/charging")
 def charging_page(request: Request) -> RedirectResponse:
-    """旧充电记录页 → 壳充电记录视图。"""
-    return _to_shell(request, "charging")
+    """旧充电记录页 → 裸壳 (视图跟上次走的)。
+
+    不指 view=charging: 2.x 时代 manifest 的 start_url 是 /tesla/charging,
+    已装到主屏的图标把它烙死在安装档里 —— 指了 view= 就永远压过壳的
+    「记住上次视图」(用户报每次冷启都是充电页)。其余旧页路由的 view=
+    是真深链 (收藏/聊天记录), 保留。"""
+    return _to_shell(request, None)
 
 
 @router.get("/tesla/stats")
@@ -83,7 +88,8 @@ def live_page(request: Request) -> RedirectResponse:
 
 @router.get("/tesla/settings")
 def settings_page(request: Request) -> RedirectResponse:
-    """旧软件设置页 → 壳数据来源视图 (设置拆了三视图, 落第一项)。"""
+    """旧软件设置页 → 壳数据来源视图 (旧页的内容就是数据来源表单;
+    2026-09-27 账号设置拆独立页排设置组首位后, 旧链仍落数据来源)。"""
     return _to_shell(request, "settings-db")
 
 

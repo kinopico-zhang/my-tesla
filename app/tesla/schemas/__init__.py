@@ -6,6 +6,7 @@
 `from` 是 Python 关键字, 行程条目的字段名用 from_ + alias="from"
 (FastAPI 响应默认按别名序列化)。
 """
+from .battery_schemas import BatteryHealth, BatteryHealthPoint
 from .charging_schemas import (
     CarInfo,
     ChargeCurve,
@@ -18,6 +19,7 @@ from .charging_schemas import (
     CityStat,
     CostUpdateRequest,
     CostUpdateResult,
+    DistrictStat,
     LocationStat,
     MonthlyStat,
 )
@@ -28,6 +30,7 @@ from .map_schemas import (
     MapManifestTrack,
     MapSummary,
     MapTrack,
+    RoadStreamRow,
 )
 from .settings_schemas import (
     AmapSettings,
@@ -45,6 +48,7 @@ from .trip_schemas import (
     MergedTrack,
     RegionNode,
     TollRoad,
+    TrackHist,
     TripGroupIn,
     TripGroupInfo,
     TripGroupRename,
@@ -54,16 +58,28 @@ from .trip_schemas import (
     TripTrack,
     TripsPage,
 )
+from .trip_stats_schemas import (
+    TripDims,
+    TripDriverStat,
+    TripLocStat,
+    TripMonthlyStat,
+    TripStatsSummary,
+)
 
 __all__ = [
-    "AmapConfig", "AmapSettings", "CarInfo", "ChargeCurve", "ChargeDims",
+    "AmapConfig", "AmapSettings", "BatteryHealth", "BatteryHealthPoint",
+    "CarInfo", "ChargeCurve", "ChargeDims",
     "ChargeMapLocation", "ChargingSession", "ChargingSessionDetail",
     "ChargingSessionsPage", "ChargingSummary", "CityStat", "CostUpdateRequest",
-    "CostUpdateResult", "DriverIn", "DriverInfo", "DriverMark", "DriverUpdate",
+    "CostUpdateResult", "DistrictStat", "DriverIn", "DriverInfo", "DriverMark",
+    "DriverUpdate",
     "GapFillRequest", "GapFillResponse", "LiveStatus", "LocationStat",
     "MapManifest", "MapManifestTrack",
     "MapSummary", "MapTrack", "MergedTrack", "MonthlyStat", "RegionNode",
+    "RoadStreamRow",
     "SettingsState", "SettingsUpdate", "TeslaMateSettings", "TollRoad",
-    "TripGroupIn", "TripGroupInfo", "TripGroupRename", "TripItem",
-    "TripRegions", "TripTollIn", "TripTrack", "TripsPage",
+    "TrackHist", "TripDims", "TripGroupIn", "TripGroupInfo", "TripGroupRename",
+    "TripItem", "TripDriverStat", "TripLocStat", "TripMonthlyStat", "TripRegions",
+    "TripStatsSummary",
+    "TripTollIn", "TripTrack", "TripsPage",
 ]

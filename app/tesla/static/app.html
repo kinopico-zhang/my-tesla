@@ -11,496 +11,128 @@
 <link rel="apple-touch-icon" href="/tesla/static/apple-touch-icon.png?v=2">
 <link rel="manifest" href="/tesla/static/manifest.json">
   <title>My Tesla</title>
-<!-- 3.0 单壳: 壳四件 (base/drawer/filter-bar/pull-refresh) + 各视图沿用旧页
+<!-- 3.0 单壳: 壳件 (base/drawer/filter-bar/pull-refresh) + 各视图沿用旧页
      CSS 整份 (旧头部规则暂成死码, P7 清) + floor 收口层最后压 (main 宽度与
-     toast 归壳管, 防后加载的视图 CSS 顶歪先加载的)。全部 11 视图 P6 到齐
-     (充电 3 + 行程 3 + 驾驶 1 + 设置 4), 旧 9 路由 P7 切换下线 -->
-<link rel="stylesheet" href="/tesla/static/css/tesla-base.css?v=1">
-<link rel="stylesheet" href="/tesla/static/css/tesla-drawer.css?v=1">
-<link rel="stylesheet" href="/tesla/static/css/tesla-filter-bar.css?v=1">
-<link rel="stylesheet" href="/tesla/static/css/tesla-pull-refresh.css?v=1">
-<link rel="stylesheet" href="/tesla/static/css/tesla-charging-page.css?v=1">
-<link rel="stylesheet" href="/tesla/static/css/tesla-charging-cards.css?v=1">
-<link rel="stylesheet" href="/tesla/static/css/tesla-charging-sheet.css?v=1">
-<link rel="stylesheet" href="/tesla/static/css/tesla-stats.css?v=1">
-<link rel="stylesheet" href="/tesla/static/css/tesla-groups.css?v=1">
-<link rel="stylesheet" href="/tesla/static/css/tesla-changelog.css?v=1">
-<link rel="stylesheet" href="/tesla/static/css/tesla-trips-page.css?v=1">
-<link rel="stylesheet" href="/tesla/static/css/tesla-trips-cards.css?v=1">
-<link rel="stylesheet" href="/tesla/static/css/tesla-trips-sheet.css?v=1">
-<link rel="stylesheet" href="/tesla/static/css/tesla-trips-playback.css?v=1">
-<link rel="stylesheet" href="/tesla/static/css/tesla-map-page.css?v=1">
-<link rel="stylesheet" href="/tesla/static/css/tesla-map-canvas.css?v=2">
-<link rel="stylesheet" href="/tesla/static/css/tesla-chargemap-page.css?v=1">
-<link rel="stylesheet" href="/tesla/static/css/tesla-chargemap-map.css?v=1">
-<link rel="stylesheet" href="/tesla/static/css/tesla-live-page.css?v=1">
-<link rel="stylesheet" href="/tesla/static/css/tesla-live-driving.css?v=1">
-<link rel="stylesheet" href="/tesla/static/css/tesla-settings.css?v=1">
-<link rel="stylesheet" href="/tesla/static/css/tesla-shell-floor.css?v=1">
+     toast 归壳管, 防后加载的视图 CSS 顶歪先加载的)。3.3.0 菜单重排: 左侧
+     窄版抽屉 (状态/行程/充电/设置 树状分组 × 全部页面入口, iOS
+     inset-grouped 卡片, 车辆选择住抽屉顶全局生效), 时间筛选下线 (所有
+     视图全时段, 用户点名), 账号卡进设置页; 旧 9 路由 P7 切换下线 -->
+<link rel="stylesheet" href="/tesla/static/css/tesla-base.css?v=8">
+<link rel="stylesheet" href="/tesla/static/css/tesla-drawer.css?v=9">
+<link rel="stylesheet" href="/tesla/static/css/tesla-filter-bar.css?v=5">
+<link rel="stylesheet" href="/tesla/static/css/tesla-pull-refresh.css?v=2">
+<link rel="stylesheet" href="/tesla/static/css/tesla-charging-page.css?v=2">
+<link rel="stylesheet" href="/tesla/static/css/tesla-charging-cards.css?v=11">
+<link rel="stylesheet" href="/tesla/static/css/tesla-charging-sheet.css?v=11">
+<link rel="stylesheet" href="/tesla/static/css/tesla-stats.css?v=9">
+<link rel="stylesheet" href="/tesla/static/css/tesla-groups.css?v=9">
+<link rel="stylesheet" href="/tesla/static/css/tesla-changelog.css?v=2">
+<link rel="stylesheet" href="/tesla/static/css/tesla-trips-page.css?v=6">
+<link rel="stylesheet" href="/tesla/static/css/tesla-trips-cards.css?v=2">
+<link rel="stylesheet" href="/tesla/static/css/tesla-trips-sheet.css?v=31">
+<link rel="stylesheet" href="/tesla/static/css/tesla-trips-playback.css?v=9">
+<link rel="stylesheet" href="/tesla/static/css/tesla-map-page.css?v=4">
+<link rel="stylesheet" href="/tesla/static/css/tesla-map-canvas.css?v=14">
+<link rel="stylesheet" href="/tesla/static/css/tesla-chargemap-page.css?v=4">
+<link rel="stylesheet" href="/tesla/static/css/tesla-chargemap-map.css?v=7">
+<link rel="stylesheet" href="/tesla/static/css/tesla-live-page.css?v=2">
+<link rel="stylesheet" href="/tesla/static/css/tesla-live-driving.css?v=20">
+<link rel="stylesheet" href="/tesla/static/css/tesla-settings.css?v=5">
+<link rel="stylesheet" href="/tesla/static/css/tesla-shell-floor.css?v=7">
 </head>
 <body>
 
-<div id="top-blur" aria-hidden="true"></div>
 <div id="top-clear-probe" aria-hidden="true"></div>
 
 <main>
-  <!-- 充电记录视图 (P2); 全部 11 视图 P6 到齐, 逐视图注释在各段头 -->
-  <section class="view" id="view-charging" data-view="charging">
-    <div class="view-scroll" id="chg-scroll">
-      <div class="sec-head">
-        <h2>充电记录</h2>
-        <span class="count-badge" id="chg-count-badge"></span>
-      </div>
-      <div id="chg-masonry"></div>
-
-      <div class="tail" id="chg-tail" hidden>
-        <div class="spin" id="chg-loader-spin" hidden></div>
-        <div class="endnote" id="chg-endnote" hidden>· 已经到底啦 ·</div>
-        <div class="empty" id="chg-empty" hidden>该筛选条件下没有充电记录</div>
-        <div class="err-box" id="chg-errbox" hidden>
-          <p id="chg-errmsg">加载失败</p>
-          <button type="button" class="retry" id="chg-retry">重试</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 充电视图私有弹层 (id 加 chg- 前缀: 壳里多视图并存, #sheet/#backdrop 留给行程页) -->
-    <div class="sheet-backdrop" id="chg-backdrop"></div>
-    <div class="sheet" id="chg-sheet">
-      <div class="sheet-grab-zone" id="chg-grab-zone"><div class="sheet-grab"></div></div>
-      <div class="sheet-head">
-        <!-- [html-validate-disable-next empty-heading -- 日期由所选充电在运行时填充] -->
-        <h3 id="chg-sh-date"></h3>
-        <div class="sh-loc" id="chg-sh-loc"></div>
-        <div class="sh-row" id="chg-sh-row"></div>
-        <button type="button" class="sheet-close" id="chg-sheet-close">✕</button>
-      </div>
-      <div class="sheet-body" id="chg-sheet-body"></div>
-    </div>
-
-    <div class="alert-backdrop" id="chg-nav-bd" hidden>
-      <div class="alert" role="dialog" aria-label="选择地图应用">
-        <div class="al-title">导航到充电站</div>
-        <div class="nav-hint">长按可隐藏没装的地图, ＋ 可恢复</div>
-        <div class="nav-apps" id="chg-nav-apps">
-          <button type="button" data-app="amap">高德地图</button>
-          <button type="button" data-app="baidu">百度地图</button>
-          <button type="button" data-app="tencent">腾讯地图</button>
-          <button type="button" data-app="apple">苹果地图</button>
-        </div>
-        <div class="al-btns"><button type="button" class="al-btn" id="chg-nav-cancel">取消</button></div>
-      </div>
-    </div>
-
-    <div class="alert-backdrop" id="chg-alert-bd" hidden>
-      <div class="alert" role="dialog" aria-label="编辑充电费用">
-        <div class="al-title">充电费用</div>
-        <div class="al-msg" id="chg-al-msg"></div>
-        <div class="al-field"><span class="cur">¥</span><input id="chg-al-input" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off"></div>
-        <div class="al-err" id="chg-al-err"></div>
-        <button type="button" class="al-clear" id="chg-al-clear" hidden>清除费用记录</button>
-        <div class="al-btns">
-          <button type="button" class="al-btn" id="chg-al-cancel">取消</button>
-          <button type="button" class="al-btn al-strong" id="chg-al-save">保存</button>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 充电统计视图 (P3): echarts 首进视图才按需注入 (loadEcharts), 拉不到
-       整页落表格视图 (forceTableMode) -->
-  <section class="view" id="view-stats" data-view="stats" hidden>
-    <div class="view-scroll" id="stats-scroll">
-      <div class="snap-row" id="stats-row"></div>
-
-      <div class="charts-grid" id="charts-grid">
-        <div class="chart-card">
-          <div class="cc-head">
-            <div>
-              <div class="cc-title">月度趋势</div>
-              <div class="cc-sub" id="monthly-sub">充电量与费用</div>
-            </div>
-            <div class="mini-seg" id="monthly-view">
-              <button type="button" data-v="chart" class="on">图表</button>
-              <button type="button" data-v="table">表格</button>
-            </div>
-          </div>
-          <div class="chart-box" id="chart-monthly-kwh"></div>
-          <div class="chart-box" id="chart-monthly-cost"></div>
-          <div class="chart-table" id="table-monthly" hidden></div>
-        </div>
-        <div class="chart-card">
-          <div class="cc-head">
-            <div>
-              <div class="cc-title">快慢充占比</div>
-              <div class="cc-sub" id="fastslow-sub">按次数</div>
-            </div>
-            <div class="mini-seg" id="fastslow-view">
-              <button type="button" data-v="chart" class="on">图表</button>
-              <button type="button" data-v="table">表格</button>
-            </div>
-          </div>
-          <div class="chart-box" id="chart-fastslow"></div>
-          <div class="chart-table" id="table-fastslow" hidden></div>
-        </div>
-        <div class="chart-card">
-          <div class="cc-head">
-            <div>
-              <div class="cc-title">充电时段</div>
-              <div class="cc-sub" id="hour-sub">按开始时间 (本地时区)</div>
-            </div>
-            <div class="mini-seg" id="hour-view">
-              <button type="button" data-v="chart" class="on">图表</button>
-              <button type="button" data-v="table">表格</button>
-            </div>
-          </div>
-          <div class="chart-box" id="chart-hour"></div>
-          <div class="chart-table" id="table-hour" hidden></div>
-        </div>
-        <div class="chart-card">
-          <div class="cc-head">
-            <div>
-              <div class="cc-title">常去充电点</div>
-              <div class="cc-sub" id="loc-sub">按充电次数</div>
-            </div>
-            <div class="mini-seg" id="loc-view">
-              <button type="button" data-v="chart" class="on">图表</button>
-              <button type="button" data-v="table">表格</button>
-            </div>
-          </div>
-          <div class="chart-box" id="chart-loc"></div>
-          <div class="chart-table" id="table-loc" hidden></div>
-        </div>
-        <div class="chart-card">
-          <div class="cc-head">
-            <div>
-              <div class="cc-title">起充电量分布</div>
-              <div class="cc-sub" id="soc-sub">开始充电时的 SOC</div>
-            </div>
-            <div class="mini-seg" id="soc-view">
-              <button type="button" data-v="chart" class="on">图表</button>
-              <button type="button" data-v="table">表格</button>
-            </div>
-          </div>
-          <div class="chart-box" id="chart-socdist"></div>
-          <div class="chart-table" id="table-socdist" hidden></div>
-        </div>
-        <div class="chart-card">
-          <div class="cc-head">
-            <div>
-              <div class="cc-title">峰值功率分布</div>
-              <div class="cc-sub" id="power-sub">单次充电的最高功率</div>
-            </div>
-            <div class="mini-seg" id="power-view">
-              <button type="button" data-v="chart" class="on">图表</button>
-              <button type="button" data-v="table">表格</button>
-            </div>
-          </div>
-          <div class="chart-box" id="chart-powerdist"></div>
-          <div class="chart-table" id="table-powerdist" hidden></div>
-        </div>
-        <div class="chart-card">
-          <div class="cc-head">
-            <div>
-              <div class="cc-title">城市分布</div>
-              <div class="cc-sub" id="city-sub">按充电次数</div>
-            </div>
-            <div class="mini-seg" id="city-view">
-              <button type="button" data-v="chart" class="on">图表</button>
-              <button type="button" data-v="table">表格</button>
-            </div>
-          </div>
-          <div class="chart-box" id="chart-city"></div>
-          <div class="chart-table" id="table-city" hidden></div>
-        </div>
-      </div>
-
-      <div class="tail">
-        <div class="spin" id="loader-spin" hidden></div>
-        <div class="err-box" id="errbox" hidden>
-          <p id="errmsg">加载失败</p>
-          <button type="button" class="retry" id="retry">重试</button>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 行程分组视图 (P3): 冲突 id 加 gp- 前缀 (errbox/errmsg/retry/count-badge
-       与统计/充电视图撞名); 打开分组走旧行程页深链, P4 行程视图入壳后改内存跳转 -->
-  <section class="view" id="view-groups" data-view="groups" hidden>
-    <div class="view-scroll" id="gp-scroll">
-      <div class="sec-head">
-        <h2>行程分组</h2>
-        <span class="count-badge" id="gp-count-badge"></span>
-      </div>
-      <div class="spin" id="gp-spin"></div>
-      <div class="gp-list" id="gp-list"></div>
-      <div class="gp-empty" id="gp-empty" hidden>还没有分组<span>在行程列表长按多选行程后点「存为分组」</span></div>
-      <div class="err-box" id="gp-errbox" hidden>
-        <p id="gp-errmsg">分组加载失败</p>
-        <button type="button" class="retry" id="gp-retry">重试</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- 更新日志视图 (P3): 标记沿用旧页 (entries/loading/error), list/retry
-       撞名让路 —— #list 留给行程列表 (tesla-trips-cards.css 按它布列) -->
-  <section class="view" id="view-changelog" data-view="changelog" hidden>
-    <div class="view-scroll" id="cl-scroll">
-      <div id="entries">
-        <div id="cl-list"></div>
-        <div class="state" id="loading"><div class="spin"></div>正在读取版本历史…</div>
-        <div class="state" id="error" hidden>
-          <div id="error-text">加载失败</div>
-          <button type="button" class="retry-btn" id="cl-retry">重试</button>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 行程轨迹视图 (P4, 生命周期最重): 列表 + 多选 selbar + 轨迹弹层
-       (sheet/地图/回放/视频导出)。尾部 id 加 tr- 前缀 (统计视图占了裸名);
-       #list 沿用旧名 (tesla-trips-cards.css 按它布列, 日志视图已让路);
-       #sheet/#backdrop 留给行程 (充电的是 chg- 前缀); 头部时间筛选/筛选行
-       不搬 —— 时间档在抽屉, 起终点/里程/驾驶员在屏底筛选条 chips -->
-  <section class="view" id="view-trips" data-view="trips" hidden>
-    <div class="view-scroll" id="tr-scroll">
-      <div class="sec-head">
-        <h2>行程轨迹</h2>
-        <span class="count-badge" id="count-badge"></span>
-      </div>
-      <div id="list"></div>
-
-      <div class="tail" id="tr-tail" hidden>
-        <div class="spin" id="tr-loader-spin" hidden></div>
-        <div class="endnote" id="tr-endnote" hidden>· 已经到底啦 ·</div>
-        <div class="empty" id="tr-empty" hidden>还没有行程记录</div>
-        <div class="err-box" id="tr-errbox" hidden>
-          <p id="tr-errmsg">加载失败</p>
-          <button type="button" class="retry" id="tr-retry">重试</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="selbar" id="selbar" hidden>
-      <div class="sel-row">
-        <div class="sel-info">已选 <b id="sel-count">0</b> 段 · <span id="sel-km">0</span> km<span id="sel-cap" hidden> · 一次最多 100 段</span></div>
-        <button type="button" class="sel-all" id="gp-btn" disabled>存为分组</button>
-        <button type="button" class="sel-all" id="sel-all">全选</button>
-        <button type="button" class="sel-cancel" id="sel-cancel">取消</button>
-        <button type="button" class="sel-go" id="sel-go" disabled>查看连续轨迹</button>
-      </div>
-      <div class="gp-row">
-        <input type="text" id="gp-name" maxlength="30" placeholder="分组名字" autocomplete="off">
-        <button type="button" class="sel-go" id="gp-save">保存</button>
-        <button type="button" class="sel-cancel" id="gp-name-cancel">取消</button>
-      </div>
-    </div>
-    <div class="backdrop" id="backdrop"></div>
-    <div class="sheet" id="sheet">
-      <div class="grab" id="grab"></div>
-      <div class="sh-head">
-        <div class="sh-title" id="sh-date">–</div>
-        <div class="sh-sub" id="sh-time"></div>
-      </div>
-      <div class="sh-drv" id="sh-drv" hidden>
-        <span id="sh-drv-pick" hidden><span class="lb">驾驶员</span><select id="sh-drv-sel"></select></span>
-        <span class="sh-toll" id="sh-toll" hidden></span>
-      </div>
-      <div class="sh-cells">
-        <div class="sh-cell"><div class="lb">里程</div><div class="val" id="sh-km">–</div></div>
-        <div class="sh-cell"><div class="lb">时长</div><div class="val" id="sh-dur">–</div></div>
-        <div class="sh-cell"><div class="lb" id="sh-spd-lb">最高车速</div><div class="val" id="sh-spd">–</div></div>
-        <div class="sh-cell" id="sh-cell-pw" hidden><div class="lb" id="sh-pw-lb">平均功耗</div><div class="val" id="sh-pw">–</div></div>
-        <div class="sh-cell" id="sh-cell-kwh" hidden><div class="lb">总电耗</div><div class="val" id="sh-kwh">–</div></div>
-        <div class="sh-cell" id="sh-cell-avg" hidden><div class="lb">平均电耗</div><div class="val" id="sh-avg">–</div></div>
-      </div>
-      <div class="playbar" id="playbar" hidden>
-        <button type="button" id="pb-toggle" class="pb-btn" aria-label="暂停"></button>
-        <input type="range" id="pb-seek" class="pb-seek" min="0" max="1000" step="1" value="0">
-        <button type="button" id="pb-speed" class="pb-speed">1×</button>
-        <div class="pb-zoom" title="视角基线: 随速变焦整体拉近/拉远 (慢近快远不变)">
-          <button type="button" id="pb-zout" class="pb-zb" aria-label="视角拉远">−</button>
-          <span id="pb-zval">0</span>
-          <button type="button" id="pb-zin" class="pb-zb" aria-label="视角拉近">+</button>
-        </div>
-        <button type="button" id="pb-rec" class="pb-btn" aria-label="导出视频"><span class="rec-dot"></span></button>
-      </div>
-      <div class="trip-map-wrap">
-        <div id="trip-map"></div>
-        <div class="trip-msg" id="trip-msg">
-          <div class="spin" id="trip-spin" hidden></div>
-          <div id="trip-msg-text">正在加载轨迹…</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="rec-modal" id="rec-modal" hidden>
-      <div class="rec-card">
-        <video id="rec-video" playsinline controls></video>
-        <div class="rec-acts">
-          <button type="button" id="rec-save" class="rec-main">存到相册</button>
-          <button type="button" id="rec-close">关闭</button>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 充电地图视图 (P5): 地图类视图全出血 —— 摘要条 + 画布; 撞名 id 加 cm-
-       前缀 (#map/#stats/#loading/#error/#keyhint/#legend/#zin/#zout/
-       #backdrop/#sheet/#retry/#recheck 都被别的视图占了裸名); 时间档在抽屉,
-       三视图度量切换 (电量/次数/费用) 收进屏底筛选条; 画布左缘 24px 条供右划
-       开抽屉 (画布本体 touch-action:none 全给地图引擎) -->
-  <section class="view" id="view-chargemap" data-view="chargemap" hidden>
-    <div class="map-head" id="cm-map-head">
-      <div class="stats" id="cm-stats" hidden>
-        <div class="stat"><div class="lb">充电地点</div><div class="val" id="st-places">–</div></div>
-        <div class="stat"><div class="lb">充电次数</div><div class="val" id="st-sessions">–</div></div>
-        <div class="stat"><div class="lb">总电量</div><div class="val" id="st-energy">–<small>kWh</small></div></div>
-      </div>
-    </div>
-    <div class="map-stage">
-      <div id="cm-map"></div>
-      <div class="overlay" id="cm-loading" hidden>
-        <div class="spin"></div>
-        <div class="ov-text" id="cm-loading-text">正在加载充电地点…</div>
-      </div>
-      <div class="overlay" id="cm-error" hidden>
-        <div class="ov-text" id="cm-error-text">加载失败</div>
-        <button type="button" class="retry-btn" id="cm-retry">重试</button>
-      </div>
-      <div class="overlay" id="cm-keyhint" hidden>
-        <div class="hint-card">
-          <h2>🗺️ 需要配置高德地图 Key</h2>
-          <div class="h-sub">个人开发者免费</div>
-          <ol>
-            <li>打开 <a href="https://console.amap.com/dev/key/app" target="_blank" rel="noopener">高德开放平台控制台</a>, 创建应用</li>
-            <li>添加 Key, 服务平台选择 <b>「Web端 (JS API)」</b></li>
-            <li>在服务目录创建 <code>.env</code> 文件 (参考 <code>.env.example</code>):
-              <br><code>AMAP_KEY=你的Key</code>
-              <br><code>AMAP_SECURITY_CODE=你的安全密钥</code></li>
-            <li>重启服务 (<code>./run.sh</code>) 后点击下方按钮</li>
-          </ol>
-          <div class="retry-row">
-            <button type="button" class="retry-btn" id="cm-recheck">重新检测</button>
-          </div>
-        </div>
-      </div>
-      <div class="legend" id="cm-legend" hidden>
-        <div class="lg-mode" id="lg-mode">颜色越红 · 充电电量越多</div>
-        <div class="lg-ramp" id="lg-ramp"></div>
-        <div class="lg-row" id="lg-row"></div>
-      </div>
-      <div class="zoom-ctl">
-        <button type="button" id="cm-zin" title="放大">+</button>
-        <button type="button" id="cm-zout" title="缩小">−</button>
-      </div>
-      <div class="drawer-edge" id="cm-edge" aria-hidden="true"></div>
-    </div>
-    <div class="backdrop" id="cm-backdrop"></div>
-    <div class="sheet" id="cm-sheet">
-      <div class="sh-title" id="sh-name">–</div>
-      <div class="sh-sub" id="sh-city">–</div>
-      <div class="sh-grid">
-        <div class="sh-cell"><div class="lb">充电次数</div><div class="val" id="sh-sessions">–</div></div>
-        <div class="sh-cell"><div class="lb">其中快充</div><div class="val" id="sh-fast">–</div></div>
-        <div class="sh-cell"><div class="lb">充电电量</div><div class="val" id="sh-energy">–<small>kWh</small></div></div>
-        <div class="sh-cell"><div class="lb">充电费用</div><div class="val" id="sh-cost">–</div></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 足迹地图视图 (P5): 弹层/占位 id 加 fp- 前缀 (壳里 #map/#stats/#loading/
-       #error/#keyhint/#zin/#zout/#backdrop/#sheet/#sh-* 裸名已被
-       行程/统计等视图占用); 时间档在抽屉, 驾驶员在屏底筛选条 chip; 画布左缘
-       24px 条供右划开抽屉; v4 轨迹全精度流式下载, 加载层带进度条 -->
-  <section class="view" id="view-map" data-view="map" hidden>
-    <div class="map-head" id="fp-map-head">
-      <div class="stats" id="fp-stats" hidden>
-        <div class="stat"><div class="lb">行程</div><div class="val" id="st-drives">–</div></div>
-        <div class="stat"><div class="lb">里程</div><div class="val" id="st-km">–<small>km</small></div></div>
-        <div class="stat"><div class="lb">行驶时长</div><div class="val" id="st-hours">–<small>小时</small></div></div>
-      </div>
-    </div>
-    <div class="map-stage">
-      <div id="fp-map"></div>
-      <div class="fp-load-bar" id="fp-loading" hidden>
-        <div class="ov-text" id="fp-loading-text">正在加载轨迹…</div>
-        <div class="fp-prog-wrap"><div class="fp-prog" id="fp-prog"></div></div>
-      </div>
-      <div class="overlay" id="fp-error" hidden>
-        <div class="ov-text" id="fp-error-text">加载失败</div>
-        <button type="button" class="retry-btn" id="fp-retry">重试</button>
-      </div>
-      <div class="overlay" id="fp-keyhint" hidden>
-        <div class="hint-card">
-          <h2>🗺️ 需要配置高德地图 Key</h2>
-          <div class="h-sub">个人开发者免费</div>
-          <ol>
-            <li>打开 <a href="https://console.amap.com/dev/key/app" target="_blank" rel="noopener">高德开放平台控制台</a>, 创建应用</li>
-            <li>添加 Key, 服务平台选择 <b>「Web端 (JS API)」</b></li>
-            <li>在服务目录创建 <code>.env</code> 文件 (参考 <code>.env.example</code>):
-              <br><code>AMAP_KEY=你的Key</code>
-              <br><code>AMAP_SECURITY_CODE=你的安全密钥</code></li>
-            <li>重启服务 (<code>./run.sh</code>) 后点击下方按钮</li>
-          </ol>
-          <div class="retry-row">
-            <button type="button" class="retry-btn" id="fp-recheck">重新检测</button>
-          </div>
-        </div>
-      </div>
-      <div class="zoom-ctl">
-        <button type="button" id="fp-zin" title="放大">+</button>
-        <button type="button" id="fp-zout" title="缩小">−</button>
-      </div>
-      <div class="drawer-edge" id="fp-edge" aria-hidden="true"></div>
-    </div>
-    <div class="backdrop" id="fp-backdrop"></div>
-    <div class="sheet" id="fp-sheet">
-      <div class="grab"></div>
-      <div class="sh-title" id="fp-sh-date">–</div>
-      <div class="sh-sub">行驶轨迹</div>
-      <div class="sh-grid">
-        <div class="sh-cell"><div class="lb">里程</div><div class="val" id="fp-sh-km">–<small>km</small></div></div>
-        <div class="sh-cell"><div class="lb">用时</div><div class="val" id="fp-sh-dur">–</div></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 驾驶视图 (P5): 实时状态机 (booting → live/idle, live → ended); 地图在
-       底部面板, id 加 lv- 前缀防跨视图串; 结束态链接走内存跳转 (navigate +
-       openByKey), href 只作兜底; 轮询/走秒定时器进 show/hide, 离开销毁地图 -->
-  <section class="view" id="view-live" data-view="live" hidden>
+  <!-- 11 视图直挂 main (hidden 逐视图切换, navigate 唯一通路; 默认亮状态
+       页 —— 3.3.0 起缺省从充电记录改状态), 页面入口全在左侧抽屉 (含二级
+       页); 逐视图注释在各段头 -->
+  <!-- 驾驶视图 (P5): 实时状态机 (booting → live 常驻 —— 2026-09-26 用户点名
+       「不管车辆什么状态都显示实时数据和地图位置」, 空态/结束态占位屏退役:
+       停车时面板显最后已知电量/续航/车速 0 + 最后一段已结束行程的时长/两格
+       (2026-09-27 用户点名), 地图落车辆当前位置; 刚结束定格本次末帧); 地
+       图在底部面板, id 加 lv- 前缀防跨视图串; 轮询进 show/hide (离开销毁
+       地图, 建图等 #live 亮出来才动 —— 隐藏容器里建高德是白板)。地图顶中
+       曾浮最后一段行程直达钮 (2026-09-27 两上两撤, 用户点名「状态页面上
+       最后一段行程按钮，去掉」), 面板/轨迹/车位点照旧 -->
+  <section class="view" id="view-live" data-view="live">
     <div class="live-stage">
+      <!-- 一级标题 (2026-09-27 用户令「状态页面没有标题, 跟其他页面一样」):
+           文案两态 —— 行驶/驻车, live-driving 的 poll 分支换字 -->
+      <div class="sec-head"><h2 id="lv-title">状态</h2></div>
       <div class="booting" id="booting">
         <div class="spin"></div>
         <div>正在获取车辆状态…</div>
       </div>
 
-      <!-- 驾驶中 -->
+      <!-- 常驻面板 (2026-09-28 用户点名「当前车速改成仪表盘样式, 旁边是电池
+           电量, 剩下的数据放在下面」+ 追点「仪表盘没指针啊, 车速放在仪表盘下面
+           就电池图标放大点…左边是车速, 上面是仪表盘, 下面是当前车速; 右边上面
+           是个电池的图标, 显示当前的电量, 下面显示剩余续航」+ 再追点「数字
+           太大了…仪表盘最高速度设置成 180…表盘太大电池太小, 两边文字不
+           一样高」): 顶卡左右两区 —— 左区半圆表盘 (上限 180, 指针 + 弧亮
+           到当前车速), 车速一行读在表盘正下 (标签+数字+单位, 数字与续航
+           数字同大); 右区大号电池图标 (百分比住图标里) + 剩余续航 (两区
+           文字行贴卡底同高); 下条已行驶窄条 (时长带分钟/小时
+           单位, 追点「已行驶后面单位是分钟或小时」) + 里程/已耗电两格一行式
+           数据 (同追点; 平均电耗/最高车速两格 2026-09-29 用户点名删掉);
+           停车显最后已知电量/续航 + 最后一段行程 (2026-09-27), 没有已结束行程
+           时两格 –; 地图画最后一程速度色轨迹 + 车位点收进视野, 副行只留日期 -->
       <section id="live" hidden>
         <div class="lv-panels" id="lv-panels">
-          <div class="hero">
-            <div class="hero-speed">
-              <div class="lb">当前车速</div>
-              <div class="num"><span id="lv-speed">–</span><small>km/h</small></div>
+          <div class="gauge-card">
+            <div class="gauge">
+              <svg viewBox="0 0 220 103" aria-hidden="true">
+                <!-- 表盘轨道 (半圆 180°): 0 km/h 在左端, 180 km/h 在右端
+                     (用户点名上限 180), 每 20 km/h 一格 (20°); 指针绕表心
+                     转, 弧亮到当前车速。viewBox 底带 114→103 (2026-09-29
+                     底边对齐 v19): 表心下 96→114 那截原本只装指针尾巴的
+                     空白带砍掉 —— 元素底边就是墨迹底 (弧线圆帽/毂底都
+                     压在 103 内), 表盘底边才能和电池底边落到同一高度 -->
+                <path d="M 30 96 A 80 80 0 0 1 190 96" fill="none"
+                      stroke="#2c2c2a" stroke-width="9" stroke-linecap="round"/>
+                <path id="lv-gauge-arc" d="M 30 96 A 80 80 0 0 1 190 96"
+                      pathLength="100" fill="none" stroke="#3987e5" stroke-width="9"
+                      stroke-linecap="round" stroke-dasharray="0 100" visibility="hidden"/>
+                <g id="lv-gauge-ticks"></g>
+                <g id="lv-gauge-labels"></g>
+                <g id="lv-gauge-needle">
+                  <!-- 指针尾缩回表心内 (y1 110→99, 尾长 3 < 毂半径 6):
+                       转到任何角度尾巴都不出毂, 也不再戳到裁过的 viewBox
+                       底 (原尾 14 单位, 竖直时探到 y≈112, 103 装不下) -->
+                  <line x1="110" y1="99" x2="110" y2="34" stroke="#f5f5f7"
+                        stroke-width="3.5" stroke-linecap="round"/>
+                </g>
+                <circle cx="110" cy="96" r="6" fill="#1c1c1e"
+                        stroke="#6b6965" stroke-width="1.5"/>
+              </svg>
+              <!-- 车速读在表盘正下, 一行式: 标签 + 数字 + 单位 基线一行,
+                   数字与右区续航数字同大 (追点「数字太大了, 改成跟剩余续航
+                   的数字一样大」), 两行文字贴卡底同高 -->
+              <div class="gauge-readout">
+                <span class="lb">当前车速</span><b id="lv-speed">–</b><small>km/h</small>
+              </div>
             </div>
-            <div class="hero-side">
-              <div class="lb">已行驶</div>
-              <div class="elapsed" id="lv-elapsed">–</div>
-              <div class="sub" id="lv-sub">–</div>
+            <!-- 右区 (追点「电池图标放大点…显示当前的电量, 下面显示剩余续航」):
+                 大号电池图标, 百分比数字住进图标里 -->
+            <div class="gauge-batt">
+              <span class="batt"><i id="batt-fill"></i><b id="lv-soc">–</b></span>
+              <div class="gb-range">剩余续航 <b id="lv-range">–</b> km</div>
             </div>
           </div>
-          <div class="batt-card">
-            <span class="batt"><i id="batt-fill"></i></span>
-            <b id="lv-soc">–%</b>
-            <span class="batt-range">额定续航 <b id="lv-range">–</b> km</span>
+          <div class="lv-strip">
+            <span class="lb">已行驶</span>
+            <span class="elapsed" id="lv-elapsed">–</span>
+            <span class="sub" id="lv-sub">–</span>
           </div>
           <div class="tiles">
+            <!-- 一行式数据格 (追点「值不要换行, 和剩余续航一个风格」): 标签 +
+                 数字 + 单位 基线一行居中, 不再标签上/数字下两层。2026-09-29
+                 用户点名「平均电耗和最高车速删了吧」: 该两格整链退役, 剩
+                 里程/已耗电两格一行 -->
             <div class="tile"><div class="lb">里程</div><div class="val" id="lv-km">–</div></div>
             <div class="tile"><div class="lb">已耗电</div><div class="val" id="lv-kwh">–</div></div>
-            <div class="tile"><div class="lb">平均电耗</div><div class="val" id="lv-avg">–</div></div>
-            <div class="tile"><div class="lb">最高车速</div><div class="val" id="lv-vmax">–</div></div>
           </div>
         </div>
         <div class="map-wrap">
@@ -513,166 +145,661 @@
           <div class="drawer-edge" id="lv-edge" aria-hidden="true"></div>
         </div>
       </section>
-
-      <!-- 刚结束 (上一次状态还在开车, 现在结束了) -->
-      <section id="ended" hidden>
-        <div class="state-view">
-          <div class="big">✅</div>
-          <h2>本次驾驶已结束</h2>
-          <p>行程已记录, 继续出发时这里会自动恢复实时显示</p>
-          <a class="cta" id="ended-link" href="/tesla?view=trips">查看本次行程</a>
-        </div>
-      </section>
-
-      <!-- 没在开车 -->
-      <section id="idle" hidden>
-        <div class="state-view">
-          <div class="big">🚗</div>
-          <h2>当前没有进行中的驾驶</h2>
-          <p>车辆出发后, 这里会实时显示车速、位置轨迹、电耗与剩余电量</p>
-        </div>
-      </section>
     </div>
   </section>
 
-  <!-- 设置三视图 (P6, 旧设置页一页拆三): 卡片标记沿用旧页 (tm-*/amap-*/
-       drv-*), 旧页顶栏/关于卡不搬; id 都带视图前缀的滚动器 (db/mapset/drset)。
-       账号卡在抽屉账号行的弹层里 (见 #acct-sheet), 不占视图 -->
-  <section class="view" id="view-settings-db" data-view="settings-db" hidden>
-    <div class="view-scroll" id="db-scroll">
-      <div class="sec-head"><h2>数据来源</h2></div>
-      <section class="card">
-        <h2>TeslaMate 数据库</h2>
-        <p class="hint">行程/充电数据来源的 PostgreSQL。改动后立即换库重连并实测, 连不上自动回滚; 建议填固定 IP/主机名。留空 = 保持现值。</p>
-        <label><span>主机地址</span><input type="text" id="tm-host" autocomplete="off" spellcheck="false"></label>
-        <div class="row2">
-          <label><span>端口</span><input type="text" id="tm-port" inputmode="numeric" autocomplete="off"></label>
-          <label><span>数据库名</span><input type="text" id="tm-name" autocomplete="off" spellcheck="false"></label>
+    <!-- 行程轨迹视图 (P4, 生命周期最重): 列表 + 多选 selbar + 轨迹弹层
+         (sheet/地图/回放/视频导出)。尾部 id 加 tr- 前缀 (统计视图占了裸名);
+         #list 沿用旧名 (tesla-trips-cards.css 按它布列, 日志视图已让路);
+         #sheet/#backdrop 已升壳级 (分组页打开的合并弹层宿主是分组视图, 见文件尾); 车辆
+         住抽屉顶 (全局), 起终点/里程/驾驶员是行程自己的 chips; 时间筛选 3.3.0 下线 -->
+    <section class="view" id="view-trips" data-view="trips" hidden>
+      <div class="view-scroll" id="tr-scroll">
+        <div class="sec-head">
+          <h2>行程轨迹</h2>
+          <span class="count-badge" id="count-badge"></span>
         </div>
-        <div class="row2">
-          <label><span>用户</span><input type="text" id="tm-user" autocomplete="off" spellcheck="false"></label>
-          <label><span>密码</span><input id="tm-pass" type="password" autocomplete="new-password" placeholder=""></label>
-        </div>
-        <button type="button" class="primary" id="tm-save">保存并连接</button>
-      </section>
-    </div>
-  </section>
+        <div id="list"></div>
 
-  <section class="view" id="view-settings-map" data-view="settings-map" hidden>
-    <div class="view-scroll" id="mapset-scroll">
-      <div class="sec-head"><h2>地图设置</h2></div>
-      <section class="card">
-        <h2>地图</h2>
-        <label><span>服务商</span>
-          <select id="map-provider">
-            <option value="amap">高德地图</option>
-            <option value="osm">OpenStreetMap (无需 Key)</option>
-          </select>
-        </label>
-        <div id="amap-rows">
-          <p class="hint">Web 端 JS Key (地图/轨迹/断档补路都用它)。当前 Key: <b id="amap-now">未设置</b>。留空 = 保持现值。</p>
-          <label><span>Key</span><input type="text" id="amap-key" placeholder="留空保持现值" autocomplete="off" spellcheck="false"></label>
-          <label><span>安全码</span><input id="amap-code" type="password" placeholder="留空保持现值" autocomplete="new-password"></label>
-          <label><span>地图样式</span>
-            <select id="amap-style">
-              <option value="amap://styles/dark">幻影黑 (纯黑)</option>
-              <option value="amap://styles/darkblue">极夜蓝 (深色 · 偏蓝)</option>
-              <option value="amap://styles/normal">标准 (浅色)</option>
-              <option value="amap://styles/light">月光银</option>
-              <option value="amap://styles/grey">雅士灰</option>
-              <option value="amap://styles/whitesmoke">远山黛</option>
-              <option value="amap://styles/blue">靛青蓝</option>
-              <option value="custom">自定义…</option>
-            </select>
-          </label>
-          <label id="amap-style-custom-row" hidden><span>样式地址</span>
-            <input type="text" id="amap-style-custom" placeholder="amap://styles/你的样式ID" autocomplete="off" spellcheck="false">
-          </label>
-          <p class="hint">默认<b>幻影黑</b> —— 纯黑底色和深色 App 最搭。深色样式也有地名: 标注依赖样式数据异步加载, 首次打开过一两秒才出现 (页面会自动补画), 网络慢时更久。想调别的配色: 换上面的预设, 或到高德开放平台「个性化地图」自建样式 (底色字号都能调), 把样式 ID 填到「自定义」。改样式后刷新地图页生效。</p>
+        <div class="tail" id="tr-tail" hidden>
+          <div class="spin" id="tr-loader-spin" hidden></div>
+          <div class="endnote" id="tr-endnote" hidden>· 已经到底啦 ·</div>
+          <div class="empty" id="tr-empty" hidden>还没有行程记录</div>
+          <div class="err-box" id="tr-errbox" hidden>
+            <p id="tr-errmsg">加载失败</p>
+            <button type="button" class="retry" id="tr-retry">重试</button>
+          </div>
         </div>
-        <p class="hint" id="map-provider-hint"></p>
-        <button type="button" class="primary" id="amap-save">保存</button>
-      </section>
-    </div>
-  </section>
+      </div>
 
-  <section class="view" id="view-settings-drivers" data-view="settings-drivers" hidden>
-    <div class="view-scroll" id="drset-scroll">
-      <div class="sec-head"><h2>驾驶员</h2></div>
-      <section class="card">
-        <h2>驾驶员</h2>
-        <p class="hint">用于给行程标注驾驶员; 未标注的行程按<b>默认驾驶员</b>显示。</p>
-        <div class="drv-add">
-          <input type="text" id="drv-name" maxlength="30" placeholder="驾驶员名字" autocomplete="off">
-          <button type="button" id="drv-add">添加</button>
+      <div class="selbar" id="selbar" hidden>
+        <div class="sel-row">
+          <div class="sel-info">已选 <b id="sel-count">0</b> 段 · <span id="sel-km">0</span> km</div>
+          <button type="button" class="sel-all" id="gp-btn" disabled>存为分组</button>
+          <button type="button" class="sel-all" id="sel-all">全选</button>
+          <button type="button" class="sel-cancel" id="sel-cancel">取消</button>
+          <button type="button" class="sel-go" id="sel-go" disabled>查看连续轨迹</button>
         </div>
-        <div id="drv-list"></div>
-        <div class="drv-empty" id="drv-empty" hidden>还没有驾驶员 — 添加后可在行程里标注谁开的</div>
-      </section>
-    </div>
-  </section>
+        <div class="gp-row">
+          <input type="text" id="gp-name" maxlength="30" placeholder="分组名字" autocomplete="off">
+          <button type="button" class="sel-go" id="gp-save">保存</button>
+          <button type="button" class="sel-cancel" id="gp-name-cancel">取消</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 行程统计视图 (2026-09-27 新增, 参照充电统计): 同款统计卡 + 月度趋势
+         (里程/电耗两幅柱状, 共享 12 个月时间窗滑块) + 六张分布图 (含司机
+         里程分布, 2026-09-27 用户点名; 归集口径同行程卡片 —— 标注 > 默认
+         兜底); 冲突 id 加 ts- 前缀 (裸名 errbox/errmsg/retry 归充电统计);
+         图表底座/落档器/统计卡样式与充电统计共用 (stats-chart-trend /
+         -dimensions / tesla-stats) -->
+    <section class="view" id="view-tripstats" data-view="tripstats" hidden>
+      <div class="view-scroll" id="ts-scroll">
+        <div class="sec-head"><h2>行程统计</h2></div>
+        <div class="stats-grid" id="ts-row"></div>
+
+        <div class="charts-grid" id="ts-grid">
+          <div class="chart-card">
+            <div class="cc-head">
+              <div>
+                <div class="cc-title">月度趋势</div>
+                <div class="cc-sub" id="ts-monthly-sub">最近 12 个月</div>
+              </div>
+            </div>
+            <div class="mc-row"><span class="mc-name">月度里程</span><span class="mc-total" id="ts-km-total">–</span></div>
+            <div class="chart-box chart-monthly-pair" id="chart-ts-km"></div>
+            <div class="mc-row"><span class="mc-name">月度电耗</span><span class="mc-total" id="ts-kwh-total">–</span></div>
+            <div class="chart-box chart-monthly-pair" id="chart-ts-kwh"></div>
+            <!-- 两幅柱状共享的时间窗滑块 (与充电统计同款): 滑轨 = 全部历史,
+                 滑块块身宽度 = 当前 12 个月窗口占整段历史的宽 -->
+            <div class="mc-slider" id="ts-slider-row" hidden>
+              <input type="range" id="ts-window" min="0" max="0" step="1" value="0" aria-label="时间窗">
+              <div class="mc-ticks"><span id="ts-win-first"></span><span id="ts-win-last"></span></div>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="cc-head">
+              <div>
+                <div class="cc-title">出发时段</div>
+                <div class="cc-sub" id="ts-hour-sub">按出发时间 (本地时区)</div>
+              </div>
+            </div>
+            <div class="chart-box" id="chart-ts-hour"></div>
+          </div>
+          <div class="chart-card">
+            <div class="cc-head">
+              <div>
+                <div class="cc-title">常去地点</div>
+                <div class="cc-sub" id="ts-loc-sub">起点终点并计</div>
+              </div>
+            </div>
+            <div class="chart-box chart-vlabel" id="chart-ts-loc"></div>
+          </div>
+          <!-- 司机里程分布 (2026-09-27 用户点名「行驶统计加一个司机里程分布」):
+               按驾驶员归集里程, 口径与行程卡片同款 —— 标注 > 默认驾驶员兜底 -->
+          <div class="chart-card">
+            <div class="cc-head">
+              <div>
+                <div class="cc-title">司机里程分布</div>
+                <div class="cc-sub" id="ts-drv-sub">按驾驶员标注归集</div>
+              </div>
+            </div>
+            <div class="chart-box chart-vlabel" id="chart-ts-drv"></div>
+          </div>
+          <div class="chart-card">
+            <div class="cc-head">
+              <div>
+                <div class="cc-title">单程距离分布</div>
+                <div class="cc-sub" id="ts-dist-sub">每次行程的里程</div>
+              </div>
+            </div>
+            <div class="chart-box" id="chart-ts-dist"></div>
+          </div>
+          <div class="chart-card">
+            <div class="cc-head">
+              <div>
+                <div class="cc-title">行驶时长分布</div>
+                <div class="cc-sub" id="ts-dur-sub">每次行程的持续时间</div>
+              </div>
+            </div>
+            <div class="chart-box" id="chart-ts-dur"></div>
+          </div>
+          <div class="chart-card">
+            <div class="cc-head">
+              <div>
+                <div class="cc-title">车速分布</div>
+                <div class="cc-sub" id="ts-spd-sub">按车速分组的行驶里程</div>
+              </div>
+            </div>
+            <div class="chart-box" id="chart-ts-spd"></div>
+          </div>
+          <div class="chart-card">
+            <div class="cc-head">
+              <div>
+                <div class="cc-title">平均电耗分布</div>
+                <div class="cc-sub" id="ts-wh-sub">每次行程的 Wh/km</div>
+              </div>
+            </div>
+            <div class="chart-box" id="chart-ts-wh"></div>
+          </div>
+        </div>
+
+        <div class="tail">
+          <div class="spin" id="ts-loader" hidden></div>
+          <div class="err-box" id="ts-errbox" hidden>
+            <p id="ts-errmsg">加载失败</p>
+            <button type="button" class="retry" id="ts-retry">重试</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 行程分组视图 (P3): 冲突 id 加 gp- 前缀 (errbox/errmsg/retry/count-badge
+         与统计/充电视图撞名); 打开分组走旧行程页深链, P4 行程视图入壳后改内存跳转 -->
+    <section class="view" id="view-groups" data-view="groups" hidden>
+      <div class="view-scroll" id="gp-scroll">
+        <div class="sec-head">
+          <h2>行程分组</h2>
+          <span class="count-badge" id="gp-count-badge"></span>
+        </div>
+        <div class="spin" id="gp-spin"></div>
+        <div class="gp-list" id="gp-list"></div>
+        <div class="gp-empty" id="gp-empty" hidden>还没有分组<span>在行程列表长按多选行程后点「存为分组」</span></div>
+        <div class="err-box" id="gp-errbox" hidden>
+          <p id="gp-errmsg">分组加载失败</p>
+          <button type="button" class="retry" id="gp-retry">重试</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 足迹地图视图 (P5): 弹层/占位 id 加 fp- 前缀 (壳里 #map/#stats/#loading/
+         #error/#keyhint/#zin/#zout/#backdrop/#sheet/#sh-* 裸名已被
+         行程/统计等视图占用); 时间档是屏底筛选条的全局 chip, 驾驶员是足迹自己
+         的 chip; v4 轨迹全精度流式下载, 加载层带进度条 -->
+    <section class="view" id="view-map" data-view="map" hidden>
+      <!-- 页顶汇总三数走 summary 端点的筛选口径, 平移/缩放不动它
+           (2026-09-29 用户点名「与充电地图逻辑不一样, 不用联动」) -->
+      <div class="map-head" id="fp-map-head">
+        <div class="sec-head"><h2>足迹地图</h2></div>
+        <!-- 汇总两格 (2026-09-29 用户点名「不需要显示行程数量, 就显示里
+             程和时长就行了」: 原三格并排太挤, 里程/时长的数字溢出格子) -->
+        <div class="stats" id="fp-stats" hidden>
+          <div class="stat"><div class="lb">里程</div><div class="val" id="st-km">–<small>km</small></div></div>
+          <div class="stat"><div class="lb">行驶时长</div><div class="val" id="st-hours">–<small>小时</small></div></div>
+        </div>
+      </div>
+      <div class="map-stage">
+        <div id="fp-map"></div>
+        <div class="fp-load-bar" id="fp-loading" hidden>
+          <div class="ov-text" id="fp-loading-text">正在加载走过的路…</div>
+          <div class="fp-prog-wrap"><div class="fp-prog" id="fp-prog"></div></div>
+        </div>
+        <div class="overlay" id="fp-error" hidden>
+          <div class="ov-text" id="fp-error-text">加载失败</div>
+          <button type="button" class="retry-btn" id="fp-retry">重试</button>
+        </div>
+        <div class="overlay" id="fp-keyhint" hidden>
+          <div class="hint-card">
+            <h2>🗺️ 需要配置高德地图 Key</h2>
+            <div class="h-sub">个人开发者免费</div>
+            <ol>
+              <li>打开 <a href="https://console.amap.com/dev/key/app" target="_blank" rel="noopener">高德开放平台控制台</a>, 创建应用</li>
+              <li>添加 Key, 服务平台选择 <b>「Web端 (JS API)」</b></li>
+              <li>在服务目录创建 <code>.env</code> 文件 (参考 <code>.env.example</code>):
+                <br><code>AMAP_KEY=你的Key</code>
+                <br><code>AMAP_SECURITY_CODE=你的安全密钥</code></li>
+              <li>重启服务 (<code>./run.sh</code>) 后点击下方按钮</li>
+            </ol>
+            <div class="retry-row">
+              <button type="button" class="retry-btn" id="fp-recheck">重新检测</button>
+            </div>
+          </div>
+        </div>
+        <!-- 走过之路图例 (2026-09-29, 画布内左下角, 底卡复用充电地图的全局
+             .legend 磨砂暗卡): 次数热力渐变条, 两端只标「少 / 多」(对数刻度
+             与折线同口径) —— 同日用户点名「去掉虚线, 去掉数字, 只保留多和
+             少」, 虚线样例/次数帽/拟合进度行整排退役 -->
+        <div class="legend" id="fp-legend" hidden>
+          <div class="lg-grad-row">
+            <span class="lg-cap">少</span>
+            <span class="lg-grad"></span>
+            <span class="lg-cap">多</span>
+          </div>
+        </div>
+        <div class="zoom-ctl">
+          <button type="button" id="fp-zin" title="放大">+</button>
+          <button type="button" id="fp-zout" title="缩小">−</button>
+        </div>
+        <div class="drawer-edge" id="fp-edge" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <!-- 充电记录视图 (P2); 全部 11 视图 P6 到齐, 逐视图注释在各段头 -->
+    <section class="view" id="view-charging" data-view="charging" hidden>
+      <div class="view-scroll" id="chg-scroll">
+        <div class="sec-head">
+          <h2>充电记录</h2>
+          <span class="count-badge" id="chg-count-badge"></span>
+        </div>
+        <div id="chg-masonry"></div>
+
+        <div class="tail" id="chg-tail" hidden>
+          <div class="spin" id="chg-loader-spin" hidden></div>
+          <div class="endnote" id="chg-endnote" hidden>· 已经到底啦 ·</div>
+          <div class="empty" id="chg-empty" hidden>该筛选条件下没有充电记录</div>
+          <div class="err-box" id="chg-errbox" hidden>
+            <p id="chg-errmsg">加载失败</p>
+            <button type="button" class="retry" id="chg-retry">重试</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 充电视图私有弹层 (id 加 chg- 前缀: 壳里多视图并存, #sheet/#backdrop 留给行程页) -->
+      <div class="sheet-backdrop" id="chg-backdrop"></div>
+      <div class="sheet" id="chg-sheet">
+        <div class="sheet-grab-zone" id="chg-grab-zone"><div class="sheet-grab"></div></div>
+        <div class="sheet-head sheet-drag">
+          <div class="sh-date-row">
+            <!-- [html-validate-disable-next empty-heading -- 日期由所选充电在运行时填充] -->
+            <h3 id="chg-sh-date"></h3>
+            <div class="sh-tag" id="chg-sh-tag"></div>
+          </div>
+          <div class="sh-loc" id="chg-sh-loc"></div>
+          <div class="sh-row" id="chg-sh-row"></div>
+        </div>
+        <div class="sheet-body" id="chg-sheet-body"></div>
+      </div>
+
+      <div class="alert-backdrop" id="chg-alert-bd" hidden>
+        <div class="alert" role="dialog" aria-label="编辑充电费用">
+          <div class="al-title">充电费用</div>
+          <div class="al-msg" id="chg-al-msg"></div>
+          <div class="al-field"><span class="cur">¥</span><input id="chg-al-input" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off"></div>
+          <div class="al-err" id="chg-al-err"></div>
+          <button type="button" class="al-clear" id="chg-al-clear" hidden>清除费用记录</button>
+          <div class="al-btns">
+            <button type="button" class="al-btn" id="chg-al-cancel">取消</button>
+            <button type="button" class="al-btn al-strong" id="chg-al-save">保存</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 充电统计视图 (P3): echarts 首进视图才按需注入 (loadEcharts), 拉不到亮
+         错误盒等重试 (表格视图 2026-09-27 退役); 月度趋势 = 充电量/充电费用
+         两幅柱状, 共享 12 个月时间窗滑块 (2026-09-27 用户点名) -->
+    <section class="view" id="view-stats" data-view="stats" hidden>
+      <div class="view-scroll" id="stats-scroll">
+        <div class="sec-head"><h2>充电统计</h2></div>
+        <div class="stats-grid" id="stats-row"></div>
+
+        <div class="charts-grid" id="charts-grid">
+          <div class="chart-card">
+            <div class="cc-head">
+              <div>
+                <div class="cc-title">月度趋势</div>
+                <div class="cc-sub" id="monthly-sub">最近 12 个月</div>
+              </div>
+            </div>
+            <div class="mc-row"><span class="mc-name">充电量</span><span class="mc-total" id="mkwh-total">–</span></div>
+            <div class="chart-box chart-monthly-pair" id="chart-monthly-kwh"></div>
+            <div class="mc-row"><span class="mc-name">充电费用</span><span class="mc-total" id="mcost-total">–</span></div>
+            <div class="chart-box chart-monthly-pair" id="chart-monthly-cost"></div>
+            <!-- 两幅柱状共享的时间窗滑块: 滑轨 = 全部历史, 滑块块身宽度 = 当前
+                 12 个月窗口占整段历史的宽 —— 按住窗口拖着平移, 点窗外先跳过去 -->
+            <div class="mc-slider" id="monthly-slider-row" hidden>
+              <input type="range" id="monthly-window" min="0" max="0" step="1" value="0" aria-label="时间窗">
+              <div class="mc-ticks"><span id="win-first"></span><span id="win-last"></span></div>
+            </div>
+          </div>
+          <!-- 快慢充占比环形图 2026-09-27 退役 (用户点名): 顶部统计卡已有
+               「快充占比」一档, 环形图信息重复 -->
+          <div class="chart-card">
+            <div class="cc-head">
+              <div>
+                <div class="cc-title">充电开始时段</div>
+                <div class="cc-sub" id="hour-sub">按开始时间 (本地时区)</div>
+              </div>
+            </div>
+            <div class="chart-box" id="chart-hour"></div>
+          </div>
+          <div class="chart-card">
+            <div class="cc-head">
+              <div>
+                <div class="cc-title">常去充电点</div>
+                <div class="cc-sub" id="loc-sub">按充电次数</div>
+              </div>
+            </div>
+            <div class="chart-box chart-vlabel" id="chart-loc"></div>
+          </div>
+          <div class="chart-card">
+            <div class="cc-head">
+              <div>
+                <div class="cc-title">起充电量分布</div>
+                <div class="cc-sub" id="soc-sub">开始充电时的 SOC</div>
+              </div>
+            </div>
+            <div class="chart-box" id="chart-socdist"></div>
+          </div>
+          <div class="chart-card">
+            <div class="cc-head">
+              <div>
+                <div class="cc-title">峰值功率分布</div>
+                <div class="cc-sub" id="power-sub">单次充电的最高功率</div>
+              </div>
+            </div>
+            <div class="chart-box" id="chart-powerdist"></div>
+          </div>
+          <div class="chart-card">
+            <div class="cc-head">
+              <div>
+                <div class="cc-title">单价分布</div>
+                <div class="cc-sub" id="price-sub">按表计电量的单次单价</div>
+              </div>
+            </div>
+            <div class="chart-box" id="chart-price"></div>
+          </div>
+          <div class="chart-card">
+            <div class="cc-head">
+              <div>
+                <div class="cc-title">充电时长分布</div>
+                <div class="cc-sub" id="dur-sub">单次充电的持续时间</div>
+              </div>
+            </div>
+            <div class="chart-box" id="chart-dur"></div>
+          </div>
+          <div class="chart-card">
+            <div class="cc-head">
+              <div>
+                <div class="cc-title">城市分布</div>
+                <div class="cc-sub" id="city-sub">按充电次数</div>
+              </div>
+            </div>
+            <div class="chart-box chart-vlabel" id="chart-city"></div>
+          </div>
+        </div>
+
+        <div class="tail">
+          <div class="spin" id="loader-spin" hidden></div>
+          <div class="err-box" id="errbox" hidden>
+            <p id="errmsg">加载失败</p>
+            <button type="button" class="retry" id="retry">重试</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 电池健康视图 (2026-09-27 新增, 用户点名的原文与页名改口经过
+         都记在 battery-page.js 头注): 统计卡 + 满电续航
+         估算曲线; 估算口径照 TeslaMate Battery Health 仪表盘移植 (额定
+         续航 ÷ 可用电量 → 满电续航, 只采充到 100% 的充电, 定标系数 →
+         容量 kWh); 冲突 id 加 bh- 前缀, 统计卡/图卡样式与充电统计共用
+         (tesla-stats.css) -->
+    <section class="view" id="view-battery" data-view="battery" hidden>
+      <div class="view-scroll" id="bh-scroll">
+        <div class="sec-head"><h2>电池健康</h2></div>
+        <div class="stats-grid" id="bh-row"></div>
+
+        <div class="charts-grid" id="bh-grid">
+          <div class="chart-card">
+            <div class="cc-head">
+              <div>
+                <div class="cc-title">满电续航估算</div>
+                <div class="cc-sub" id="bh-curve-sub">每个满充日的估算</div>
+              </div>
+            </div>
+            <div class="chart-box" id="chart-bh-curve"></div>
+          </div>
+          <p class="bh-note">满电续航 = 额定续航 ÷ 可用电量 × 100 (只采充到
+            100% 的充电, 车端口径); 电池容量 = 满电续航 × 充电定标系数 (桩端
+            口径) —— 健康度是两者共用的比值 (当前 ÷ 峰值), 与损耗换算无关。</p>
+        </div>
+
+        <div class="tail">
+          <div class="spin" id="bh-loader" hidden></div>
+          <div class="err-box" id="bh-errbox" hidden>
+            <p id="bh-errmsg">加载失败</p>
+            <button type="button" class="retry" id="bh-retry">重试</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 充电地图视图 (P5): 地图类视图全出血 —— 摘要条 + 画布; 撞名 id 加 cm-
+         前缀 (#map/#stats/#loading/#error/#keyhint/#legend/#zin/#zout/
+         #backdrop/#sheet/#retry/#recheck 都被别的视图占了裸名); 时间档是屏底
+         筛选条的全局 chip, 三视图度量切换 (电量/次数/费用) 是自己的 chips; 画布
+         本体 touch-action:none 全给地图引擎, 切页走抽屉菜单 -->
+    <section class="view" id="view-chargemap" data-view="chargemap" hidden>
+      <!-- 页顶汇总三数只数「视野内」地点 (2026-09-27 用户点名「地图缩放的
+           时候, 上面的三个数字也要跟着变, 显示视野内的数据」—— 平移/缩放
+           收尾 updateViewport 重算) -->
+      <div class="map-head" id="cm-map-head">
+        <div class="sec-head"><h2>充电地图</h2></div>
+        <div class="stats" id="cm-stats" hidden>
+          <div class="stat"><div class="lb">充电地点</div><div class="val" id="st-places">–</div></div>
+          <div class="stat"><div class="lb">充电次数</div><div class="val" id="st-sessions">–</div></div>
+          <div class="stat"><div class="lb">总电量</div><div class="val" id="st-energy">–<small>kWh</small></div></div>
+        </div>
+      </div>
+      <div class="map-stage">
+        <div id="cm-map"></div>
+        <div class="overlay" id="cm-loading" hidden>
+          <div class="spin"></div>
+          <div class="ov-text" id="cm-loading-text">正在加载充电地点…</div>
+        </div>
+        <div class="overlay" id="cm-error" hidden>
+          <div class="ov-text" id="cm-error-text">加载失败</div>
+          <button type="button" class="retry-btn" id="cm-retry">重试</button>
+        </div>
+        <div class="overlay" id="cm-keyhint" hidden>
+          <div class="hint-card">
+            <h2>🗺️ 需要配置高德地图 Key</h2>
+            <div class="h-sub">个人开发者免费</div>
+            <ol>
+              <li>打开 <a href="https://console.amap.com/dev/key/app" target="_blank" rel="noopener">高德开放平台控制台</a>, 创建应用</li>
+              <li>添加 Key, 服务平台选择 <b>「Web端 (JS API)」</b></li>
+              <li>在服务目录创建 <code>.env</code> 文件 (参考 <code>.env.example</code>):
+                <br><code>AMAP_KEY=你的Key</code>
+                <br><code>AMAP_SECURITY_CODE=你的安全密钥</code></li>
+              <li>重启服务 (<code>./run.sh</code>) 后点击下方按钮</li>
+            </ol>
+            <div class="retry-row">
+              <button type="button" class="retry-btn" id="cm-recheck">重新检测</button>
+            </div>
+          </div>
+        </div>
+        <!-- 热力图例 (2026-09-27 用户点名「图例放在地图内部左下角」):
+             梯度条左端蓝 = 视野内最小, 右端红 = 视野内最大, 极值随缩放/
+             平移按视野内地点动态算 (updateViewport) -->
+        <div class="legend" id="cm-legend" hidden>
+          <div class="lg-ramp-row">
+            <span class="lg-cap">少</span>
+            <span class="lg-ramp" id="lg-ramp"></span>
+            <span class="lg-cap">多</span>
+          </div>
+          <div class="lg-row" id="lg-row"></div>
+        </div>
+        <div class="zoom-ctl">
+          <button type="button" id="cm-zin" title="放大">+</button>
+          <button type="button" id="cm-zout" title="缩小">−</button>
+        </div>
+        <div class="drawer-edge" id="cm-edge" aria-hidden="true"></div>
+      </div>
+      <!-- 地图脚下 (2026-09-27 用户点名「视图切换按钮居中放在地图外部
+           下方」): 只剩视角档 pills 一件, 整行居中; mini-seg 与充电曲线
+           档位条同款 (图例已搬画布内, 见上) -->
+      <div class="cm-foot">
+        <div class="mini-seg cm-views" id="cm-views">
+          <button type="button" data-v="energy">充电电量</button>
+          <button type="button" data-v="sessions">充电次数</button>
+          <button type="button" data-v="cost">充电费用</button>
+        </div>
+      </div>
+      <div class="backdrop" id="cm-backdrop"></div>
+      <div class="sheet sheet-drag" id="cm-sheet">
+        <div class="sh-title" id="sh-name">–</div>
+        <div class="sh-sub" id="sh-city">–</div>
+        <div class="sh-grid">
+          <div class="sh-cell"><div class="lb">充电次数</div><div class="val" id="sh-sessions">–</div></div>
+          <div class="sh-cell"><div class="lb">其中快充</div><div class="val" id="sh-fast">–</div></div>
+          <div class="sh-cell"><div class="lb">充电电量</div><div class="val" id="sh-energy">–<small>kWh</small></div></div>
+          <div class="sh-cell"><div class="lb">充电费用</div><div class="val" id="sh-cost">–</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 设置四视图: 账号设置 (2026-09-27 从数据来源页拆出独立页, 用户点名
+         排设置组首位) / 数据来源 / 地图设置 / 驾驶员。卡片标记沿用旧页
+         (tm-*/amap-*/drv-*), 旧页顶栏/关于卡不搬; id 都带视图前缀的滚动器
+         (acct/db/mapset/drset)。账号卡弹层见 #acct-sheet -->
+    <section class="view" id="view-settings-account" data-view="settings-account" hidden>
+      <div class="view-scroll" id="acct-scroll">
+        <div class="sec-head"><h2>账号设置</h2></div>
+
+        <!-- 账号卡 (3.3.0 从抽屉搬来, 2026-09-27 拆成独立页): 名字/徽章
+             /api/me 填, 改名称改密码点开底部弹层 #acct-sheet
+             (view/settings-account.js), 登出走 /api/logout -->
+        <section class="card" id="acct-card">
+          <h2>账号</h2>
+          <p class="hint">当前登录: <b id="acct-name">…</b><em id="acct-badge" hidden> · 管理员</em>。
+            改名称全站立即生效; 改密码只影响之后登录, 本设备不掉线。</p>
+          <div class="acct-acts">
+            <button type="button" id="acct-row" hidden>改名称 / 改密码</button>
+            <button type="button" id="logout" class="acct-out">登出</button>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section class="view" id="view-settings-db" data-view="settings-db" hidden>
+      <div class="view-scroll" id="db-scroll">
+        <div class="sec-head"><h2>数据来源</h2></div>
+
+        <!-- 账号卡 2026-09-27 拆去账号设置独立页 (设置组首位) -->
+        <section class="card">
+          <h2>TeslaMate 数据库</h2>
+          <p class="hint">行程/充电数据来源的 PostgreSQL。改动后立即换库重连并实测, 连不上自动回滚; 建议填固定 IP/主机名。留空 = 保持现值。</p>
+          <label><span>主机地址</span><input type="text" id="tm-host" autocomplete="off" spellcheck="false"></label>
+          <div class="row2">
+            <label><span>端口</span><input type="text" id="tm-port" inputmode="numeric" autocomplete="off"></label>
+            <label><span>数据库名</span><input type="text" id="tm-name" autocomplete="off" spellcheck="false"></label>
+          </div>
+          <div class="row2">
+            <label><span>用户</span><input type="text" id="tm-user" autocomplete="off" spellcheck="false"></label>
+            <label><span>密码</span><input id="tm-pass" type="password" autocomplete="new-password" placeholder=""></label>
+          </div>
+          <button type="button" class="primary" id="tm-save">保存并连接</button>
+        </section>
+      </div>
+    </section>
+
+    <section class="view" id="view-settings-map" data-view="settings-map" hidden>
+      <div class="view-scroll" id="mapset-scroll">
+        <div class="sec-head"><h2>地图设置</h2></div>
+        <section class="card">
+          <h2>地图显示</h2>
+          <div>
+            <p class="hint">高德「Web端(JS API)」类型, 浏览器里用。没有它这些功能都没地图: 状态页车辆位置 / 足迹地图 / 充电地图 / 行程轨迹与回放, 以及行程断档补路 (轨迹缺段按导航补齐)。与安全码配对。当前 Key: <b id="amap-now">未设置</b>。留空 = 保持现值。</p>
+            <label><span>Key</span><input type="text" id="amap-key" placeholder="留空保持现值" autocomplete="off" spellcheck="false"></label>
+            <label><span>安全码</span><input id="amap-code" type="password" placeholder="留空保持现值" autocomplete="new-password"></label>
+            <label><span>地图样式</span>
+              <select id="amap-style">
+                <option value="amap://styles/dark">幻影黑 (纯黑)</option>
+                <option value="amap://styles/darkblue">极夜蓝 (深色 · 偏蓝)</option>
+                <option value="amap://styles/normal">标准 (浅色)</option>
+                <option value="amap://styles/light">月光银</option>
+                <option value="amap://styles/grey">雅士灰</option>
+                <option value="amap://styles/whitesmoke">远山黛</option>
+                <option value="amap://styles/blue">靛青蓝</option>
+                <option value="custom">自定义…</option>
+              </select>
+            </label>
+            <label id="amap-style-custom-row" hidden><span>样式地址</span>
+              <input type="text" id="amap-style-custom" placeholder="amap://styles/你的样式ID" autocomplete="off" spellcheck="false">
+            </label>
+            <!-- 样式说明长段 2026-09-27 退役 (用户点名): 预设名 + 自定义入口已足够 -->
+          </div>
+          <button type="button" class="primary" id="amap-save">保存</button>
+        </section>
+        <section class="card">
+          <h2>足迹道路拟合</h2>
+          <div>
+            <p class="hint">高德「Web服务」类型 (和上面的地图 Key 是两种类型, 不能混用; 同一应用里可以再建一把), 只在服务端用, 不进浏览器。管两件事: 把足迹轨迹拟合到实际道路 (画「走过的路」), 以及拟合中 GPS 断链按导航最短路径补全。没设置时新行程暂不进「走过的路」(已有的路不受影响)。当前: <b id="amap-web-now">未设置</b>。留空 = 保持现值。</p>
+            <label><span>Web 服务 Key</span><input type="password" id="amap-web-key" placeholder="留空保持现值" autocomplete="new-password"></label>
+          </div>
+          <button type="button" class="primary" id="amap-web-save">保存</button>
+        </section>
+      </div>
+    </section>
+
+    <section class="view" id="view-settings-drivers" data-view="settings-drivers" hidden>
+      <div class="view-scroll" id="drset-scroll">
+        <div class="sec-head"><h2>驾驶员</h2></div>
+        <section class="card">
+          <h2>驾驶员</h2>
+          <p class="hint">用于给行程标注驾驶员; 未标注的行程按<b>默认驾驶员</b>显示。</p>
+          <div class="drv-add">
+            <input type="text" id="drv-name" maxlength="30" placeholder="驾驶员名字" autocomplete="off">
+            <button type="button" id="drv-add">添加</button>
+          </div>
+          <div id="drv-list"></div>
+          <div class="drv-empty" id="drv-empty" hidden>还没有驾驶员 — 添加后可在行程里标注谁开的</div>
+        </section>
+      </div>
+    </section>
+
+    <!-- 更新日志视图 (P3): 标记沿用旧页 (entries/loading/error), list/retry
+         撞名让路 —— #list 留给行程列表 (tesla-trips-cards.css 按它布列) -->
+    <section class="view" id="view-changelog" data-view="changelog" hidden>
+      <div class="view-scroll" id="cl-scroll">
+        <div id="entries">
+          <div id="cl-list"></div>
+          <div class="state" id="loading"><div class="spin"></div>正在读取版本历史…</div>
+          <div class="state" id="error" hidden>
+            <div id="error-text">加载失败</div>
+            <button type="button" class="retry-btn" id="cl-retry">重试</button>
+          </div>
+        </div>
+      </div>
+    </section>
 </main>
 
-<!-- 层序 (下→上): 视图内容 < 下拉刷新指示 < 屏底筛选条 < 筛选弹层 < 抽屉 < 视图弹层 -->
-<div id="ptr" aria-hidden="true">
-  <svg class="ptr-arrow" viewBox="0 0 12 12" width="13" height="13"><path d="M6 2v7M2.5 5.5 6 9l3.5-3.5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-  <i class="ptr-spin"></i><span class="ptr-lb">下拉刷新</span>
-</div>
+<!-- 层序 (下→上): 视图内容 < 下拉刷新提示 < 屏底筛选条 < 筛选弹层 < 抽屉 < 视图弹层 -->
+<div id="ptr-hint" aria-hidden="true">松开刷新</div>
 
+<!-- 屏底悬浮条: 只剩筛选条 —— 当前视图的筛选 chips (横滑, 放不下左右滚);
+     弹层 #fb-pop 锚在条上方 (不放进滚动器, 防裁剪)。菜单圆键 2026-09-27
+     退役 (用户点名「所有的页面都是边缘呼出设置, 设置按钮就不需要了」——
+     任意页右划/地图页左缘条都能呼出抽屉, 圆键是冗余入口); 没有 chips 的
+     视图整条收起 (js 给 #bar-row 挂 no-chips, 底部让位跟着收) -->
 <div id="bar-row">
-  <button type="button" id="menu-key" aria-label="打开菜单"><svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 5.5h14M3 10h14M3 14.5h14"/></svg></button>
   <div id="filter-bar" role="toolbar" aria-label="筛选"></div>
 </div>
 <div id="fb-pop"></div>
 
+<!-- 左侧抽屉 (3.3.0 定稿: 纯导航 · 树状): 任意页右划 (地图页画布左缘条)
+     呼出, 点蒙版/身上左划/Esc 收; 树状导航 —— 状态/行程/充电/设置四组 (含
+     二级页, 用户点名), 多页组分组行点开手风琴展开二级, 单页组直接叶行;
+     图标取 Lucide 线性集 (iconfont 风格); 车辆选择住抽屉顶 (全局生效,
+     用户点名), 时间档住屏底筛选条 chip, 账号卡住账号设置独立页 -->
 <div id="drawer-mask"></div>
 <aside id="drawer" aria-label="菜单">
-  <div class="drw-top">
-    <div class="drw-row">
-      <div class="drw-cars" id="drw-cars" hidden>
-        <span class="drw-cars-lb">车辆</span>
-        <div class="car-pills" id="car-pills"></div>
-      </div>
-      <details class="drw-menu" id="time-menu">
-        <summary><span class="drw-lb">时间范围</span><span id="time-lb">全部</span><svg class="chev" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
-        <div class="drw-menu-body" id="time-opts">
-          <button type="button" data-v="24h">24小时</button>
-          <button type="button" data-v="7d">近一周</button>
-          <button type="button" data-v="30d">近一月</button>
-          <button type="button" data-v="180d">近半年</button>
-          <button type="button" data-v="1y">近一年</button>
-          <button type="button" data-v="all" class="on">全部</button>
-          <div class="tm-custom">
-            <button type="button" data-v="custom">自定义…</button>
-            <div class="tm-dates" id="tm-dates" hidden>
-              <div class="tm-cal-top">
-                <button type="button" id="tm-prev" aria-label="上个月">‹</button>
-                <b id="tm-ym"></b>
-                <button type="button" id="tm-next" aria-label="下个月">›</button>
-              </div>
-              <div class="tm-week"><i>一</i><i>二</i><i>三</i><i>四</i><i>五</i><i>六</i><i>日</i></div>
-              <div class="tm-cal" id="tm-cal"></div>
-              <div class="tm-foot"><span id="tm-sel"></span><button type="button" id="tm-apply">确定</button></div>
-            </div>
-          </div>
-        </div>
-      </details>
-    </div>
+  <!-- 车辆选择 (3.3.0 定稿住抽屉顶, 用户令「选择车辆放在菜单里, 选中之后
+       对所有页面都生效」): 点 pill 全局 setCar, 列表/统计/地图/驾驶全按
+       选中车取数; 单车用户渲染静态车名行 (tesla-car-switcher) -->
+  <div class="drw-cars" id="drw-cars" hidden>
+    <span class="drw-cars-lb">车辆</span>
+    <div class="car-pills" id="car-pills"></div>
   </div>
   <nav class="drw-nav" id="drw-nav" aria-label="导航"></nav>
-  <div class="drw-bottom">
-    <button type="button" class="drw-acct" id="acct-row" hidden>
-      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M12 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM5.5 20a6.5 6.5 0 0 1 13 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span id="acct-name"></span><em id="acct-badge" hidden>管理员</em>
-    </button>
-    <button type="button" class="drw-logout" id="logout">登出</button>
-  </div>
 </aside>
 
 <div id="toast" aria-live="polite"></div>
 
-<!-- 账号弹层 (P6): 抽屉账号行点开 —— 改名称/改密码 (旧设置页账号卡)。
-     .sheet/.backdrop 与地图弹层同款 (z 90/91, 抽屉先收); 关层让路键盘
+<!-- 账号弹层 (P6; 3.3.0 起入口从抽屉账号行改为账号卡的账号设置独立页): 改名称/
+     改密码。.sheet/.backdrop 与地图弹层同款 (z 90/91); 关层让路键盘
      (ViewportDoctor.settled, 见 view/settings-account.js) -->
 <div class="backdrop" id="acct-backdrop"></div>
 <section class="sheet" id="acct-sheet" aria-label="账号">
@@ -691,67 +818,207 @@
   <button type="button" class="primary" id="me-pass-save">改密码</button>
 </section>
 
+<!-- 行程轨迹弹层 (壳级, 2026-09-22 从行程视图搬出): 分组页打开的合并
+     弹层宿主是分组视图 —— 背后停在分组列表, 不再闪行程轨迹 (用户实报);
+     行程视图藏起 (display:none) 时这层照常显。驾驶员小选单/录制结果
+     一并跟出: 弹层里也用得到 (单条驾驶员按钮 / 分组里导出视频)。 -->
+  <div class="backdrop" id="backdrop"></div>
+  <div class="sheet" id="sheet">
+    <div class="grab" id="grab"></div>
+    <!-- 头部一行 (2026-09-22 用户点名再排): 日期带年份 + 出发时刻 + 驾驶员
+         并到左边一串 (驾驶员挪时间后面, 点击弹底部选单换人, 不再框椭圆胶囊
+         —— 原生 select 的文字也不听页面 CSS, 三样字体凑不齐); 右上角
+         2026-09-24 用户点名让给驾驶员 (页标题退役, 切页点底行页标区);
+         高速费行先撤掉 (后端估价与存量照留) -->
+    <div class="sh-head sheet-drag">
+      <div class="sh-title"><span id="sh-date">–</span><span class="sh-sub" id="sh-time"></span></div>
+      <button type="button" class="sh-drv" id="sh-drv-btn" aria-label="切换驾驶员" hidden></button>
+    </div>
+    <!-- 地图↔动态↔统计横滑分页 (2026-09-22 用户点名「往左划显示行程统计
+         页面」→ 后点名「统计改成动态, 整个页面都换掉」): 原生 snap 滚动,
+         三页整页对换 —— 轨迹页 = 地图+数字带+播放条, 动态页 = 一开就画
+         全程的三张曲线, 统计页 = 速度直方图 (2026-09-23 用户点名), 各页
+         自有布局互不相扰 (2026-09-27 用户点名三页独立)。地图横滑归
+         地图平移, 切页全靠横滑 —— 头部/数字带/播放条转发 (数字带/播放条
+         是 touch-action 拦滚的区, 原生不滚, 转发是主路), 后两页往回滑
+         原生滚回; 右上角标题显当前页 (2026-09-22 用户点名撤掉页底页签,
+         见 trips-sheet-stats.js) -->
+    <div class="tp-pager-zone">
+      <div class="tp-pager" id="tp-pager">
+        <div class="tp-track">
+          <div class="trip-map-wrap">
+            <div id="trip-map"></div>
+            <!-- 视角基线 ±: 从播放条挪到地图右下角浮着 (用户点名); 显隐随播放条 (JS 同步) -->
+            <div class="pb-zoom" id="pb-zoom" hidden title="视角基线: 随速变焦整体拉近/拉远 (慢近快远不变)">
+              <button type="button" id="pb-zout" class="pb-zb" aria-label="视角拉远">−</button>
+              <span id="pb-zval">0</span>
+              <button type="button" id="pb-zin" class="pb-zb" aria-label="视角拉近">+</button>
+            </div>
+            <div class="trip-msg" id="trip-msg">
+              <div class="spin" id="trip-spin" hidden></div>
+              <div id="trip-msg-text">正在加载轨迹…</div>
+            </div>
+          </div>
+          <!-- 数字带 + 播放条 = 轨迹页自己的两行 (2026-09-27 用户点名三页
+               独立: 布局恒定 —— 翻到哪页都不收放, 地图/图卡大小全程不变。
+               2026-09-25 三页等高修平时曾挪出分页当公共带 + 二三页整带收放
+               (#sheet.no-band), 带子一收一还地图就变一次大小 —— 「地图大小
+               变来变去」正是这么来的, 整套撤掉)。播放条不播时整行收掉
+               不占位 (2026-09-22 用户点名「播放按钮不要放在地图里面」);
+               投影撤掉 (深底上那圈黑影正是「周围有黑边」的观感来源) -->
+          <div class="sh-cells sheet-drag">
+            <div class="sh-cell"><div class="lb">里程</div><div class="val" id="sh-km">–</div></div>
+            <div class="sh-cell"><div class="lb">时长</div><div class="val" id="sh-dur">–</div></div>
+            <div class="sh-cell"><div class="lb" id="sh-spd-lb">最高车速</div><div class="val" id="sh-spd">–</div></div>
+            <div class="sh-cell" id="sh-cell-pw" hidden><div class="lb" id="sh-pw-lb">平均功耗</div><div class="val" id="sh-pw">–</div></div>
+            <div class="sh-cell" id="sh-cell-kwh"><div class="lb">总电耗</div><div class="val" id="sh-kwh">–</div></div>
+            <div class="sh-cell" id="sh-cell-avg"><div class="lb">平均电耗</div><div class="val" id="sh-avg">–</div></div>
+          </div>
+          <div class="playbar" id="playbar" hidden>
+            <button type="button" id="pb-toggle" class="pb-btn" aria-label="暂停"></button>
+            <input type="range" id="pb-seek" class="pb-seek" min="0" max="1000" step="1" value="0">
+            <button type="button" id="pb-speed" class="pb-speed">1×</button>
+            <button type="button" id="pb-rec" class="pb-btn" aria-label="导出视频"><span class="rec-dot"></span></button>
+          </div>
+        </div>
+        <!-- 动态页: 速度 (轨迹线同款红绿配色) / 累计电耗+每公里电耗 /
+             海拔 三张图, canvas 手绘; 一开就是全程全貌 (2026-09-23 用户
+             点名撤动画, 不跟播放走); 点任意一张图, 三张同时落竖线读值 -->
+        <section class="tp-stats" id="tp-stats">
+          <div class="tps-card">
+            <div class="tps-chart"><canvas id="tps-cv-spd"></canvas></div>
+          </div>
+          <div class="tps-card" id="tps-card-kwh">
+            <div class="tps-chart"><canvas id="tps-cv-kwh"></canvas></div>
+          </div>
+          <div class="tps-card" id="tps-card-alt">
+            <div class="tps-chart"><canvas id="tps-cv-alt"></canvas></div>
+          </div>
+          <!-- 空态各跟各的数据 (2026-09-27 用户点名三页独立): 动态页等的是
+               轨迹会话 (预载没完也早已就绪 —— openTrip 里 playTrack 先于预
+               载), 不再「轨迹没加载完, 统计页也跟着转圈」 -->
+          <p class="tps-empty" id="tps-empty">数据加载中…</p>
+        </section>
+        <!-- 第三页「行驶统计」(2026-09-23 用户点名, 同日点名拆成两张卡;
+             2026-09-24 对账官方口径改造 + 加里程卡): 三卡数据服务端在
+             原始 positions 上聚合 (懒取) —— 第一张速度直方图
+             (ROUND 档沿: 档值 80 = 75-85; 柱 = 各档时间), 第二张各档
+             行驶里程 (2026-09-24 用户点名), 第三张各档平地电耗
+             Wh/km (官方 SpeedRates 面板同口径; 没功耗/没平地段的行程
+             整卡收起); 点柱读值 (再点撤掉, 三卡同一份选中, 电耗卡连
+             该档平地平均功率一起读) -->
+        <section class="tp-hist" id="tp-hist">
+          <div class="tps-card">
+            <div class="tps-chart"><canvas id="tps-cv-hist"></canvas></div>
+          </div>
+          <div class="tps-card" id="tps-card-histkm">
+            <div class="tps-chart"><canvas id="tps-cv-histkm"></canvas></div>
+          </div>
+          <div class="tps-card" id="tps-card-hist2">
+            <div class="tps-chart"><canvas id="tps-cv-hist2"></canvas></div>
+          </div>
+          <!-- 统计页空态只跟自己的直方图 (开弹层即取, 与轨迹下载/地图预载
+               全程无关) -->
+          <p class="tps-empty" id="tps-empty-h">统计读取中…</p>
+        </section>
+      </div>
+      <!-- 弹层底一行 (2026-09-23 用户点名: 最下方的空白放当前页标题 +
+           白点页标, 类似 iOS 桌面的白点): 轨迹页「行驶轨迹」/ 动态页
+           「行驶数据」/ 统计页「行驶统计」, 三枚圆点亮当前页; 2026-09-24
+           点名竖排 (圆点在上标题在下) 且点整块切下一页 (末页绕回) -->
+      <div class="tp-foot" id="tp-foot">
+        <span class="tp-dots" id="tp-dots"><i class="on"></i><i></i><i></i></span>
+        <span class="tp-foot-lb" id="tp-foot-lb">行驶轨迹</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 卡片驾驶员直选小选单: 点卡片右上角驾驶员 pill 弹出 (用户点名,
+       不用进详情); iOS 底部动作单样式, 点蒙版/取消收起 -->
+  <div class="drv-pop" id="drv-pop" hidden>
+    <div class="drv-pop-card">
+      <div class="drv-pop-t">标注驾驶员</div>
+      <div class="drv-pop-list" id="drv-pop-list"></div>
+      <button type="button" class="drv-pop-x" id="drv-pop-x">取消</button>
+    </div>
+  </div>
+
+  <div class="rec-modal" id="rec-modal" hidden>
+    <div class="rec-card">
+      <video id="rec-video" playsinline controls></video>
+      <div class="rec-acts">
+        <button type="button" id="rec-save" class="rec-main">存到相册</button>
+        <button type="button" id="rec-close">关闭</button>
+      </div>
+    </div>
+  </div>
+
 <script src="/tesla/static/js/gcj02.js?v=1"></script>
-<script src="/tesla/static/js/format.js?v=1"></script>
-<script src="/tesla/static/js/trackutil.js?v=1"></script>
-<script src="/tesla/static/js/track-animation.js?v=1"></script>
-<script src="/tesla/static/js/trip-playback.js?v=1"></script>
-<script src="/tesla/static/js/tesla-common.js?v=1"></script>
-<script src="/tesla/static/js/tesla-map-adapter.js?v=1"></script>
+<script src="/tesla/static/js/format.js?v=6"></script>
+<script src="/tesla/static/js/trackutil.js?v=5"></script>
+<script src="/tesla/static/js/track-animation.js?v=3"></script>
+<script src="/tesla/static/js/trip-playback.js?v=2"></script>
+<script src="/tesla/static/js/tesla-common.js?v=5"></script>
+<script src="/tesla/static/js/tesla-map-adapter.js?v=4"></script>
 <script src="/tesla/static/js/tesla-shell.js?v=1"></script>
-<script src="/tesla/static/js/tesla-navigation.js?v=1"></script>
-<script src="/tesla/static/js/tesla-viewport.js?v=1"></script>
-<script src="/tesla/static/js/tesla-pull-refresh.js?v=1"></script>
-<script src="/tesla/static/js/tesla-gesture.js?v=1"></script>
-<script src="/tesla/static/js/tesla-drawer.js?v=1"></script>
-<script src="/tesla/static/js/tesla-time-range.js?v=1"></script>
-<script src="/tesla/static/js/tesla-car-switcher.js?v=1"></script>
-<script src="/tesla/static/js/tesla-filter-bar.js?v=1"></script>
+<script src="/tesla/static/js/tesla-navigation.js?v=3"></script>
+<script src="/tesla/static/js/tesla-viewport.js?v=3"></script>
+<script src="/tesla/static/js/tesla-pull-refresh.js?v=2"></script>
+<script src="/tesla/static/js/tesla-gesture.js?v=6"></script>
+<script src="/tesla/static/js/tesla-drawer.js?v=8"></script>
+<script src="/tesla/static/js/tesla-car-switcher.js?v=6"></script>
+<script src="/tesla/static/js/tesla-filter-bar.js?v=5"></script>
 <script src="/tesla/static/js/tesla-paged-list.js?v=1"></script>
-<script src="/tesla/static/js/view/charging-page.js?v=1"></script>
-<script src="/tesla/static/js/view/charging-cards.js?v=1"></script>
-<script src="/tesla/static/js/view/charging-filters.js?v=1"></script>
-<script src="/tesla/static/js/view/charging-detail.js?v=1"></script>
-<script src="/tesla/static/js/view/charging-nav.js?v=1"></script>
-<script src="/tesla/static/js/view/charging-cost.js?v=1"></script>
-<script src="/tesla/static/js/view/stats-page.js?v=1"></script>
-<script src="/tesla/static/js/view/stats-chart-trend.js?v=1"></script>
-<script src="/tesla/static/js/view/stats-chart-dimensions.js?v=1"></script>
-<script src="/tesla/static/js/view/groups-page.js?v=1"></script>
-<script src="/tesla/static/js/view/changelog-view.js?v=1"></script>
-<script src="/tesla/static/js/view/trips-list-page.js?v=1"></script>
-<script src="/tesla/static/js/view/trips-list-url.js?v=1"></script>
+<script src="/tesla/static/js/tesla-sheet-drag.js?v=5"></script>
+<script src="/tesla/static/js/view/charging-page.js?v=2"></script>
+<script src="/tesla/static/js/view/charging-cards.js?v=12"></script>
+<script src="/tesla/static/js/view/charging-filters.js?v=2"></script>
+<script src="/tesla/static/js/view/charging-detail.js?v=15"></script>
+<script src="/tesla/static/js/view/charging-cost.js?v=4"></script>
+<script src="/tesla/static/js/view/stats-page.js?v=8"></script>
+<script src="/tesla/static/js/view/stats-chart-trend.js?v=11"></script>
+<script src="/tesla/static/js/view/stats-chart-dimensions.js?v=7"></script>
+<script src="/tesla/static/js/view/trips-stats-page.js?v=2"></script>
+<script src="/tesla/static/js/view/trips-stats-charts.js?v=5"></script>
+<script src="/tesla/static/js/view/battery-page.js?v=2"></script>
+<script src="/tesla/static/js/view/groups-page.js?v=7"></script>
+<script src="/tesla/static/js/view/changelog-view.js?v=4"></script>
+<script src="/tesla/static/js/view/trips-list-page.js?v=7"></script>
+<script src="/tesla/static/js/view/trips-list-url.js?v=2"></script>
 <script src="/tesla/static/js/view/trips-list-region-filters.js?v=1"></script>
-<script src="/tesla/static/js/view/trips-list-select.js?v=1"></script>
-<script src="/tesla/static/js/view/trips-list-groups.js?v=1"></script>
-<script src="/tesla/static/js/view/trips-sheet-page.js?v=1"></script>
-<script src="/tesla/static/js/view/trips-playback-bar.js?v=1"></script>
-<script src="/tesla/static/js/view/trips-gap-routing.js?v=1"></script>
+<script src="/tesla/static/js/view/trips-list-select.js?v=3"></script>
+<script src="/tesla/static/js/view/trips-list-groups.js?v=2"></script>
+<script src="/tesla/static/js/view/trips-sheet-page.js?v=8"></script>
+<script src="/tesla/static/js/view/trips-playback-bar.js?v=2"></script>
+<script src="/tesla/static/js/view/trips-gap-routing.js?v=3"></script>
 <script src="/tesla/static/js/view/trips-playback-zoom.js?v=1"></script>
-<script src="/tesla/static/js/view/trips-playback-overlays.js?v=1"></script>
-<script src="/tesla/static/js/view/trips-playback-loop.js?v=1"></script>
-<script src="/tesla/static/js/view/trips-playback-session.js?v=1"></script>
-<script src="/tesla/static/js/view/trips-preload-tiles.js?v=1"></script>
-<script src="/tesla/static/js/view/trips-preload-vector.js?v=1"></script>
-<script src="/tesla/static/js/view/trips-sheet-driver.js?v=1"></script>
-<script src="/tesla/static/js/view/trips-sheet-open.js?v=1"></script>
-<script src="/tesla/static/js/view/trips-export-video.js?v=1"></script>
-<script src="/tesla/static/js/view/trips-sheet-close.js?v=1"></script>
+<script src="/tesla/static/js/view/trips-playback-overlays.js?v=8"></script>
+<script src="/tesla/static/js/view/trips-playback-loop.js?v=12"></script>
+<script src="/tesla/static/js/view/trips-playback-session.js?v=14"></script>
+<script src="/tesla/static/js/view/trips-preload-tiles.js?v=3"></script>
+<script src="/tesla/static/js/view/trips-preload-vector.js?v=3"></script>
+<script src="/tesla/static/js/view/trips-sheet-driver.js?v=12"></script>
+<script src="/tesla/static/js/view/trips-sheet-open.js?v=10"></script>
+<script src="/tesla/static/js/view/trips-export-video.js?v=3"></script>
+<script src="/tesla/static/js/view/trips-sheet-close.js?v=11"></script>
+<script src="/tesla/static/js/view/trips-sheet-stats.js?v=41"></script>
 <script src="/tesla/static/js/view/chargemap-page.js?v=1"></script>
-<script src="/tesla/static/js/view/chargemap-heatmap.js?v=1"></script>
-<script src="/tesla/static/js/view/chargemap-time-filters.js?v=1"></script>
-<script src="/tesla/static/js/view/map-page.js?v=2"></script>
-<script src="/tesla/static/js/view/map-tracks-render.js?v=2"></script>
-<script src="/tesla/static/js/view/map-tracks-refine.js?v=4"></script>
-<script src="/tesla/static/js/view/map-local-store.js?v=1"></script>
-<script src="/tesla/static/js/view/map-boot.js?v=1"></script>
-<script src="/tesla/static/js/view/map-filters.js?v=1"></script>
-<script src="/tesla/static/js/view/live-page.js?v=1"></script>
-<script src="/tesla/static/js/view/live-driving.js?v=1"></script>
-<script src="/tesla/static/js/view/settings-db.js?v=1"></script>
-<script src="/tesla/static/js/view/settings-map.js?v=1"></script>
-<script src="/tesla/static/js/view/settings-drivers.js?v=1"></script>
-<script src="/tesla/static/js/view/settings-account.js?v=1"></script>
-<script src="/tesla/static/js/tesla-app-boot.js?v=1"></script>
+<script src="/tesla/static/js/view/chargemap-heatmap.js?v=5"></script>
+<script src="/tesla/static/js/view/chargemap-time-filters.js?v=8"></script>
+<script src="/tesla/static/js/roads-grid.js?v=3"></script>
+<script src="/tesla/static/js/view/map-page.js?v=12"></script>
+<script src="/tesla/static/js/view/map-tracks-render.js?v=10"></script>
+<script src="/tesla/static/js/view/map-roads-render.js?v=8"></script>
+<script src="/tesla/static/js/view/map-local-store.js?v=3"></script>
+<script src="/tesla/static/js/view/map-roads-boot.js?v=6"></script>
+<script src="/tesla/static/js/view/map-boot.js?v=6"></script>
+<script src="/tesla/static/js/view/map-filters.js?v=9"></script>
+<script src="/tesla/static/js/view/live-page.js?v=9"></script>
+<script src="/tesla/static/js/view/live-driving.js?v=11"></script>
+<script src="/tesla/static/js/view/settings-db.js?v=4"></script>
+<script src="/tesla/static/js/view/settings-map.js?v=10"></script>
+<script src="/tesla/static/js/view/settings-drivers.js?v=4"></script>
+<script src="/tesla/static/js/view/settings-account.js?v=4"></script>
+<script src="/tesla/static/js/tesla-app-boot.js?v=4"></script>
 </body>
 </html>

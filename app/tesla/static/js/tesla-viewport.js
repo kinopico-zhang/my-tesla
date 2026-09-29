@@ -8,16 +8,30 @@
 //   ② ViewportDoctor: 满高基准 (localStorage 跨重启, 转屏重立) + 冻矮
 //      判定 (焦点不在输入框 + 比满高矮 12px + 定住 0.7s), settled() 供
 //      弹层关闭时让路键盘收起 (P6 账号弹层用)。
+//   ③ 冻矮自愈 (music 1.8.32 同法, 2026-09-21 用户点名修底部黑边): 冷开
+//      时 iOS 的还原高度跨重启赖账, 带矮值整程一声事件不响、永不自愈,
+//      壳矮一截底下就露黑带 —— 实锤时壳高直接钉记档的满高 (--shell-h,
+//      tesla-base.css 消费), 黑带当场补回, 回满自动撤。
+//   ④ 裸 Safari 的 dvh 赖账 (2026-09-21 IMG_7556 实测定案): Safari 里
+//      (非独立模式) 从切卡/键盘折腾回来, 100dvh 这个单位本身会带旧值
+//      不刷新 —— 布局视口明明 731, dvh 停在 438, 壳/滚动器按矮值排,
+//      底下露黑带、弹层被 92dvh 压扁、独立合成层留旧栅格 (弹层壳整块
+//      不画只剩子层)。独立模式有 ③ 兜; Safari 的 innerHeight 随工具栏
+//      浮动, ②的满高基准立不住, 改立"探针对账": 一枚 fixed 探针量活的
+//      100dvh (不吃 --shell-h), 比文档根矮超 120px (工具栏浮动 ≤90 不
+//      误伤) 且定住 0.7s → 实锤, 壳高钉布局视口真值, 探针回平自动撤。
 "use strict";
 /* exported ViewportDoctor */
 
 const ViewportDoctor = (() => {
   const vv = window.visualViewport;
-  // 只有独立模式 iPhone 会病: 浏览器 Safari 工具栏自己收放, innerHeight
-  // 天生会动, 满高基准立不住; 安卓 interactive-widget 布局自己缩, 是正常。
+  // 苹果触屏 (Safari 与独立模式都算): ① 的键盘拆锁两边都病, 都要治
+  // (7556 就是裸 Safari 里的账); ②③ 的满高基准只有独立模式立得住
+  // (Safari 工具栏自己收放, innerHeight 天生会动), 裸 Safari 走 ④ 探针。
+  const appleTouch = () => (/iP(hone|ad|od)/.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
   const patient = () => window.matchMedia("(display-mode: standalone)").matches
-    && (/iP(hone|ad|od)/.test(navigator.userAgent)
-        || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+    && appleTouch();
   const landscape = () => window.matchMedia("(orientation: landscape)").matches;
   const typing = () => {               // 键盘开着的唯一可靠信号: 焦点在输入框
     const el = document.activeElement;
@@ -27,9 +41,11 @@ const ViewportDoctor = (() => {
 
   /* ---------- ① 键盘期间解锁文档 (music-global-events.js 同法) ---------- */
   let kbFull = 0;
-  function lift() {
-    // 键盘收干净了才回锁 (focusout 的补拍会赶在键盘动画半路喊 lift)
-    if (kbFull && window.innerHeight >= kbFull - 12) {
+  function lift(force) {
+    // 键盘收干净了才回锁 (focusout 的补拍会赶在键盘动画半路喊 lift)。
+    // force (1800ms 末拍): Safari 工具栏状态在键盘期间变了的话, 内高永远
+    // 回不到拆锁那刻的值 —— 文档不能就这么一直敞着, 焦点不在输入框就硬锁。
+    if ((force && !typing()) || (kbFull && window.innerHeight >= kbFull - 12)) {
       kbFull = 0;
       const root = document.documentElement;
       root.style.overflow = ""; root.style.height = "";
@@ -44,7 +60,7 @@ const ViewportDoctor = (() => {
     const el = event.target;
     if (!el || (el.tagName !== "INPUT" && el.tagName !== "TEXTAREA"
       && !el.isContentEditable)) return;
-    if (!patient()) return;                    // 桌面/安卓的账不这么记
+    if (!appleTouch()) return;                // 桌面/安卓的账不这么记 (裸 Safari 也治)
     if (kbFull) return;                        // 键盘已开着 (焦点换了个框): 不重复拆
     kbFull = window.innerHeight;
     const root = document.documentElement;
@@ -61,7 +77,7 @@ const ViewportDoctor = (() => {
     // 键盘收走的收尾经常一声事件都不响: 焦点一离开输入框就迟几拍各补一次
     setTimeout(lift, 350);
     setTimeout(lift, 900);
-    setTimeout(lift, 1800);
+    setTimeout(() => lift(true), 1800);
   });
   lift();
   addEventListener("pageshow", lift);
@@ -86,18 +102,78 @@ const ViewportDoctor = (() => {
   }
   const sick = () => full - window.innerHeight > 12;   // 冻矮: 比满高矮一截
 
+  /* ---------- ③ 冻矮自愈: 布局别信 webview 的还原高度 ----------
+     满高钳在屏内 (竖屏取长边/横屏取短边): 防基线本身被瞬时值带高,
+     补偿铺出屏外反而截掉底栏。 */
+  const capOf = () => landscape() ? Math.min(screen.width, screen.height)
+                                  : Math.max(screen.width, screen.height);
+  function shellH(on, px) {   // 冻矮: 壳高钉真满高 (tesla-base.css 消费)
+    const root = document.documentElement;
+    if (on) root.style.setProperty(
+      "--shell-h", Math.min(px != null ? px : full, capOf()) + "px");
+    else root.style.removeProperty("--shell-h");
+  }
+
+  /* ---------- ④ 裸 Safari 的 dvh 赖账: 探针对账 ----------
+     探针 = fixed 的一根 100dvh 标尺 (不吃 --shell-h, 钉了高也照样量真
+     dvh)。文档根 (html{height:100%}) = 布局视口, 是"应然"; 探针是 dvh 的
+     "实然"。两者差超 120px (工具栏浮动 ≤90 不会误伤) 且定住 0.7s → dvh
+     在赖旧账, 壳高钉布局视口真值; 探针回平 (差 ≤12) 自动撤。钉着期间
+     探针依旧量真 dvh, 好没好一目了然, 不会来回抖。 */
+  let lieProbe = null, lieTimer = 0, lieSnap = -1, lieDeclared = false;
+  function probeDvh() {
+    if (!lieProbe) {
+      lieProbe = document.createElement("div");
+      lieProbe.style.cssText =
+        "position:fixed;top:0;left:0;width:0;height:100dvh;" +
+        "visibility:hidden;pointer-events:none;";
+      document.body.appendChild(lieProbe);
+    }
+    return lieProbe.getBoundingClientRect().height;
+  }
+  function dvhLie() {
+    if (document.hidden || typing()) {          // 键盘期矮是应该的; ① 拆锁时根高不可信
+      lieSnap = -1;
+      clearTimeout(lieTimer);
+      return;
+    }
+    const gap = document.documentElement.clientHeight - probeDvh();
+    if (gap <= 12) {                            // 探针回平: 赖账好了 (或从没病)
+      lieSnap = -1;
+      lieDeclared = false;
+      clearTimeout(lieTimer);
+      shellH(false);
+      return;
+    }
+    if (lieDeclared || gap < 120 || lieSnap === gap) return;   // 已钉/浮动不当病/值没定住
+    lieSnap = gap;
+    clearTimeout(lieTimer);
+    lieTimer = setTimeout(() => {
+      lieSnap = -1;
+      if (document.hidden || typing()) return;
+      const root = document.documentElement;
+      if (root.clientHeight - probeDvh() < 120) return;
+      lieDeclared = true;
+      shellH(true, root.clientHeight);   // 自愈: 壳高按布局视口钉真值
+    }, 700);
+  }
+
   let freezeTimer = 0, freezeSnap = -1;
+  let declared = false;                // 实锤一次就闩住, 回满才解 (别刷屏)
   function check() {
-    if (!patient()) return;
+    if (!appleTouch()) return;
+    if (!patient()) { dvhLie(); return; }   // 裸 Safari: ④ 探针对账
     const nowLandscape = landscape();
     if (nowLandscape !== seenLandscape) {
       seenLandscape = nowLandscape;
       full = window.innerHeight;       // 转屏: 满高按新方向重立
     }
     noteFull();
-    if (window.innerHeight >= full - 12) {   // 健在 (真回满): 清账
+    if (window.innerHeight >= full - 12) {   // 健在 (真回满): 清账撤补偿
       freezeSnap = -1;
+      declared = false;
       clearTimeout(freezeTimer);
+      shellH(false);                   // 冻矮补偿撤掉 (壳高回真 100dvh)
       return;
     }
     if (typing()) {                          // 键盘还开着: 矮是应该的
@@ -105,14 +181,15 @@ const ViewportDoctor = (() => {
       clearTimeout(freezeTimer);
       return;
     }
+    if (declared) return;
     if (freezeSnap !== window.innerHeight) { // 值定住 0.7s 才算实锤
       freezeSnap = window.innerHeight;
       clearTimeout(freezeTimer);
       freezeTimer = setTimeout(() => {
         freezeSnap = -1;
-        /* 冻矮实锤时的自救 = 文档已经解锁过 (focusin 拆的锁), lift() 清账;
-           music 的 HUD/回传壳不带, 定住了就静默待愈 */
-        if (patient() && !typing() && sick()) lift();
+        if (!patient() || typing() || !sick()) return;
+        declared = true;
+        shellH(true);   // 自愈: 壳高钉真满高, 冷开冻矮当场补 (不用用户动手)
       }, 700);
     }
   }

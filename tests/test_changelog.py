@@ -14,9 +14,12 @@ def test_versions_newest_first_and_wellformed():
     """新→老; 每版字段齐全, 文案是用户视角的一句话 (不夹技术黑话)。"""
     vs = changelog.entries()
     assert [v.version for v in vs] == [
-        "3.0.1", "3.0.0", "2.6.0", "2.5.1", "2.5.0", "2.4.0", "2.3.0", "2.2.0",
-        "2.1.0", "2.0.0", "1.1.0", "1.0.0"]
-    assert vs[0].date == "2026-09-20" and vs[-1].date == "2026-09-08"
+        "3.3.3", "3.3.2", "3.3.1", "3.3.0",
+        "3.2.5", "3.2.4", "3.2.3", "3.2.2", "3.2.1", "3.2.0",
+        "3.1.6", "3.1.5", "3.1.4", "3.1.3", "3.1.2", "3.1.1",
+        "3.1.0", "3.0.2", "3.0.1", "3.0.0", "2.6.0", "2.5.1", "2.5.0", "2.4.0",
+        "2.3.0", "2.2.0", "2.1.0", "2.0.0", "1.1.0", "1.0.0"]
+    assert vs[0].date == "2026-09-29" and vs[-1].date == "2026-09-08"
     for v in vs:
         assert v.items                                  # 每版至少一条
         assert len(v.date) == 10 and v.date[4] == "-"   # YYYY-MM-DD
@@ -41,7 +44,11 @@ def test_changelog_entries_endpoint(auth):
         assert e["items"] == [{"kind": it.kind, "text": it.text}
                               for it in v.items]
     # 头条是主打: 新功能或修的主 bug; 纯打磨的批次整版都是改进, 不硬凑
-    # (3.0.1 是纯修足迹地图细化的批次, 头条就是修复)
+    # (3.2.0 头条是新增「行程详情左滑动态页」; 3.1.6 整版都是改进「条数小
+    # 字加大」; 3.1.5 头条是修复「分组断档补路还是直线」; 3.1.4 头条是修复
+    # 「点开分组背后闪行程轨迹」; 3.1.3 头条是修复「分组断档补直线」;
+    # 3.1.2 头条是修复「详情顶部字体凑不齐」; 3.1.1 头条是修复「回放播到
+    # 一半停住」; 3.1.0 头条是新增「实时海拔」)
     assert es[0]["items"][0]["kind"] in ("新增", "修复") \
         or {i["kind"] for i in es[0]["items"]} == {"改进"}
 
@@ -63,9 +70,13 @@ def test_changelog_view_skeleton(auth):
     assert 'class="rule"' not in html   # 版本号规则说明行已按用户要求撤掉
 
 
-def test_changelog_link_in_drawer(auth):
-    """更新日志入口: 壳的抽屉设置组 (3.0 唯一入口)。"""
-    assert '{ key: "changelog", lb: "更新日志" }' in page_js(auth, SHELL)
+def test_changelog_link_in_settings_group(auth):
+    """更新日志入口: 抽屉设置组的末位导航项 (3.3.0 定稿抽屉回归, NAV_GROUPS
+    的设置组四个页面之尾)。"""
+    js = page_js(auth, SHELL)
+    assert '{ key: "changelog", lb: "更新日志" }' in js
+    groups = js[js.index("const NAV_GROUPS"):js.index("];", js.index("const NAV_GROUPS"))]
+    assert groups.rindex("settings-drivers") < groups.rindex("changelog")
 
 
 def test_login_whitelist_keeps_old_links(auth):

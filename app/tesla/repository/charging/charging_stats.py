@@ -1,11 +1,12 @@
 """充电统计: 维度聚合/地图点位/汇总/按月按地分组 (与列表同源同日期口径)。"""
-from typing import Any
+from typing import Any, Final
 
 from sqlalchemy.orm import Session
 
 from .charge_samples import ChargeRow, _charge_rows
 from .charging_sessions import _location_name
 from ..common import DateRange, _clean_addr, _fnum, fdate, to_local
+from ...models import Address, ChargingProcess
 from ...schemas import (
     ChargeDims,
     ChargeMapLocation,
@@ -16,30 +17,64 @@ from ...schemas import (
 )
 
 
+_DISTRICT_SUFFIX = ("区", "县", "旗")
+SOC_EDGES: Final = (10, 20, 30, 40, 50, 60, 70, 80, 90)          # 每 10% → 十档
+POWER_EDGES: Final = (20, 40, 60, 80, 100, 120, 140, 160, 180)   # 每 20kW → 十档
+PRICE_EDGES: Final = (.25, .5, .75, 1, 1.25, 1.5, 1.75, 2, 2.25)  # 每 0.25 → 十档
+DUR_EDGES: Final = (30, 60, 90, 120, 180, 240, 300, 360, 480)    # 半小时细, 尾部变粗
+
+
+def _bump(bins: list[int], value: float | None, edges: tuple[float, ...]) -> None:
+    """值落档: None 不计; 按上界表进档, 超过表尾进最后一档 (100% → 90-100 档)。"""
+    if value is None:
+        return
+    for i, edge in enumerate(edges):
+        if value < edge:
+            bins[i] += 1
+            return
+    bins[len(edges)] += 1
+
+
+def _price_of(cp: ChargingProcess) -> float | None:
+    """单次单价 = 费用 / 表计电量; 没记费用或没电量的返回 None (计未知)。"""
+    cost = _fnum(cp.cost)
+    energy = _fnum(cp.charge_energy_used) or _fnum(cp.charge_energy_added)
+    return cost / energy if cost is not None and energy else None
+
+
+def _city_name(address: Address | None) -> str | None:
+    """城市分布只到市 (2026-09-27 用户点名): 区/县写进 city 时, 从 display_name
+    完整链 (…, 龙华区, 深圳市, 广东省) 找回上级市; 找不到保持原值。"""
+    if address is None:
+        return None
+    city = address.city
+    if not city or not city.endswith(_DISTRICT_SUFFIX):
+        return city
+    for part in (address.display_name or "").replace("，", ",").split(","):
+        if part.strip().endswith("市"):
+            return part.strip()
+    return city
+
+
 def charging_dimensions(session: Session, date_range: DateRange | None,
                         car_id: int | None = None) -> ChargeDims:
-    """充电统计维度聚合 (快慢/时段/起充 SOC/峰值功率/城市), 与列表同源同日期口径。"""
+    """充电统计维度聚合 (开始时段/起充 SOC/峰值功率/单价/时长/城市), 与列表
+    同源同日期口径。快慢充计数随环形图退役 (汇总的 fast_sessions 还在)。"""
     rows = _charge_rows(session, date_range, None, car_id)
-    by_hour = [0] * 24
-    by_soc = [0] * 5
-    by_power = [0] * 5
-    fast = slow = 0
+    by_hour = [0] * 12    # 2 小时一组 (2026-09-27 用户点名): 下标 = 开始小时 // 2
+    by_soc = [0] * 10
+    by_power = [0] * 10
+    by_price = [0] * 10
+    by_duration = [0] * 10
     cities: dict[str, dict[str, float]] = {}
     for row in rows:
-        cp, agg = row.process, row.agg
-        if agg.is_fast:
-            fast += 1
-        else:
-            slow += 1
-        by_hour[to_local(cp.start_date).hour] += 1
-        soc = cp.start_battery_level
-        if soc is not None:
-            by_soc[min(int(soc) // 20, 4)] += 1     # 100% 也进 80-100 档
-        power = agg.power_max
-        if power is not None:
-            by_power[0 if power < 60 else 1 if power < 100 else
-                     2 if power < 150 else 3 if power < 200 else 4] += 1
-        city = row.address.city if row.address else None
+        cp = row.process
+        by_hour[to_local(cp.start_date).hour // 2] += 1
+        _bump(by_soc, cp.start_battery_level, SOC_EDGES)
+        _bump(by_power, row.agg.power_max, POWER_EDGES)
+        _bump(by_price, _price_of(cp), PRICE_EDGES)
+        _bump(by_duration, cp.duration_min, DUR_EDGES)
+        city = _city_name(row.address)
         if city:      # 无地址/无城市的充电不进城市维度 (与城市筛选下拉同口径)
             c = cities.setdefault(city, {"sessions": 0, "energy": 0.0, "cost": 0.0})
             c["sessions"] += 1
@@ -48,11 +83,10 @@ def charging_dimensions(session: Session, date_range: DateRange | None,
             c["cost"] += _fnum(cp.cost) or 0.0
     top = sorted(cities.items(), key=lambda kv: -kv[1]["sessions"])[:10]
     return ChargeDims(
-        fast_sessions=fast, slow_sessions=slow, by_hour=by_hour,
-        by_soc=by_soc, by_power=by_power,
+        by_hour=by_hour, by_soc=by_soc, by_power=by_power,
+        by_price=by_price, by_duration=by_duration,
         by_city=[CityStat(city=k, sessions=int(v["sessions"]),
-                          energy=round(v["energy"], 1), cost=round(v["cost"], 2))
-                 for k, v in top])
+                          energy=round(v["energy"], 1), cost=round(v["cost"], 2)) for k, v in top])
 
 
 def charging_map_locations(session: Session,

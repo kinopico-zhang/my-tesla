@@ -4,7 +4,7 @@
 壳内分组视图, 打开分组走内存跳转, 不再有 referrer/back)。"""
 from datetime import datetime, timedelta
 from app.tesla.models import Drive
-from tests.seed_factories import seed_drive
+from tests.seed_factories import seed_addresses, seed_charging, seed_drive
 
 from tests.tesla_static_files import served_page
 
@@ -27,7 +27,7 @@ def test_trip_group_save_list_rename_delete(auth, db):
     g = r.json()
     assert g["ids"] == [11, 12, 13]           # 升序去重
     assert g["n"] == 3 and g["km"] == 60.5
-    assert g["span"] == "2026-05-01~2026-05-03"   # 最早~最晚出发日
+    assert g["span"] == "2026/05/01~2026/05/03"   # 最早~最晚出发日 (紧凑斜杠, 2026-09-25)
 
     r = auth.get("/tesla/trips/api/groups")
     assert [x["name"] for x in r.json()] == ["五一小长途"]
@@ -50,8 +50,33 @@ def test_trip_group_span_single_date_and_km_rounding(auth, db):
     seed_drive(db, id=22, start_date=t + timedelta(hours=2),
                end_date=t + timedelta(hours=3), distance=2.22)
     r = auth.post("/tesla/trips/api/groups", json={"name": "同城", "ids": [21, 22]})
-    assert r.json()["span"] == "2026-05-01"
+    assert r.json()["span"] == "2026/05/01"
     assert r.json()["km"] == 3.3
+
+
+def test_trip_group_open_aggregates(auth, db):
+    """分组条目带汇总 (2026-09-23 用户点名弹层一开就显数, 不等地图):
+    起止/时长/最高速/总电耗/平均电耗与合并汇总头同口径 —— Σ(续航差×
+    充电换算系数) ÷ 总里程; 没充电定标的老车电耗留 None (前端显 —)。"""
+    seed_addresses(db)
+    # 充电记录定标: 30 kWh 换 200km 额定续航 → 0.15 kWh/km
+    seed_charging(db, id=1, charge_energy_added=30.0,
+                  start_rated_range_km=100.0, end_rated_range_km=300.0)
+    t = datetime(2026, 5, 1, 0, 32)
+    seed_drive(db, id=41, distance=80.0, duration_min=60, speed_max=118,
+               start_date=t, end_date=t + timedelta(hours=1),
+               start_rated_range_km=200.0, end_rated_range_km=100.0)   # 15 kWh
+    seed_drive(db, id=42, distance=30.0, duration_min=45, speed_max=96,
+               start_date=t + timedelta(hours=3),
+               end_date=t + timedelta(hours=3, minutes=45),
+               start_rated_range_km=100.0, end_rated_range_km=80.0)    # 3 kWh
+    g = auth.post("/tesla/trips/api/groups",
+                  json={"name": "五一", "ids": [41, 42]}).json()
+    assert g["start"] == "2026-05-01 08:32"     # 本地时间 (UTC+8), 首段出发
+    assert g["end"] == "2026-05-01 12:17"       # 末段到达
+    assert g["min"] == 105 and g["speed_max"] == 118
+    assert g["kwh"] == 18.0                     # 15.0 + 3.0
+    assert g["wh_per_km"] == round(18.0 / 110 * 1000)   # ≈164
 
 
 def test_trip_group_validation(auth, db):
@@ -74,13 +99,15 @@ def test_trip_group_validation(auth, db):
                       json={"name": "y"}).status_code == 404
 
 
-def test_trips_page_has_toll_tools(auth):
-    """高速费: 打开行程自动估价 + 弹层 chip (批量入口/面板已按需求撤掉)。"""
+def test_trips_page_toll_ui_removed(auth):
+    """高速费先撤掉 (用户点名): 打开行程不再自动估价 (顺手省高德驾车规划
+    配额), 弹层 chip/估价链全下线; 已算过的和 /toll 接口留在库里, 要恢复
+    随时接回 (后端读写照钉在 test_trips_consumption_and_tolls)。"""
     html = served_page(auth, "/tesla")
-    for frag in ['id="sh-toll"', "function calcTripToll(", "function autoCalcToll(",
-                 "TOLL_WAYPOINTS", "/toll`", "无高速费"]:
-        assert frag in html, f"行程页缺少高速费片段 {frag}"
-    # 批量入口已撤: 按钮和面板不应再出现
+    for frag in ('id="sh-toll"', 'id="sh-drv"', "autoCalcToll", "calcTripToll",
+                 "TOLL_WAYPOINTS", "无高速费"):
+        assert frag not in html, f"高速费前端没撤净: {frag}"
+    # 批量入口/面板也一直不许回潮
     assert 'id="toll-btn"' not in html
     assert 'id="tollpanel"' not in html
 
@@ -88,15 +115,14 @@ def test_trips_page_has_toll_tools(auth):
 def test_trips_page_has_driver_picker(auth):
     """行程页驾驶员标注: 弹层选择行 + 卡片 pill + 标注接口都挂在页面上。"""
     html = served_page(auth, "/tesla")
-    for frag in ['id="sh-drv"', 'id="sh-drv-sel"', "setupDriverPicker",
+    for frag in ['id="sh-drv-btn"', "setupDriverPicker", "syncDrvBtn",
                  'class="ct-drv${it.driver_id != null ? "" : " def"}"',
                  ".ct-drv.def", "/tesla/api/drivers",
                  "function postJSON(", "已标注为", "已清除标注"]:
         assert frag in html, f"行程页缺少驾驶员标注片段 {frag}"
     # 卡片 pill 默认驾驶员兜底也显示 (弱化 .def 与显式标注区分)
-    # 没配驾驶员时选择器藏 (兜底, 不会闪一个空下拉); 选择器和高速费 chip 都藏才整行藏
+    # 没配驾驶员时选择器藏 (兜底, 不会闪一个空下拉)
     assert "driversCache.length > 0) {" in html
-    assert "function metaRowSync()" in html
     # 查看轨迹按钮已撤 (用户点名): 整行点击就是查看轨迹, 驾驶员 pill 挪右上角
     assert "查看轨迹" not in html
     assert "ct-arrow" not in html
@@ -133,9 +159,10 @@ def test_trips_page_export_video(auth):
                  "new MediaRecorder(", "videoBitsPerSecond: 6e6",
                  "navigator.share({ files: [recFile]", "anim.restart();",
                  "preserveDrawingBuffer: true", "function patchGLKeepBuffer()",
-                 "img.leaflet-tile",   # OSM 底图是 <img> 瓦片, 合成器逐张画进录制画布
                  "此浏览器不支持录制视频", "录制失败 (没有内容)"]:
         assert frag in html, f"行程页缺少导出视频片段 {frag}"
+    # OSM 家族的 <img> 瓦片合成路已随「只留高德」退役, 不许回潮
+    assert "img.leaflet-tile" not in html
     # 存储分平台: 苹果触屏没有直写相册的 API, 只能拉系统分享单点「存储
     # 视频」; 其余平台 (安卓/桌面) <a download> 直接落盘, 不弹面板
     # (安卓的下载视频进相册)。按钮按 share 存在性给文案。

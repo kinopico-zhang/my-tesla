@@ -32,7 +32,8 @@ def seed_charging(session: Session, **kw: Any) -> ChargingProcess:
 
 
 def seed_charge(session: Session, process_id: int, **kw: Any) -> Charge:
-    """一条充电采样 (默认: 16:00 90kW 快充, CCS / Tesla v3)。"""
+    """一条充电采样 (默认: 16:00 90kW, CCS / Tesla+Gb 超充 —— 真库唯二组合:
+    Tesla+Gb 是特斯拉超充, 第三方国标快充报 <invalid>+Gb)。"""
     fields: dict[str, Any] = {
         "id": None, "charging_process_id": process_id,
         "date": datetime(2026, 9, 7, 16, 0), "battery_level": 20,
@@ -40,7 +41,7 @@ def seed_charge(session: Session, process_id: int, **kw: Any) -> Charge:
         "charger_actual_current": 220.0,
         "charge_energy_added": 0.0, "outside_temp": 28.0,
         "conn_charge_cable": "CCS",
-        "fast_charger_brand": "Tesla", "fast_charger_type": "v3",
+        "fast_charger_brand": "Tesla", "fast_charger_type": "Gb",
         "fast_charger_present": True,
     }
     fields.update(kw)
@@ -66,8 +67,9 @@ def seed_drive(session: Session, **kw: Any) -> Drive:
     return drive
 
 
-def seed_position(session: Session, drive_id: int, **kw: Any) -> Position:
-    """一个轨迹点 (默认: 深圳附近, 30km/h, 45kW, 车 1)。"""
+def seed_position(session: Session, drive_id: int | None, **kw: Any) -> Position:
+    """一个轨迹点 (默认: 深圳附近, 30km/h, 45kW, 车 1)。drive_id 可空
+    (停车充电的采样点不带行程 —— 真库 4.4 万条, 驻车实时用例要它)。"""
     fields: dict[str, Any] = {
         "id": None, "car_id": 1, "drive_id": drive_id,
         "date": datetime(2026, 9, 10, 0, 32),

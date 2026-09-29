@@ -1,6 +1,6 @@
 // view/chargemap-page.js — 充电地图视图 (壳版 1/3): 底座 —— 三视图 (热力
 // 权重度量) 与热力梯度定义 + 度量偏好 (?metric= 深链加载期抠出, 持久化进
-// shellState.filters.chargemap; 时间档上移抽屉全局) + 加载/错误占位。
+// shellState.filters.chargemap; 时间筛选 3.3.0 下线, 全时段) + 加载/错误占位。
 // 旧版 (js/chargemap-page.js) 的菜单收起/$/getJSON/TIME_RANGES/日历/URL
 // 同步全删; 高德脚本加载器 (带 HeatMap 插件) 也撤了 —— tesla-map-adapter
 // 的 mapLib 统一装引擎 (插件随主脚本带), 服务商可切; 壳内撞名的全局全带

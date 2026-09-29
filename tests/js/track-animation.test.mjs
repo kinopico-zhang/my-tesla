@@ -1,6 +1,6 @@
 /* track-animation.js (播放节拍 animStepSec/animTimes/animAt + 描画路径
-   splicePath/pathPointAt + 瓦片坐标 lngLatToTile) 的 node --test 单元测试。
-   从 trackutil.test.mjs 按域拆来 (几何/着色留在那边)。 */
+   splicePath/pathPointAt/accelArc/routePrefix + 瓦片坐标 lngLatToTile) 的
+   node --test 单元测试。从 trackutil.test.mjs 按域拆来 (几何/着色留在那边)。 */
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
@@ -128,6 +128,96 @@ test("splicePath: 多处断档按序替换", () => {
   // 播到 idx=3 (过第一处, 没过第二处 bIdx=5): 只替换第一处
   assert.deepEqual(TrackAnimation.splicePath(path, splices, 3),
                    [[0, 0], [1, 0], [1.5, 1], [2, 0], [3, 0]]);
+});
+
+
+/* ---------------- routePrefix: 断档步道路前缀 (蓝实线沿路生长) ----------------
+   2026-09-22 补定义: 3.0 拆 trips.js 时函数体没跟着搬, 引用处悬空 —— 首播
+   带断档的行程一进断档步当场 ReferenceError 掐死帧循环 (2233 实报: 播到
+   六成停住); 断档补路回传存档后断档消失才像"自愈"。 */
+const ROUTE = [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0]];
+const RCUM = [0, 1, 2, 3, 4];                       // 每步 1 "km", 全程 4
+const SP = { aIdx: 7, bIdx: 8, route: ROUTE, rcum: RCUM };
+
+test("routePrefix: 起步 (frac=0) 只有近岸点 + 头位", () => {
+  const head = TrackAnimation.pathPointAt(ROUTE, RCUM, 0);
+  assert.deepEqual(TrackAnimation.routePrefix(SP, 0, head), [ROUTE[0], head]);
+});
+
+test("routePrefix: 中段裁到弧长落点前, 尾点即头位", () => {
+  const head = TrackAnimation.pathPointAt(ROUTE, RCUM, 0.5);   // q=2 → 恰在 r2
+  assert.deepEqual(TrackAnimation.routePrefix(SP, 0.5, head),
+                   [ROUTE[0], ROUTE[1], head]);
+});
+
+test("routePrefix: 到头 (frac=1) 整条道路铺满, 头位即末点", () => {
+  const head = TrackAnimation.pathPointAt(ROUTE, RCUM, 1);
+  assert.deepEqual(TrackAnimation.routePrefix(SP, 1, head),
+                   [...ROUTE.slice(0, 4), head]);
+  assert.deepEqual(head, ROUTE[4]);
+});
+
+test("routePrefix: 前缀随 frac 单调变长, 主体是道路点前缀, 尾点=头位", () => {
+  let prev = 0;
+  for (const f of [0, 0.13, 0.37, 0.5, 0.68, 0.9, 1]) {
+    const head = TrackAnimation.pathPointAt(ROUTE, RCUM, f);
+    const pre = TrackAnimation.routePrefix(SP, f, head);
+    assert.equal(pre[pre.length - 1], head, "尾点必须是调用方算好的头位");
+    assert.ok(pre.length >= prev, "前缀只长不短 (头在哪线到哪)");
+    prev = pre.length;
+    for (let i = 0; i < pre.length - 1; i++)
+      assert.equal(pre[i], ROUTE[i], "主体必须是道路点的前缀");
+  }
+});
+
+test("routePrefix: 零长步 (累计里程重复) 不炸不出 NaN", () => {
+  const rcum = [0, 0, 1, 1], route = [[0, 0], [0, 0], [1, 0], [1, 0]];
+  const head = TrackAnimation.pathPointAt(route, rcum, 0.5);
+  const pre = TrackAnimation.routePrefix({ route, rcum }, 0.5, head);
+  assert.ok(pre.every(p => Number.isFinite(p[0]) && Number.isFinite(p[1])));
+  assert.equal(pre[pre.length - 1], head);
+});
+
+
+/* ---------------- accelArc: 断档步匀加速 (时间进度 → 弧长进度) ----------------
+   用户点名 (2026-09-22): 断档补出来的路没有真实采样, 按两端速度匀加速驶过
+   (初速 v0 起步 / 终速 v1 收尾), 不按时间线性匀速滑。x/s = τ(2v0+τ(v1-v0))
+   /(v0+v1); 车速读数随 τ 线性插值恰是匀加速的瞬时速度, 两边口径对得上。 */
+test("accelArc: 两端同速退回线性 (τ 原样)", () => {
+  for (const tau of [0, 0.25, 0.5, 0.9, 1])
+    assert.ok(Math.abs(TrackAnimation.accelArc(tau, 60, 60) - tau) < 1e-12);
+});
+
+test("accelArc: 静止起步的加速段走平方 (v0=0 → x/s=τ²)", () => {
+  for (const tau of [0, 0.3, 0.5, 0.8, 1])
+    assert.ok(Math.abs(TrackAnimation.accelArc(tau, 0, 90) - tau * tau) < 1e-12);
+});
+
+test("accelArc: 30→60 加速段前慢后快, 半程只走 37.5/90", () => {
+  // 物理: x(T/2)/s = (v0/2 + aT/8)/(v0 + aT/2), aT=30 → 18.75/45
+  assert.ok(Math.abs(TrackAnimation.accelArc(0.5, 30, 60) - 0.5 * 75 / 90) < 1e-12);
+});
+
+test("accelArc: 收尾减速 (v1=0) 前快后慢, 半程已走 0.75", () => {
+  assert.ok(Math.abs(TrackAnimation.accelArc(0.5, 90, 0) - 0.75) < 1e-12);
+});
+
+test("accelArc: 端点恒落 0/1 且单调 (各种两端组合)", () => {
+  for (const [v0, v1] of [[0, 0], [30, 60], [80, 20], [0, 120], [15, 15], [120, 0]]) {
+    let prev = -1e-9;
+    for (let k = 0; k <= 20; k++) {
+      const x = TrackAnimation.accelArc(k / 20, v0, v1);
+      assert.ok(x >= prev - 1e-12, `单调 (${v0},${v1},${k})`);
+      assert.ok(x >= 0 && x <= 1, `夹在 [0,1] (${v0},${v1},${k})`);
+      prev = x;
+    }
+    assert.equal(TrackAnimation.accelArc(0, v0, v1), 0);
+    assert.ok(Math.abs(TrackAnimation.accelArc(1, v0, v1) - 1) < 1e-12);
+  }
+});
+
+test("accelArc: 两端都停 (轮渡/拖车) 没有可加速的物理, 线性兜底", () => {
+  assert.equal(TrackAnimation.accelArc(0.4, 0, 0), 0.4);
 });
 
 

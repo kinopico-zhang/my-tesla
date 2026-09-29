@@ -1,74 +1,177 @@
-/* tesla-live-driving — live 页样式。拆自 live.html 的内联 <style> (结构化重构, 内容逐字节未动)。 */
+/* tesla-live-driving — live 页样式。拆自 live.html 的内联 <style>;
+   2026-09-26 手机重排 (用户报「页面歪七扭八, 要适配手机界面」): 三卡一套
+   版式 —— 标签统一 11px、卡片留白/圆角一族 (16/14)、车速卡发丝线分两区、
+   电量条右端推齐、地图保底高度 + 矮屏收密度; 底部让位屏底悬浮条在
+   tesla-shell-floor (.live-stage 吃 --bar-clear)。 */
+/* v8 (2026-09-27): 车速定宽盒左对齐; v9 曾上标题下车图 (7657 截图抠图),
+   v10 (2026-09-27) 用户点名撤掉 —— 抠好的图挪去 my-home 仓根 PNG 供自取,
+   元素/类名/图文件一并退役, 页面不再引用。v11 (2026-09-27): 地图顶中的
+   最后一段行程直达钮退役 (用户点名「状态页面上最后一段行程按钮，去掉」),
+   按钮与磨砂胶囊样式一并拆净。v13 (2026-09-28): 用户点名「当前车速改成
+   仪表盘样式, 旁边是电池电量, 剩下的数据放在下面」—— 旧车速卡 (大数字 +
+   已行驶右列) 与电量条卡退役, 换仪表盘卡 (SVG 表盘并排电池) + 已行驶窄条。
+   v14 同日追点「仪表盘没指针啊, 车速放在仪表盘下面就电池图标放大点…右边
+   上面是个电池的图标, 显示当前的电量, 下面显示剩余续航」+「里程, 总电耗,
+   都没居中」: 表盘定稿半圆带指针, 车速大数字读在表盘正下; 右区大号电池
+   图标 (百分比住图标里) + 剩余续航; 数据格数字盒内居中。
+   v15 同日追点「当前测速和车速的值不要换行, 和剩余续航一个风格」: 车速
+   读数与四格数据都改一行式 —— 标签 + 数字 + 单位 基线一行 (原先标签上/
+   数字下两层), 同右区「剩余续航 53 km」的读法。
+   v16 同日再追点「当前车速的数字大小太大了, 改成跟剩余续航的数字一样
+   大」「仪表盘最高速度设置成 180 吧」「仪表盘太大, 电池太小, 两边文字不
+   一样高」: 车速数字 32→16 (与续航数字同规格), 表盘限宽 210→165, 电池
+   86×40→112×54, 两列文字行贴卡底同高 (电池 auto margin 悬空居中在续
+   航行上方)。
+   v17 同日追点「车速和续航宽度五五开, 电池再往下一点」: 左右两区 flex
+   对半 (1.35:1 退役), 电池 margin-top auto 贴续航行上方 (空当全让到
+   顶上, 不再居中悬空)。
+   v18 (2026-09-29) 追点「最上面的速度表和电池两个图片, 要底边对齐」:
+   表盘底下的车速行从 -8px 收到 -2px (矮屏 -5px 覆盖一并退役) —— 推导在
+   电池一侧把 gap 的方向搞反了, 没对成 (用户再报)。
+   v19 同日追点「电池的底部要和速度表的底部对齐」+「充满电绿色溢出来」:
+   表盘 svg 底部空白带裁掉 (viewBox 114→103, 见 app.html), 车速行离表盘
+   10px = 电池离续航行 10px —— 两侧图形元素底边同高 (弧线帽/毂底墨迹
+   最多再高 ≤2px, 随宽度缩放, 矮屏同口径不再另设覆盖); 电池填充条宽度
+   按 100% 会在 96% 以上盖过右边框、圆角处戳出去, max-width 收进内轨。
+   v20 (2026-09-29) 用户点名「平均电耗和最高车速删了吧」: 数据格只剩
+   里程/已耗电两格一行 (v15 的 2×2 网格口径随之退役), 两格的 .n 定宽
+   (#lv-km/#lv-kwh) 照旧。 */
 /* ---------- 驾驶视图 ---------- */
 #live { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
 
-.hero {
-  background: var(--surface); border: 1px solid var(--hairline); border-radius: 18px;
-  padding: 14px 18px; display: flex; align-items: center; gap: 16px;
+/* 一级标题 (2026-09-27 用户令「状态页面没有标题, 跟其他页面一样」): 住
+   .live-stage 顶 —— 侧距 14px 与顶距 --content-top 都由舞台的 padding 出,
+   这里只补底距 (别页 .sec-head 自带的侧距在这会叠双份); 各页 sec-head
+   顶距统一 0, 全 app 标题同一水平线 (2026-09-27); h2 规则与充电/分组/
+   行程/两地图/统计的副本逐字同款 (锁步钉在 test_asset_versions) */
+.live-stage .sec-head { display: flex; align-items: baseline; gap: 8px; padding: 0 0 4px; }
+.sec-head h2 { font-size: 26px; font-weight: 700; letter-spacing: -.5px; }
+
+/* ---------- 仪表盘卡 (2026-09-28 用户点名「当前车速改成仪表盘样式, 旁边是
+   电池电量, 剩下的数据放在下面」+ 追点「仪表盘没指针啊, 车速放在仪表盘下
+   面」): 左表盘右电池一道发丝线分区。表盘 = SVG 半圆 (0 km/h 左端 → 180
+   km/h 右端, 每 20 一格) + 白针灰毂, 车速一行读在表盘正下; 右区大号电池
+   图标 + 剩余续航。追点「表盘太大电池太小, 两边文字不一样高」: 表盘收窄/
+   电池放大, 两列文字行都贴卡底 (电池 auto margin 悬空居中在文字上方),
+   车速数字与续航数字同大 (16px)。 ---------- */
+.gauge-card {
+  background: var(--surface); border: 1px solid var(--hairline); border-radius: 16px;
+  padding: 12px 10px 8px; display: flex; align-items: stretch;
 }
-.hero-speed { flex: 1; min-width: 0; }
-.hero-speed .lb { font-size: 12px; color: var(--ink-2); }
-.hero-speed .num {
-  font-size: 54px; font-weight: 700; letter-spacing: -2px; line-height: 1.05;
-  font-variant-numeric: tabular-nums; margin-top: 2px;
+.gauge { flex: 1; min-width: 0; display: flex; flex-direction: column;
+  align-items: center; }
+.gauge svg { display: block; width: 100%; max-width: 165px; height: auto; }
+.gauge svg .gt { stroke: #3a3a38; stroke-width: 1.5; stroke-linecap: round; }
+.gauge svg .gt.major { stroke: #6b6965; stroke-width: 2; }
+.gauge svg .gl { fill: #898781; font-size: 10px; text-anchor: middle;
+  dominant-baseline: middle; font-variant-numeric: tabular-nums; }
+#lv-gauge-arc { transition: stroke-dasharray .6s ease; }  /* 5s 轮询之间弧平滑扫 */
+#lv-gauge-needle {   /* 指针与弧同拍扫 (transform 走 CSS 才有过渡); 表心与
+   live-page.js 的 GAUGE_CX/GAUGE_CY 同源, 钉在 test_live_pages */
+  transform-box: view-box; transform-origin: 110px 96px;
+  transition: transform .6s ease;
+}
+.gauge-readout {   /* 车速一行读在表盘正下 (追点「值不要换行, 和剩余续航一个
+   风格」): 标签 + 大数字 + 单位 基线一行, 同右区「剩余续航 53 km」; flex
+   不换行 —— 窄屏/系统页缩放挤压时单位绝不下坠到第二行 (用户真机踩坑)。
+   margin-top 10 (v19 追点「电池的底部要和速度表的底部对齐」—— v18 的 -2
+   没对成: 电池 gap:10 是把电池底边抬到续航行顶上方 10px, 推导时方向搞反
+   成了下方, 差出约 18px): svg 底带裁到 103 后元素底边≈墨迹底, 这 10px 与
+   .gauge-batt 的 gap:10 镜像 —— 表盘元素底边与电池底边 (112px 与矮屏
+   92px 宽度下) 都落到离各自文字行 10px 的同一水平线上, 墨迹底因裁带剩的
+   2.5 单位空白最多再高 ≤2px, 随渲染宽同步缩放, 矮屏不再另设覆盖 */
   display: flex; align-items: baseline; white-space: nowrap;
-  /* flex 不换行: 窄屏/系统页缩放挤压时单位绝不下坠到第二行 (用户真机踩坑) */
+  justify-content: center; gap: 6px; margin-top: 10px;
 }
-.hero-speed .num small { font-size: 15px; font-weight: 500; color: var(--ink-2);
-  letter-spacing: 0; margin-left: 4px; }
-/* 右列可收缩 (出发行时一行省略号), 不再死宽抢速度区的空间 */
-.hero-side { flex-shrink: 1; min-width: 0; text-align: right; display: grid; gap: 4px; }
-.hero-side .lb { font-size: 11px; color: var(--ink-2); }
-.hero-side .elapsed { font-size: 24px; font-weight: 650; letter-spacing: -.5px;
+.gauge-readout .lb { font-size: 12px; color: var(--ink-2); }
+/* 数字与右区「剩余续航 53 km」的数字同大同重 (追点「数字太大了, 改成跟
+   剩余续航的数字一样大」) —— 两行文字规格完全一致, 底对齐后像同一行 */
+.gauge-readout b { font-size: 16px; color: var(--ink-1); font-weight: 650;
   font-variant-numeric: tabular-nums; }
-.hero-side .sub { font-size: 12px; color: var(--ink-2);
+.gauge-readout small { font-size: 12px; color: var(--ink-2); }
+/* 电池并排右区 (追点「电池图标放大点…显示当前的电量, 下面显示剩余续航」):
+   与左区五五开宽 (追点「车速和续航宽度五五开」), 大号电池图标贴着续航行
+   上方, 续航行贴卡底 —— 与左区车速行同高 (追点「两边的文字不一样高」) */
+.gauge-batt {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: flex-end; gap: 10px; margin-left: 12px; padding-left: 12px;
+  border-left: 1px solid var(--hairline); min-width: 0;
+}
+.gauge-batt .gb-range { font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+.gauge-batt .gb-range b { font-size: 16px; color: var(--ink-1); font-weight: 650; }
+
+/* 已行驶窄条 (原车速卡右列下放, 2026-09-28): 时长在左, 出发时刻/最后行程
+   日期推到右端一行读清 */
+.lv-strip {
+  background: var(--surface); border: 1px solid var(--hairline); border-radius: 14px;
+  padding: 8px 14px; display: flex; align-items: baseline; gap: 10px;
+}
+.lv-strip .lb { font-size: 11px; color: var(--ink-2); flex: none; }
+.lv-strip .elapsed { font-size: 21px; font-weight: 650; letter-spacing: -.5px;
+  font-variant-numeric: tabular-nums; }
+.lv-strip .sub { margin-left: auto; font-size: 12px; color: var(--ink-2);
   font-variant-numeric: tabular-nums; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* 实时数字位数变化 (9→62→105 / 59:59→1:00:00 / 9%→100%) 不许推动布局:
-   tabular 数字 + 定宽盒 (ch = 一个数字宽), 数字在盒内右对齐, 变长只向左长 */
-#lv-speed { display: inline-block; min-width: 3ch; text-align: right; }
+/* 实时数字位数变化 (9%→100% / 59 分钟→1 小时) 不许推动布局: tabular 数字 +
+   定宽盒 (ch = 一个数字宽), 盒内数字一律居中读 (2026-09-28 追点「里程, 总
+   电耗, 都没居中, 看起来很难受」—— 原先盒内右对齐, 数字短的格看着歪);
+   电量百分比住进定宽的电池图标里, 天然不晃, 不再要定宽盒 */
 #lv-elapsed { min-width: 7ch; }
-#lv-soc { display: inline-block; min-width: 5ch; text-align: right; }   /* % 不受 tabular 管, 100% ≈ 4.7ch */
-#lv-range { display: inline-block; min-width: 3ch; text-align: right; }
-.tile .val .n, #lv-sub .n { display: inline-block; text-align: right; }
+#lv-range { display: inline-block; min-width: 3ch; text-align: center; }
+.tile .val .n { display: inline-block; text-align: center; }
 #lv-km .n, #lv-kwh .n { min-width: 4.5ch; }
-#lv-avg .n, #lv-vmax .n, #lv-sub .n { min-width: 3ch; }
 
-.batt-card {
-  background: var(--surface); border: 1px solid var(--hairline); border-radius: 18px;
-  padding: 11px 16px; display: flex; align-items: center; gap: 12px;
-}
-.batt { position: relative; width: 46px; height: 22px; flex: none;
-  border: 1.5px solid var(--ink-3); border-radius: 6px; padding: 2px; }
+/* 电池图标本体 (表盘右区用, 追点「电池图标放大点」+「电池太小」): 大号横
+   置电池 + 正极凸点, 电量填充垫底层 (色随电量绿黄红), 百分比数字住进图
+   标里 —— 图标本身定宽, 数字位数变化不晃布局; margin-top auto 让电池
+   贴着续航行上方 (空当全让到顶上, 追点「电池再往下一点, 视觉上会平衡
+   一些」—— 与左区表盘的中线更齐) */
+.batt { position: relative; width: 112px; height: 54px; flex: none;
+  margin-top: auto; border: 2px solid var(--ink-3); border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; }
 .batt::after {   /* 电池正极凸点 */
-  content: ""; position: absolute; right: -5px; top: 50%; transform: translateY(-50%);
-  width: 3px; height: 9px; background: var(--ink-3); border-radius: 0 2px 2px 0;
+  content: ""; position: absolute; right: -8px; top: 50%; transform: translateY(-50%);
+  width: 6px; height: 20px; background: var(--ink-3); border-radius: 0 4px 4px 0;
 }
-.batt i { display: block; width: 0; height: 100%; border-radius: 3px; background: #32d74b;
-  transition: width .5s, background .5s; }
-.batt-card b { font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.batt-card .batt-range { font-size: 13px; color: var(--ink-2); }
-.batt-card .batt-range b { font-size: 13px; color: var(--ink-1); font-weight: 600; }
+.batt i {   /* 电量填充: 数字之下的底层色块。宽度按 JS 写 soc% —— 百分比
+   相对含边框的内盒 (padding 盒) 算, 再叠加 left:2px 偏移, soc≥97% 时右
+   缘越内壁盖住边框、圆角处戳出图标 (2026-09-29 用户报「充满电绿色都溢
+   出来了」); max-width 按内轨收口 —— 满格时右缘离内壁 2px, 与左边距对
+   称, 112px/矮屏 92px 两种宽度同一口径, 圆角 (8px vs 内壁 10px 同心)
+   任何角度都出不去 */
+  position: absolute; left: 2px; top: 2px; bottom: 2px; width: 0;
+  max-width: calc(100% - 4px);
+  border-radius: 8px; background: #32d74b;
+  transition: width .5s, background .5s;
+}
+.batt b { position: relative; z-index: 1; font-size: 25px; font-weight: 700;
+  letter-spacing: -.5px; font-variant-numeric: tabular-nums; }
 
 .tiles { display: flex; flex-wrap: wrap; gap: 10px; }
-.tile {   /* 2×2: 四格一行在窄屏/页缩放下放不下会溢出圆角框 (用户真机踩坑) */
+.tile {   /* 一行式数据格 (追点「值不要换行, 和剩余续航一个风格」): 标签 +
+   数字 + 单位 基线一行居中。2026-09-29 用户点名「平均电耗和最高车速删了
+   吧」后只剩里程/已耗电两格, 恰好一行 (原 2×2 网格口径退役, flex 撑半
+   宽照旧兼容更多格) */
   flex: 1 1 calc(50% - 5px); min-width: 0; background: var(--surface);
-  border: 1px solid var(--hairline); border-radius: 14px; padding: 9px 8px;
-  text-align: center;
+  border: 1px solid var(--hairline); border-radius: 14px; padding: 10px 8px;
+  display: flex; align-items: baseline; justify-content: center; gap: 6px;
+  white-space: nowrap;
 }
-.tile .lb { font-size: 11px; color: var(--ink-2); white-space: nowrap; }
-.tile .val { font-size: 17px; font-weight: 650; letter-spacing: -.3px; margin-top: 2px;
+.tile .lb { font-size: 12px; color: var(--ink-2); flex: none; }
+.tile .val { font-size: 16px; font-weight: 650; letter-spacing: -.3px;
   font-variant-numeric: tabular-nums; white-space: nowrap; }
-.tile .val small { font-size: 10.5px; font-weight: 500; color: var(--ink-2); margin-left: 2px; }
+.tile .val small { font-size: 11px; font-weight: 500; color: var(--ink-2); margin-left: 2px; }
 
+/* 地图吃满剩余, 保底 200px 不许被上面挤成缝 (矮屏再收一档) */
 .map-wrap {
-  position: relative; flex: 1; min-height: 0;
+  position: relative; flex: 1; min-height: 200px;
   border-radius: 16px; overflow: hidden; border: 1px solid var(--hairline);
   background: var(--surface);
 }
 /* 旧页 #map 与壳版 #lv-map 双选择器 (壳里三张地图画布各带前缀, 防跨视图串) */
 #map, #lv-map { position: absolute; inset: 0; z-index: 0; touch-action: none; }
-#map .amap-copyright, #lv-map .amap-copyright { display: none !important; }   /* "©…auto navi" 版权文字按需求去掉 */
+#map .amap-copyright, #lv-map .amap-copyright,
+#map .amap-logo, #lv-map .amap-logo { display: none !important; }   /* "©…auto navi" 版权与 logo 都按需求去掉 */
 .map-fallback {   /* 地图引擎不可用: 统计照常, 只在地图位放提示 */
   position: absolute; inset: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 8px;
@@ -98,15 +201,18 @@
 @keyframes pulse { 0% { transform: scale(.55); opacity: .9; }
                    100% { transform: scale(2.3); opacity: 0; } }
 
-/* ---------- 空态 / 结束态 ---------- */
-.state-view { flex: 1; display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 6px; padding: 24px; text-align: center; }
-.state-view .big { font-size: 44px; line-height: 1.2; }
-.state-view h2 { font-size: 18px; font-weight: 700; }
-.state-view p { font-size: 13px; color: var(--ink-2); max-width: 300px; }
-.state-view .cta {
-  margin-top: 14px; padding: 10px 28px; border-radius: 999px;
-  background: var(--blue); color: #fff; font-size: 14px; font-weight: 600;
-  text-decoration: none; display: inline-block;
+/* 矮屏 (横屏手机/小屏): 表盘限宽再收一档, 电池图标跟着收, 窄条收密度,
+   数据格收字号, 地图保住整幅 (车速行 margin 不另设 —— 10px 与电池 gap
+   同距的口径在矮屏同样成立, 误差 ≤1.5px 且随宽度缩放, 见 .gauge-readout
+   注释) */
+@media (max-height: 560px) {
+  .gauge-card { padding: 8px 10px 4px; }
+  .gauge svg { max-width: 122px; }
+  .batt { width: 92px; height: 42px; }
+  .batt b { font-size: 20px; }
+  .lv-strip { padding: 5px 14px; }
+  .lv-strip .elapsed { font-size: 17px; }
+  .tile { padding: 6px 8px; }
+  .tile .val { font-size: 14px; }
+  .map-wrap { min-height: 160px; }
 }
-.state-view .cta:active { opacity: .8; }

@@ -3,20 +3,26 @@
 // 环形前瞻容器负责, 见 CSS #trip-map)。
 // 由 trips.js 按域拆出 (结构化重构: 代码逐字节未动, 经典脚本按 trips.html
 // 里的顺序加载, 跨模块引用走全局); 栅格瓦片预载在 trips-preload-tiles.js。
+// 2026-09-25: 同一条走廊一个页面会话只扫一遍 —— tripMap 和它的瓦片缓存跨
+// 弹层存续 (closeTrip 不销毁图), 重开同一条还要再等一遍扫路纯属浪费
+// (用户点名「每次打开轨迹都要加载轨迹加载地图, 很慢」); key (单条=行程 id,
+// 合并=mergeKey) 记在本模块, 命中直接跳过, 播放前瞻照旧。
 /* global TrackAnimation, TrackUtil, TripPlayback, mapLib, tripMap, toGcj,
    speedZoom, zoomUserLock, zoomUserZoom, openSeq, VECTOR_PRELOAD_STEP_MS,
    VECTOR_PRELOAD_CAP_MS, VECTOR_PRELOAD_STEP_FRAC, VECTOR_PRELOAD_BRACKET_MS,
    FIT_AVOID */
 /* exported preloadVectorTrack */
 "use strict";
-async function preloadVectorTrack(pts, ts, openZoom, onProgress, seq) {
-  if (!mapLib.isAmap) return;   // OSM 栅格有自己的抄 URL 预载 (tileTemplate), 相机扫路是高德矢量引擎的事
+const sweptCorridors = new Set();   // 本页会话已扫过的走廊 key (图不销毁瓦片就不丢)
+
+async function preloadVectorTrack(pts, ts, openZoom, onProgress, seq, key) {
   const N = pts.length;
   if (N < 2 || !tripMap) return;
+  if (key && sweptCorridors.has(key)) return;   // 已扫过: 瓦片还在图缓存里, 秒开
   let cv = null;   // 首次建图 WebGL 就绪有延迟 (流式路径没等过): 轮询一小会儿
   for (let i = 0; i < 6 && !(cv = document.querySelector("#trip-map canvas")); i++)
     await new Promise(r => setTimeout(r, 250));
-  if (!cv) return;   // 栅格 (有自己的抄 URL 预载) 或未就绪: 放弃, 播放照常
+  if (!cv) return;   // 矢量引擎未就绪: 放弃, 播放照常 (栅格瓦片另有抄 URL 预载)
   const vt = TrackAnimation.animTimes(pts, ts);
   const vtTotal = vt[vt.length - 1] || 0;
   if (vtTotal <= 0) return;
@@ -66,6 +72,11 @@ async function preloadVectorTrack(pts, ts, openZoom, onProgress, seq) {
     km += VECTOR_PRELOAD_STEP_FRAC * mapW * mpp / 1000;   // 步距 ~85% 容器宽
     while (idx < N - 1 && cum[idx] < km) idx++;
   }
+  if (!alive()) return;   // 被更新的打开顶掉: 走廊只扫了一半, 不记已扫
+  /* 记已扫: 走廊主扫完 (走到头或撞 4s 上限 —— 上限是步距节奏定的, 重扫
+     也只能扫到同一处, 不必再来一遍)。扫的是首段还是整条都算: 后续靠
+     播放前瞻环带, 重开要的只是「别再等一遍扫路」 */
+  if (key) sweptCorridors.add(key);
   /* 收尾一步: 整轨拉远视野 (finish() 同款避让边距, 补环宽), 定格时
      整张全局图的数据也已在手。隐形折线只为供出范围, 用完即删 */
   if (alive()) {

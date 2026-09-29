@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from collections.abc import Sequence
 
-from sqlalchemy import ColumnElement, case, func, or_, select
+from sqlalchemy import ColumnElement, and_, case, func, or_, select
 from sqlalchemy.orm import InstrumentedAttribute, Session
 
 from ...models import Address, Car, Charge, ChargingProcess, Geofence
@@ -25,20 +25,23 @@ def list_cars(session: Session) -> list[CarInfo]:
 
 @dataclass
 class ChargeAgg:
-    """一次充电过程的采样聚合 (峰值功率 / 是否快充)。"""
+    """一次充电过程的采样聚合 (峰值功率 / 是否快充 / 是否特斯拉超充)。"""
 
     power_max: float | None
     is_fast: bool
+    tesla_dc: bool
 
 
-_NO_AGG = ChargeAgg(power_max=None, is_fast=False)
+_NO_AGG = ChargeAgg(power_max=None, is_fast=False, tesla_dc=False)
 
 
 def _charge_aggs(session: Session,
                  process_ids: Sequence[int]) -> dict[int, ChargeAgg]:
-    """charges 采样聚合: max(功率) 与 bool_or(快充) 的方言中立等价写法。
+    """charges 采样聚合: max(功率) 与 bool_or(快充/特斯拉超充) 的方言中立等价写法。
 
     快充判定与旧 SQL 一致: fast_charger_present 为真 或 功率 ≥ 20kW;
+    特斯拉超充 = 采样里有 brand=Tesla 且 type=Gb (国产 GB 桩端) —— 第三方
+    国标快充同样报 Gb 但 brand 是 <invalid>, 不算。
     没有采样点的过程不在返回里 (等价 power_max=NULL, is_fast=false)。
     """
     if not process_ids:
@@ -46,13 +49,17 @@ def _charge_aggs(session: Session,
     fast_case = case(
         (or_(Charge.fast_charger_present.is_(True), Charge.charger_power >= 20), 1),
         else_=0)
+    tesla_case = case(
+        (and_(Charge.fast_charger_brand == "Tesla",
+              Charge.fast_charger_type == "Gb"), 1),
+        else_=0)
     rows = session.execute(
         select(Charge.charging_process_id, func.max(Charge.charger_power),
-               func.max(fast_case))
+               func.max(fast_case), func.max(tesla_case))
         .where(Charge.charging_process_id.in_(process_ids))
         .group_by(Charge.charging_process_id)).all()
-    return {pid: ChargeAgg(power_max=pmax, is_fast=bool(fast))
-            for pid, pmax, fast in rows}
+    return {pid: ChargeAgg(power_max=pmax, is_fast=bool(fast), tesla_dc=bool(tesla))
+            for pid, pmax, fast, tesla in rows}
 
 
 def _range_conditions(column: InstrumentedAttribute[datetime],

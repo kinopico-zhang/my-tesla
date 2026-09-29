@@ -1,19 +1,25 @@
 // view/map-boot.js — 足迹地图视图 (壳版 4/5): 同步 fpSync 与地图启动 fpBoot
 // (首进视图才跑, 由 view/map-filters.js 的 registerView 调)。
-// fpSync: 拉全量清单 → 对账浏览器本地库 (IndexedDB, 点数不符重下/多余
-// 删掉/格式版本不符清库) → 本地已有的先整批画 (首屏不等网络) → 缺的按
-// 50 条一批流式下载 (NDJSON 边下边画, 地图跟着新轨迹扩大, 加载层进度条)
-// → 汇总行。换筛选/下拉刷新/抽屉刷新都走 fpSync (清单现拉, 驾驶员标注
-// 也就跟着新鲜); 同步中再触发会排一轮, 不并发。
-// 引擎装载收口到 tesla-map-adapter 的 mapLib (服务商可切, 高德/OSM 同一套
+// fpSync: 拉全量清单 → 道路层对账本地库 (IndexedDB: rv 算法版不符清库 /
+// rn 点数或拟合态 s 不符重下) → 当前筛选的格计数 → 本地已有的先整批画
+// (首屏不等网络) → 缺的按 50 条一批流式下载「走过的路」(NDJSON 边下边
+// 画, 小补量时地图跟着新路扩大, 加载层进度条) → 汇总行 (summary 端点的
+// 筛选口径, 平移/缩放不动它 —— 2026-09-29 用户点名与充电地图不联动)。
+// 2026-09-29 起只画「走过的路」(用户点名「只显示走过的路就行了, 不需要
+// 显示每一条轨迹」): 原始轨迹不再下载, 没拟合到的程等 worker 拟合好
+// 再出现。换筛选/下拉刷新都走 fpSync (清单现拉, 驾驶员标注也就跟着
+// 新鲜); 同步中再触发会排一轮, 不并发。
+// 引擎装载收口到 tesla-map-adapter 的 mapLib (高德单服务商, 2026-09-25
 // 调用); 旧版 (js/map-boot.js) 的 boot() 改名 fpBoot, 只换画布 id (#fp-map)。
-/* global $, diag, PAGE_V, FP_FMT_V, getJSON, mapLib, showLoading, showError,
-          showProgress, trackParams, renderStats, renderTracks,
-          appendIfVisible, scheduleRefine, fpLocalOpen, fpLocalAll, fpLocalPut,
-          fpLocalDelete, fpLocalClear, fpVisibleTracks, overlays,
-          manifest: writable, manifestIdx: writable, allById: writable,
-          localDb: writable, map: writable, mapReady: writable */
-/* exported fpSync, fpBoot */
+/* global $, diag, PAGE_V, getJSON, mapLib, showLoading, showError,
+          trackParams, renderStats, renderTracks,
+          fpLocalOpen, fpVisibleTracks, overlays, scheduleRoadZoom,
+          roadsViewportSync,
+          fpRoadsSync, roadDownload, roadRebuild, roadsById,
+          manifest: writable, manifestIdx: writable, localDb: writable,
+          map: writable, mapReady: writable */
+/* exported fpSync, fpBoot, manifestIdx */
+// manifestIdx 只写不读 (道路层在别的文件读), exported 豁免 (no-unused-vars)
 "use strict";
 let fpSyncing = false, fpAgain = false;   // 同步互斥: 进行中再触发 → 排一轮
 
@@ -35,86 +41,33 @@ async function fpSync() {   // 清单对账 + 增量下载 + 渲染 (所有刷�
 
 async function fpSyncOnce() {
   $("#fp-error").hidden = true;
-  showLoading(true, "正在同步轨迹…");
+  showLoading(true, "正在同步走过的路…");
   if (localDb === undefined) localDb = await fpLocalOpen();   // 不可用 → null (内存模式)
   const man = await getJSON("/tesla/map/api/tracks/manifest?_=" + Date.now());
-  let stored = new Map();
-  if (man.v !== FP_FMT_V) {          // 轨迹格式变了: 本地库整体作废重下
-    diag("fp_fmt_v", { v: man.v, mine: FP_FMT_V });
-    await fpLocalClear(localDb);
-  } else {
-    stored = await fpLocalAll(localDb);
-  }
   manifest = man;
   manifestIdx = new Map(man.tracks.map(r => [r.id, r]));
-  // 对账: 清单里没有的删, 点数不符的也重下 (轨迹本体被改过/半截写入)
-  const keep = new Map(), drop = [];
-  for (const [id, s] of stored) {
-    const r = manifestIdx.get(id);
-    if (r && s.pts && s.pts.length === r.n * 2) keep.set(id, s);
-    else drop.push(id);
-  }
-  if (drop.length) fpLocalDelete(localDb, drop);
-  allById = keep;
-  const need = man.tracks.filter(r => !keep.has(r.id));
+  const roadNeed = await fpRoadsSync(man);   // 道路层对账 (本地就绪的先建索引)
+  await roadRebuild();                       // 当前筛选的格计数 (渲染分桶的底)
   const statsP = getJSON("/tesla/map/api/summary" + trackParams()).then(renderStats);
-  if (keep.size) await renderTracks(fpVisibleTracks());   // 本地已有先画, 首屏不等网络
-  if (need.length) await fpDownload(need);                // 缺的流式下载: 边下边画
+  if (roadsById.size) await renderTracks(fpVisibleTracks());   // 本地已有先画, 首屏不等网络
+  if (roadNeed.length) await roadDownload(roadNeed);   // 缺的流式下载: 边下边建格边画
   await statsP;
-  if (!fpVisibleTracks().length) showError("该时间段没有行驶轨迹");
+  if (!fpVisibleTracks().length) showError("该筛选下还没有走过的路");
   showLoading(false);
-  diag("fp_synced", { rows: manifest.tracks.length, have: allById.size, need: need.length });
-}
-
-async function fpDownload(need) {   // 分批流式下载: 一条一条画 + 进度条 + 视野跟随
-  const total = need.length;
-  showLoading(true, "正在下载轨迹 0 / " + total + "…");
-  let done = 0, lastFit = 0;
-  const CHUNK = 50;    // 与服务端单次上限 (200) 留余量, 一批一请求
-  for (let i = 0; i < need.length; i += CHUNK) {
-    const resp = await fetch("/tesla/map/api/tracks/stream?ids=" +
-      need.slice(i, i + CHUNK).map(r => r.id).join(","));
-    if (!resp.ok || !resp.body) throw new Error("轨迹下载失败 (" + resp.status + ")");
-    const reader = resp.body.getReader();
-    const dec = new TextDecoder();
-    let buf = "";
-    for (;;) {   // NDJSON: 一行一条全精度轨迹, 逐行解析, 不等整包
-      const st = await reader.read();
-      if (st.done) break;
-      buf += dec.decode(st.value, { stream: true });
-      let nl;
-      while ((nl = buf.indexOf("\n")) >= 0) {
-        const line = buf.slice(0, nl);
-        buf = buf.slice(nl + 1);
-        if (!line) continue;
-        const t = JSON.parse(line);
-        allById.set(t.id, t);
-        fpLocalPut(localDb, t);       // 落本地库 (不可用时自动跳过)
-        appendIfVisible(t);           // 下载一条画一条 (当前筛选可见才画)
-        done++;
-      }
-      showProgress(done, total);
-      const now = Date.now();
-      if (now - lastFit > 500 && overlays.length) {   // 视野跟着新轨迹扩大 (节流免动画)
-        lastFit = now;
-        map.setFitView(overlays, true, [40, 40, 40, 40]);
-      }
-    }
-  }
-  map.setFitView(overlays, false, [40, 40, 40, 40]);   // 收尾终态视野
-  scheduleRefine();                                    // 已在 13 级以上则立即细化
+  diag("fp_synced", { rows: manifest.tracks.length, roads: roadsById.size,
+                      need: roadNeed.length });
 }
 
 async function fpBoot() {
   try {
-    await mapLib.ready();   // 配置 + 引擎脚本 (高德要 Key, OSM 免 Key 开箱即用)
+    await mapLib.ready();   // 配置 + 引擎脚本 (高德, 要 Key)
     diag("config_ok", { engine: mapLib.version(), v: PAGE_V });
     map = mapLib.createMap("fp-map", { zoom: 11, center: [114.05, 22.55] });
     map.on("complete", () => {
       mapReady = true; diag("map_complete");
       /* 矢量样式数据异步加载: 首帧不画地名, 到货后补几拍重渲染 (首次打开
          一两秒地名才出现的原因), setFeatures 同值重设 = 只触发重渲染
-         (OSM 栅格没有这层, 垫片不实现 getFeatures, 守卫自动跳过) */
+         (引擎异常时守卫自动跳过, 不致命) */
       const nudge = () => { if (map.getFeatures) map.setFeatures(map.getFeatures()); };
       setTimeout(nudge, 1500); setTimeout(nudge, 5000); setTimeout(nudge, 12000);
     });
@@ -122,7 +75,7 @@ async function fpBoot() {
     for (const ev of ["gesturestart", "gesturechange"]) {
       document.getElementById("fp-map").addEventListener(ev, e => e.preventDefault());
     }
-    // 事件触发诊断 (每类前 N 次上报); 缩放/平移稳定后本地细化
+    // 事件触发诊断 (每类前 N 次上报); 缩放收尾道路跨档换画 + 汇总重算
     const evtN = {};
     const trackEvt = (name, val, times = 1) => {
       evtN[name] = (evtN[name] || 0) + 1;
@@ -132,8 +85,15 @@ async function fpBoot() {
     map.on("zoomchange", () => trackEvt("zoomchange", { z: Math.round(map.getZoom() * 10) / 10 }, 10));
     map.on("mapmove", () => trackEvt("mapmove"));
     map.on("dragging", () => trackEvt("dragging"));
-    map.on("zoomend", () => { trackEvt("zoomend", { z: Math.round(map.getZoom() * 10) / 10 }, 15); scheduleRefine(); });
-    map.on("moveend", () => { trackEvt("moveend"); scheduleRefine(); });
+    // 缩放收尾: 道路跨档换画 + 视野增删 (高倍只画视野内);
+    // 平移收尾: 视野增删 (高倍摘视野外的线、补新进视野的)。
+    // 汇总三数不跟视野走 (2026-09-29 用户点名「与充电地图逻辑不一样,
+    // 不用联动」): summary 端点的筛选口径就是终态, 平移/缩放不动它
+    map.on("zoomend", () => {
+      trackEvt("zoomend", { z: Math.round(map.getZoom() * 10) / 10 }, 15);
+      scheduleRoadZoom(); roadsViewportSync();
+    });
+    map.on("moveend", () => { trackEvt("moveend"); roadsViewportSync(); });
     diag("map_created");
     setTimeout(() => {
       if (!mapReady) {

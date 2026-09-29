@@ -28,6 +28,8 @@ def test_trips_sessions_paginates(auth, db):
     assert it["speed_max"] == 118
     assert it["from"] == "广东省深圳市龙岗区坂田街道"   # 地址用 display_name
     assert it["to"] == "广东省东莞市长安镇"
+    assert it["from_region"] == "广东省 · 深圳市 · 龙岗区"   # 列表同口径
+    assert it["from_loc"] == "华为立体车库"
 
 
 def test_trips_sessions_address_cleanup(auth, db):
@@ -41,6 +43,9 @@ def test_trips_sessions_address_cleanup(auth, db):
     it = auth.get("/tesla/trips/api/sessions").json()["items"][0]
     assert it["from"] == "云南省勐腊县曼旦村"    # 去邮编/中国, 从大到小
     assert it["to"] == "未知位置"
+    assert it["from_region"] == "云南省 · 勐腊县"   # 省直辖县: 县提升到市层
+    assert it["from_loc"] == "a"
+    assert it["to_region"] is None and it["to_loc"] == "b"   # 有地名没链: 只剩地名
 
 
 def test_trips_sessions_tolerates_missing_fields(auth, db):
@@ -89,6 +94,8 @@ def test_trip_session_one(auth, db):
         "start": "2026-09-10 08:32", "end": "2026-09-10 09:44",
         "km": 42.5, "min": 72, "speed_max": 118,
         "from": "广东省深圳市龙岗区坂田街道", "to": "广东省东莞市长安镇",
+        "from_region": "广东省 · 深圳市 · 龙岗区", "from_loc": "华为立体车库",
+        "to_region": "广东省 · 东莞市 · 长安镇", "to_loc": "长安镇",
         "driver": None, "driver_id": None,     # 没配驾驶员 → 不显示
         "toll": None, "toll_km": None,         # 高速费还没算过
         "kwh": None, "wh_per_km": None,        # 没有充电记录 → 换算系数缺失

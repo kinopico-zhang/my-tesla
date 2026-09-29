@@ -1,15 +1,22 @@
 // view/live-driving.js — 驾驶视图 (壳版 2/2): 地图尽力而为初始化 + 车辆蓝点
 // 与速度色轨迹 (含轨迹末端接车点的尾巴线) + 状态轮询 + 视图生命周期。
-// 旧版 (js/live-driving.js) 的顶栏刷新/登出/eval 期启动全删 (抽屉接管,
-// 轮询与建图进 registerView 的 show/hide —— 离开视图清定时器销毁地图,
-// lvGen 代次让在途的迟到响应作废; 足迹/充电地图保留实例秒开, 实时页
-// 每次进来重建); 结束态链接改内存跳转 (navigate + openByKey, 零历史条目)。
+// 旧版 (js/live-driving.js) 的顶栏刷新/登出/eval 期启动全删 (壳件接管,
+// 轮询进 registerView 的 show/hide —— 离开视图清定时器销毁地图, lvGen 代次
+// 让在途的迟到响应作废; 足迹/充电地图保留实例秒开, 实时页每次进来重建;
+// 建图等 #live 亮出来才动 (2026-09-26 地图白板修复, 见 initMap 调用点));
+// 2026-09-26 状态页常显化 (用户点名「不管车辆什么状态都显示实时数据和地图
+// 位置」): 空态/结束态占位屏退役, 停车常显面板+地图, 刚结束定格末帧。
+// 2026-09-27 驻车地图补轨迹 (用户点名「状态是直接显示最后一段行程的轨迹,
+// 以及车的当前位置」): 常态停车画最后一程的速度色轨迹 + 车位点并收进视野。
+// v10 (2026-09-27): 地图顶中的最后一段行程直达钮退役 (用户点名「状态页面上
+// 最后一段行程按钮，去掉」) —— 两态文案/内存跳转整链拆净, 面板定格与驻车
+// 轨迹照旧。
 /* global $, getJSON, mapLib, TrackUtil, POLL_MS, TRACK_MS, shellState,
           cur: writable, driveId: writable, trackTimer: writable,
           lvMap: writable, carMarker: writable, routeLine: writable,
           trackEnd: writable, tailLine: writable, serverSkew: writable,
-          lvRender, renderElapsed, showState, registerView, bindGestures,
-          navigate, openByKey */
+          lvRender, lvRenderParked, renderElapsed, showState, registerView,
+          bindGestures */
 /* exported lvSetCar, poll, serverSkew */
 "use strict";
 
@@ -17,9 +24,11 @@
 let lvGen = 0;             // 视图代次: hide() 递增, 在途响应对不上就作废
 let lvPollTimer = null;    // 5s 状态轮询
 let lvTicker = null;       // 1s 已走时长走秒
-let lvEndedKey = null;     // 结束态深链 key ("2200"), 内存跳转用
+let endedFreeze = false;   // 刚结束: 面板定格本次末帧, 不落停车常显
+let parkedS = null;        // 最近一次停车态 (initMap 就位后补画车点用)
+let parkedTrackKey = null; // 驻车轨迹已画的行程 id (5s 轮询不重拉不闪, 见 lvDrawLastTrack)
 
-function lvSetCar(lng, lat) {   // 车辆蓝点 (跟随: 每次刷新把车拉回视野中心)
+function lvSetCar(lng, lat, follow = true) {   // follow=false: 只挪点不追焦 (驻车画轨迹时别抢视野)
   const p = mapLib.gcj([lng, lat]);
   if (carMarker) carMarker.setPosition(p);
   else {
@@ -27,7 +36,7 @@ function lvSetCar(lng, lat) {   // 车辆蓝点 (跟随: 每次刷新把车拉�
       content: '<div class="car-dot"></div>' });
     lvMap.add(carMarker);
   }
-  lvMap.setCenter(p);
+  if (follow) lvMap.setCenter(p);
   /* 轨迹末端连到车: 轨迹接口 20s 一拉, 位置轮询 5s 一走, 节奏不同 —— 不补
      这根尾巴, 速度色轨迹的终点会脱离车点 (用户要求必须连着)。颜色跟当前
      车速档, 与历史轨迹同一套色阶。 */
@@ -60,12 +69,50 @@ async function refreshTrack() {
   } catch (e) { /* 刚出发位置点不足 2 个会 404, 下轮再取 */ }
 }
 
+async function lvDrawLastTrack(s) {
+  /* 常态停车地图画最后一程轨迹 + 车位点 (2026-09-27 用户点名「状态是直接
+     显示最后一段行程的轨迹, 以及车的当前位置」): 与驾驶态同一套速度色线;
+     画完把轨迹和车点一起收进视野 (追焦车位会切掉大半程)。按行程 id 记账,
+     5s 轮询不重拉不闪 —— 换了行程/重进视图才重画; 拉不到 (刚记完位置点未
+     齐等) 归零记账下轮再试, 车位点先居中收场。 */
+  if (!lvMap) return;
+  if (!s.last_drive || s.last_drive.id == null) {
+    if (routeLine) { lvMap.remove(routeLine); routeLine = null; }   // 换车后没有最后一程: 上一场的驻车轨迹不留残线
+    parkedTrackKey = null;
+    return;
+  }
+  const id = s.last_drive.id;
+  if (parkedTrackKey === id) return;
+  parkedTrackKey = id;
+  const gen = lvGen;
+  try {
+    const t = await getJSON("/tesla/trips/api/" + id + "/track");
+    if (gen !== lvGen || !lvMap || parkedTrackKey !== id) return;   // 迟到作废
+    if (routeLine) lvMap.remove(routeLine);
+    routeLine = TrackUtil.speedLines(t.pts).map(l => mapLib.polyline({
+      path: l.pts.map(q => mapLib.gcj(q)), strokeColor: l.color, strokeWeight: 5,
+      strokeOpacity: 1, lineJoin: "round", lineCap: "round", zIndex: 90 }));
+    lvMap.add(routeLine);
+    if (carMarker) lvMap.setFitView([...routeLine, carMarker], true, [40, 40, 40, 40]);
+  } catch (e) {
+    parkedTrackKey = null;   // 归零记账: 下一轮 (5s) 重试
+    if (gen === lvGen && lvMap && s.lng != null) lvMap.setCenter(mapLib.gcj([s.lng, s.lat]));
+  }
+}
+
 function enterDriving(s) {
   driveId = s.drive_id;
+  parkedTrackKey = null;   // 驻车轨迹翻篇: 这程结束后回停车态要重画
   if (lvMap && routeLine) { lvMap.remove(routeLine); routeLine = null; }
   if (lvMap && tailLine) { lvMap.remove(tailLine); tailLine = null; }
   trackEnd = null;
   showState("live");
+  /* 地图等 #live 亮出来才建 (2026-09-26 用户实报「当前驾驶页面地图显示出
+     来不了」): 高德在 display:none 的 0×0 容器里建图, 之后掀开容器也不重
+     排, 永远白板 —— 以前进视图就抢建, 引擎缓存住时配置一个来回快过首轮
+     状态, 建图落在隐藏容器里的概率极大。驾驶态/停车态每次进来重建
+     (lvHide 已销毁)。 */
+  if (!lvMap) initMap();
   refreshTrack();
   clearInterval(trackTimer);
   trackTimer = setInterval(refreshTrack, TRACK_MS);
@@ -81,29 +128,39 @@ async function poll() {
   if (gen !== lvGen) return;
   if (s.now_utc != null) serverSkew = s.now_utc - Date.now() / 1000;
   if (s.driving) {
+    endedFreeze = false;
+    $("#lv-title").textContent = "状态：行驶";   // 页面标题两态 (2026-09-27 用户点名)
     if (!cur || !cur.driving || cur.drive_id !== s.drive_id) enterDriving(s);
     cur = s;
+    parkedS = null;
     lvRender(s);
-  } else if (cur && cur.driving) {   // 开着开着结束了: 给"已结束"态 + 行程深链
-    const doneId = cur.drive_id;
+  } else if (cur && cur.driving) {
+    /* 开着开着结束了: 面板定格本次行程末帧 (不掀占位屏), 地图留着轨迹和
+       车点; 轮询照走, 下一程起播自动翻篇。文案落结束态 (驻车分支会改写
+       它, 这里每次显式钉回)。 */
     clearInterval(trackTimer);
-    if (doneId != null) {
-      lvEndedKey = String(doneId);
-      $("#ended-link").href = "/tesla?view=trips&id=" + doneId;   // href 只作兜底, 点击走内存跳转
-    }
+    endedFreeze = true;
+    $("#lv-title").textContent = "状态：驻车";   // 已停: 标题跟着落停车态
     cur = null;
-    showState("ended");
-  } else {
-    cur = null;
-    showState("idle");
+  } else if (!endedFreeze) {
+    /* 常态停车: 面板常显最后已知电量/续航 + 车速 0, 最后一段行程的时长/
+       四格 (2026-09-27 用户点名), 地图画最后一程轨迹 + 车位点
+       (lvDrawLastTrack, 2026-09-27 用户点名) */
+    $("#lv-title").textContent = "状态：驻车";
+    showState("live");            // #live 常驻 (booting 只盖首轮响应前)
+    if (!lvMap) initMap();        // 建图同样等 #live 亮出来 (白板教训)
+    parkedS = s;                  // 地图就位前先记下, 就位后补画
+    lvRenderParked(s);
+    lvDrawLastTrack(s);
   }
 }
 
 /* ---------- 地图尽力而为: 失败不挡统计, 只占位提示 ---------- */
 async function initMap() {
+  if (lvMap) return;                          // 防重 (enterDriving 每次行程切换都问)
   const gen = lvGen;
   try {
-    await mapLib.ready();   // 配置 + 引擎脚本 (高德/OSM 由设置页定, OSM 免 Key)
+    await mapLib.ready();   // 配置 + 引擎脚本 (高德单服务商, 要 Key)
     if (gen !== lvGen) return;
     lvMap = mapLib.createMap("lv-map", { zoom: 16, center: [114.05, 22.55] });
     lvMap.on("complete", () => {   // 矢量样式数据异步加载: 首帧不画地名, 到货后补几拍重渲染
@@ -116,6 +173,9 @@ async function initMap() {
     if (cur && cur.driving) {   // 地图就位前首轮渲染可能已过: 补画车点 + 轨迹
       lvRender(cur);
       refreshTrack();
+    } else if (parkedS) {       // 停车常显态同样补画 (车点/面板数据/最后一程轨迹)
+      lvRenderParked(parkedS);
+      lvDrawLastTrack(parkedS);
     }
   } catch (e) {
     if (gen === lvGen) $("#map-fallback").hidden = false;
@@ -127,25 +187,16 @@ document.addEventListener("visibilitychange", () => {   // 从后台切回立即
   if (!document.hidden && !$("#view-live").hidden) poll();
 });
 
-/* 结束态链接: 壳内内存跳转到行程视图并直开该条 (零历史条目) */
-$("#ended-link").addEventListener("click", e => {
-  e.preventDefault();
-  if (lvEndedKey != null) { navigate("trips"); openByKey(lvEndedKey); }
-});
-
-/* 手势面: 面板区 (仪表/电池/格子) 右划开抽屉/下拉刷新; 空态/结束态整面
-   都是; 画布本体 touch-action:none 全给地图引擎, 左缘 24px 条供右划 */
+/* 手势面: 面板区 (仪表/电池/格子) 右划开抽屉/下拉刷新; 首帧等待也整面;
+   画布本体 touch-action:none 全给地图引擎, 左缘 24px 条供右划 */
 bindGestures($("#lv-panels"), { drawer: true, ptr: true, onRefresh: poll });
 bindGestures($("#booting"), { drawer: true, ptr: true, onRefresh: poll });
-bindGestures($("#ended"), { drawer: true, ptr: true, onRefresh: poll });
-bindGestures($("#idle"), { drawer: true, ptr: true, onRefresh: poll });
 bindGestures($("#lv-edge"), { drawer: true });
 
 function lvShow() {
   lvGen++;
   $("#map-fallback").hidden = true;   // 上次失败的占位先收起, 这轮重试
-  initMap();
-  poll();
+  poll();                             // 建图在驾驶态 (enterDriving), 这里只探状态
   lvPollTimer = setInterval(poll, POLL_MS);
   lvTicker = setInterval(() => { if (cur && cur.driving) renderElapsed(cur); }, 1000);
 }
@@ -157,6 +208,9 @@ function lvHide() {
   if (lvMap) lvMap.destroy();  // 实时地图每次进来重建 (足迹/充电地图才保留实例)
   lvMap = null; carMarker = null; routeLine = null; tailLine = null;
   trackEnd = null; cur = null; driveId = null;
+  endedFreeze = false; parkedS = null;   // 定格/补画状态不过夜
+  parkedTrackKey = null;
+  $("#lv-title").textContent = "状态";   // 标题归中性, 首轮状态回来再定两态
   showState("booting");        // 回来时从等待态重新起
 }
 registerView("live", {
@@ -164,5 +218,5 @@ registerView("live", {
   el: $("#view-live"),
   show: lvShow,
   hide: lvHide,
-  refresh: poll,   // 抽屉刷新 (换时间档对实时页无意义, 轮询本就不带时间参)
+  refresh: poll,   // 下拉刷新 (换时间档对实时页无意义, 轮询本就不带时间参)
 });

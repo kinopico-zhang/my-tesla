@@ -104,9 +104,34 @@
     return segs.length ? segs : TrackUtil.splitGaps(pts);
   }
 
+  /* 服务端断档版分段: gaps 是载荷下发的端点对 [[a, b, drive_id], ...]
+     (服务端在原始密度上检出, 见后端 track_gaps —— 抽稀后的 pts 里自适应
+     阈值分不清采样间距与真实断档, 客户端不再自测)。按对切段; 段起点
+     starts 处的跨段跳变 (停车挪位) 也切, 距离阈值与 gapsBetween 同款 ——
+     跳变对不在 gaps 里 (服务端逐段检测, 看不见段与段之间), 由调用方按
+     同一对补登记。 */
+  function sliceAtGaps(pts, gaps, starts) {
+    const pairs = (gaps || []).filter(p => p[0] >= 0 && p[1] < pts.length && p[1] > p[0]);
+    if (starts)
+      for (const st of starts)
+        if (st > 0 && st < pts.length
+            && TrackUtil.ptDistKm(pts[st - 1], pts[st]) >= TrackUtil.MIN_GAP_KM)
+          pairs.push([st - 1, st]);
+    pairs.sort((x, y) => x[0] - y[0]);
+    const segs = [];
+    let at = 0;
+    for (const p of pairs) {
+      if (p[0] >= at) segs.push(pts.slice(at, p[0] + 1));
+      at = Math.max(at, p[1]);
+    }
+    if (at < pts.length) segs.push(pts.slice(at));
+    const ok = segs.filter(sg => sg.length >= 2);
+    return ok.length ? ok : [pts];   // 与 splitGaps 同兜底
+  }
+
   return {
     speedZoom, clampZoomBias, windowMeanSpeed, hysteresisZoom, easeZoomStep,
     animDurMs, energyWeightKm, energyStep, energyCurve, fracValue,
-    splitSegments, ZOOM_PAST_MS, ZOOM_FUT_MS, ZOOM_SAMPLES,
+    splitSegments, sliceAtGaps, ZOOM_PAST_MS, ZOOM_FUT_MS, ZOOM_SAMPLES,
   };
 });

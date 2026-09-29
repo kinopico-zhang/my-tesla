@@ -30,20 +30,32 @@
   :root { --top-floor: 96px; }
 }
 /* 全局上边界: 系统磨砂带的底沿 —— 固定/钉顶的控件 top 一律不低于它
-   (用户点名「最上面的模糊地带不要放固定控件」); 流内内容不受限
-   (滚得走的照旧认糊, 初始位置由 .view-scroll 的 padding-top 让开)。 */
+   (用户点名「最上面的模糊地带不要放固定控件」); 3.3.0 起只管固定件,
+   不再压流内内容的起点。 */
 :root { --top-clear: max(calc(env(safe-area-inset-top, 0px) + 36px),
                          var(--top-floor)); }
-/* 屏底筛选条让位 (内容一路铺到悬浮条底下) */
+/* 流内内容的上起点 = 全局上边界 --top-clear (2026-09-27 用户报「状态页
+   面最上面进入到了模糊地带」→ 全 app 统一一条线): 安全区 + 36px 起,
+   独立模式的系统磨砂带 (~96px) 不再压内容 —— music 同款 (hero-bar/
+   搜索页/推送面板的页头都落 --top-clear, music-search 实测 +14 还在
+   磨砂带里); 各页 sec-head 的 20px 顶距同步退役, 全 app 标题同一水平线。 */
+:root { --content-top: var(--top-clear); }
+/* 屏底悬浮栈让位 (内容一路铺到悬浮件底下): 只剩筛选条一层 (菜单圆键
+   2026-09-27 退役); 有 chips 的视图 (充电/行程/足迹地图) 悬浮条在场,
+   让位全高; 没有的视图整条收起 (js 给 body 挂 no-bar), 让位退回安全区 */
 :root { --bar-h: 44px; }
 :root { --bar-clear: calc(var(--bar-h) + 20px + env(safe-area-inset-bottom)); }
-/* z 阶梯 (单壳全层共用): 内容 1-3 · 下拉刷新指示 6 · 筛选条 50 ·
-   多选条 55 · 筛选弹层 85 · sheet 背景板 90/弹层 91 · 抽屉 95/96 ·
+body.no-bar { --bar-clear: calc(env(safe-area-inset-bottom) + 10px); }
+/* z 阶梯 (单壳全层共用): 内容 1-3 · 下拉刷新提示 6 · 筛选条/菜单键 50 ·
+   多选条 55 · 筛选弹层 85 · sheet 背景板 90/弹层 91 · 抽屉蒙版 95/抽屉 96 ·
    充电弹层 100 · 回放全屏 110 · alert 120 · toast 130 */
 :root { --z-content: 3; --z-ptr: 6; --z-bar: 50; --z-selbar: 55;
         --z-fb-pop: 85; --z-sheet-bd: 90; --z-sheet: 91;
         --z-drawer-mask: 95; --z-drawer: 96; --z-chg-sheet: 100;
         --z-playback: 110; --z-alert: 120; --z-toast: 130; }
+/* 弹层可拖区 (tesla-sheet-drag 绑定的把手/信息区): 掐原生手势防劫持,
+   拖动不选字 (与 .grab 同款保险) */
+.sheet-drag { touch-action: none; -webkit-user-select: none; user-select: none; }
 
 /* ---------- 重置 (与 music-base 同款) ---------- */
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent;
@@ -59,11 +71,13 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
                "Helvetica Neue", system-ui, sans-serif;
   font-size: 14px; line-height: 1.45;
-  height: 100vh; height: 100dvh;
+  height: 100vh; height: var(--shell-h, 100dvh);   /* 壳的高度: 冻矮补偿
+     --shell-h 优先 (iOS 还原高度跨重启赖账, 冷开带矮值时钉真满高,
+     黑带补回 —— music 1.8.32 同病同方), 平时 100dvh; 文档不滚 */
   overflow: hidden;
   display: flex; flex-direction: column;
   touch-action: pan-y;   /* 全应用禁双指缩放 (用户点名): 在 body 收口,
-                             手势面 (抽屉/下拉刷新) 自带更窄的 touch-action */
+                             手势面 (抽屉/筛选条) 自带更窄的 touch-action */
 }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
 button, a, summary { touch-action: manipulation; }
@@ -79,22 +93,16 @@ main {
   flex: 1; min-height: 0;
   overflow-y: auto; -webkit-overflow-scrolling: touch;
   overscroll-behavior: none;
-  /* 初始状态不越过模糊带 (用户点名); 滚上去照样进带 (padding 随内容滚) */
-  padding: calc(var(--top-clear) + 6px) 0 var(--bar-clear);
+  /* 内容起点 = --content-top (安全区+14, my-music 同款; 滚上去照样认糊,
+     padding 随内容滚) */
+  padding: var(--content-top) 0 var(--bar-clear);
 }
 .view-scroll.dim { opacity: .45; pointer-events: none; }
 /* 地图类视图全出血: 画布铺到边, 不让顶带 (内容自己收口) */
 .view-flush .view-scroll { padding: 0; }
 
-/* ---------- 顶部模糊带: 只放列表滚过的内容, 不放任何固定控件 ---------- */
-#top-blur {
-  position: fixed; left: 0; right: 0; top: 0; height: var(--top-clear);
-  z-index: 4; pointer-events: none;
-  background: linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,.18) 70%, transparent);
-  -webkit-backdrop-filter: blur(18px) saturate(180%);
-  backdrop-filter: blur(18px) saturate(180%);
-}
-/* 全局上边界的量尺 (music 同款): 钉在边界上的隐形件, JS 读它的 offsetTop */
+/* 全局上边界的量尺 (music 同款): 钉在边界上的隐形件, JS 读它的 offsetTop
+   (顶部模糊带已撤 —— 用户点名; --top-clear 留白几何照旧) */
 #top-clear-probe {
   position: fixed; top: var(--top-clear); visibility: hidden;
   pointer-events: none; width: 0; height: 0;
@@ -115,7 +123,6 @@ main {
    层动起来时变换层会从 fixed+磨砂件 (筛选条/抽屉) 底下扫过 —— WebKit 吐
    重影的配方; 对策 = 运动期暂撤磨砂换实底 (tesla-common.js 的 layerMotion
    管加类, 停稳自摘), music 同款。 */
-body.layer-anim #menu-key,
 body.layer-anim #filter-bar,
 body.layer-anim #drawer {
   -webkit-backdrop-filter: none;

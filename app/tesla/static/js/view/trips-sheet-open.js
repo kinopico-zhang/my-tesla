@@ -5,31 +5,44 @@
 // 镜像 —— 壳是零历史条目路由, 不留栈; 分享/刷新仍能直达。文件名沿用
 // 旧名 (命名普查按 basename 折叠)。
 /* global $, getJSON, mapLib, mergedCache, ensureAMap,
-   tripMsg, openSeq: writable, curKey: writable, sheetTrip: writable,
-   tripMap: writable, trackCache, skipAnim, anim, followZoomOn: writable,
+   tripMsg, tripHistKick, openSeq: writable, curKey: writable, sheetTrip: writable,
+   sheetFrom, tripMap: writable, trackCache, skipAnim, anim, followZoomOn: writable,
    zoomUserLock: writable, zoomUserZoom: writable, followZoom, tileTemplate,
    preloadTiles, preloadVectorTrack, TrackUtil, playTrack, hideSheet,
-   fillSheetHeader, fillSheetHeaderPending, setupDriverPicker, autoCalcToll */
+   playbarPending, fillSheetHeader, fillSheetHeaderPending, setupDriverPicker */
 /* exported openTrip, loadMergedStream, sheetTrip, followZoomOn, zoomUserZoom */
 "use strict";
 async function openTrip(it, fromUrl) {
   curKey = it.merged ? (it.mergeKey || it.ids.join(",")) : String(it.id);
   /* 壳内零历史条目 (禁 iOS 边缘后退): 打开的行程只镜像到地址栏
      (replaceState 不留栈; 分享链接/刷新仍直达 —— 3.0 起镜像就是壳地址,
-     ?view=trips 让刷新直落行程视图再直开)。关弹层由 closeTrip 镜像回
-     裸壳地址。 */
+     ?view= 让刷新直落对应视图再直开; 分组页打开的合并镜像 view=groups,
+     背后宿主就是分组页)。关弹层由 closeTrip 镜像回裸壳地址。 */
+  const v = it.merged && sheetFrom === "groups" ? "groups" : "trips";
   history.replaceState(null, "",
-    "/tesla?view=trips&" + (/[-,]/.test(curKey) ? "ids=" : "id=") + curKey);
+    `/tesla?view=${v}&` + (/[-,]/.test(curKey) ? "ids=" : "id=") + curKey);
   const seq = ++openSeq;
   sheetTrip = it.merged ? null : it;   // 驾驶员标注只对单条行程有意义
   const cached = it.merged ? mergedCache.get(it.mergeKey) : null;
   if (cached) Object.assign(it, cached);   // 合并整包缓存命中: 数据齐了直接播
-  if (it.pts || !it.merged) fillSheetHeader(it);   // 单条: 字段随卡片/接口齐, 直接填
-  else fillSheetHeaderPending();                   // 合并流式: 数据在路上, 占位
+  /* 单条字段随卡片/接口齐直接填; 合并弹层带着汇总 (分组页条目/多选聚合,
+     2026-09-23 用户点名不等地图) 也先填 —— 流式汇总头到了再校准 */
+  if (it.pts || !it.merged || it.km != null) fillSheetHeader(it);
+  else fillSheetHeaderPending(it);         // 深链/无汇总: 数据在路上, 占位 (分组名先亮)
   setupDriverPicker(it, seq);
+  /* 统计页数据不等轨迹 (2026-09-27 用户点名三页独立): 直方图服务端只要
+     行程身份, 与轨迹下载/地图预载全程无关 —— 开弹层就发起 (trips-sheet-stats
+     的入口, it.hist 落在行程条目上 = 重开秒出) */
+  tripHistKick(it);
   $("#sheet").classList.add("show");
   $("#backdrop").classList.add("show");
   tripMsg("正在加载轨迹…", true);
+  /* 控制条先亮 (用户点名: 加载地图时底下按钮别跟着等) —— 预载瓦片/扫路
+     最长好几秒, 播放条原本要等 startSession 才露面。会话没起来前按钮本就
+     空转 (监听里 if (!anim) return), 这里先摆待播态; 视角基线仍随起播亮
+     (加载期地图还没影子, 提前按了反而误清手动档位锁) */
+  playbarPending();
+  $("#playbar").hidden = false;
 
   try {
     await ensureAMap();
@@ -82,20 +95,26 @@ async function openTrip(it, fromUrl) {
       trackCache.set(it.id, c);
     }
     if (seq !== openSeq) return;
-    if (!it.merged && it.toll == null)
-      autoCalcToll(it, c.pts, seq);   // 不 await: 估价不挡播放
+    // 高速费自动估价已撤 (用户点名先去掉; 估价链见 git 史, 接口照留)
+    it.gaps = c.gaps;   // 服务端断档对 (原始密度检出; 旧载荷 undefined → 客户端自测)
 
+    /* 会话先起, 预载完再点火 (2026-09-27 用户点名三页独立: 轨迹/行驶数据/
+       行驶统计三页各管各的, 谁也不等谁): playTrack(defer) 只备数据与图层 ——
+       数据会话 (curSess) 即刻可读, 另两页照画; 帧循环/视角/断档登记等预载
+       收尾 sess.begin() 才起, 地图预载不再拖着另两页 */
+    const zoom = followZoom(TrackUtil.cumDistKm(c.pts).pop() || 0);
+    const sess = playTrack(c.pts, c.ts || [], it, zoom, false, true);
+    $("#playbar").hidden = false;   // stopAnim (playTrack 头) 顺手收了条: 预载期照旧亮着
     /* 播放前把沿途瓦片刷进缓存 (跟随倍率按里程), 播放不再一路补图白屏;
        矢量模式没有可抄的瓦片 URL, 改扫路预取 (见 preloadVectorTrack) */
-    const zoom = followZoom(TrackUtil.cumDistKm(c.pts).pop() || 0);
     const tpl = await tileTemplate();
     if (tpl) await preloadTiles(c.pts, zoom, tpl,
       p => tripMsg(`正在预载地图 ${p}%`, true));
     else await preloadVectorTrack(c.pts, c.ts || [], zoom,
-      p => tripMsg(`正在预载地图 ${p}%`, true), seq);
+      p => tripMsg(`正在预载地图 ${p}%`, true), seq, curKey);
     if (seq !== openSeq) return;
     tripMsg(null, false);
-    playTrack(c.pts, c.ts || [], it, zoom);   // 动态播放: 起点跑向终点, 视角跟随, 结束后拉远全局
+    sess.begin();   // 动态播放: 起点跑向终点, 视角跟随, 结束后拉远全局
   } catch (e) {
     if (seq !== openSeq) return;
     if (fromUrl && it.merged) { hideSheet(); throw e; }   // 坏合并深链: 让 openByKey 抹参回列表
@@ -104,8 +123,9 @@ async function openTrip(it, fromUrl) {
 }
 
 /* 合并轨迹流式加载 (NDJSON): 首行汇总填弹层头, 之后每行一段 —— 第一段
-   到了就开播, 后续段到了追加, 不等整包下完 (38 段的轨迹要好几秒)。首段
-   未到时显示已耗时/已收字节; 全部到齐存 mergedCache, 重开同一条秒开。 */
+   到了就起会话 (数据先就绪, 扫路预载完 sess.begin() 开播), 后续段到了
+   追加, 不等整包下完 (38 段的轨迹要好几秒)。首段未到时显示已耗时/已收
+   字节; 全部到齐存 mergedCache, 重开同一条秒开。 */
 async function loadMergedStream(it, seq) {
   const key = it.mergeKey;
   const res = await fetch(`/tesla/trips/api/merged_stream?ids=${key}`);
@@ -113,7 +133,7 @@ async function loadMergedStream(it, seq) {
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   const reader = res.body.getReader(), dec = new TextDecoder();
   const t0 = performance.now();
-  const allPts = [], allTs = [], segStarts = [];
+  const allPts = [], allTs = [], segStarts = [], segT0s = [], allGaps = [];
   let buf = "", got = 0, msgAt = 0, sess = null, segsGot = 0, segsTotal = 0;
   for (;;) {
     const { done, value } = await reader.read();
@@ -134,20 +154,30 @@ async function loadMergedStream(it, seq) {
         if (seq !== openSeq) { reader.cancel().catch(() => {}); return; }   // 弹层已换
         segsGot++;
         if (!sess) {
+          /* 首段: 会话先起 (数据/图层齐), 扫路预载完 sess.begin() 才开播 ——
+             单条路径同款 (2026-09-27 用户点名三页独立, 谁也不等谁) */
+          /* 首段断档对直接给 it (首段偏移 0, 恰是全量下标); 后续段经
+             append (服务端已按已发段偏移成全量下标) */
+          it.gaps = d.gaps;
+          it.seg_t0s = [d.t0];   // 段首时刻起数组 (副标题随段切换; 后续段 append 补)
+          sess = playTrack(d.pts, d.ts, it, followZoom(it.km || 0), true, true);
+          $("#playbar").hidden = false;   // stopAnim (playTrack 头) 顺手收了条: 预载期照旧亮着
           /* 首段开播前扫路预取 (矢量; 栅格走下面的后台抄 URL 预载):
              环形前瞻容器管播放中的连续前瞻, 这里把开场几秒 + 首段走廊
              先灌进缓存, 后续段边播边由环带覆盖 */
           await preloadVectorTrack(d.pts, d.ts, followZoom(it.km || 0),
-            p => tripMsg(`正在预载地图 ${p}%`, true), seq);
+            p => tripMsg(`正在预载地图 ${p}%`, true), seq, key);
           if (seq !== openSeq) { reader.cancel().catch(() => {}); return; }   // 扫路中弹层已换
           tripMsg(null, false);
-          sess = playTrack(d.pts, d.ts, it, followZoom(it.km || 0), true);
+          sess.begin();
         } else {
-          sess.append(d.pts, d.ts);
+          sess.append(d.pts, d.ts, d.gaps, d.t0);
         }
         segStarts.push(allPts.length);
+        segT0s.push(d.t0);
         allPts.push(...d.pts);
         allTs.push(...d.ts);
+        allGaps.push(...(d.gaps || []));   // 已是全量下标, 整包缓存直接用
         // 新一段的沿途瓦片后台预载 (不挡播放)
         tileTemplate().then(tpl => {
           if (tpl) preloadTiles(d.pts, followZoom(it.km || 0), tpl, () => {});
@@ -164,7 +194,9 @@ async function loadMergedStream(it, seq) {
   if (allPts.length >= 2)
     mergedCache.set(key, { n: it.n, ids: it.ids, date: it.date, start: it.start,
       end: it.end, km: it.km, min: it.min, speed_max: it.speed_max,
-      from: it.from, to: it.to, pts: allPts, ts: allTs, seg_starts: segStarts });
+      kwh: it.kwh, wh_per_km: it.wh_per_km,   // 电耗格随缓存走 (漏了重开显 —, 2026-09-22 用户实报)
+      from: it.from, to: it.to, pts: allPts, ts: allTs, seg_starts: segStarts,
+      seg_t0s: segT0s, gaps: allGaps });
   if (!sess) throw new Error("这些行程没有轨迹数据");
   if (segsGot < segsTotal) tripMsg(`轨迹下载中断, 已播 ${segsGot}/${segsTotal} 段`, false);
 }

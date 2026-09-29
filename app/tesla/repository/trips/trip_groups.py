@@ -7,8 +7,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ...models import Drive, TripGroup
-from ..common import NotFound, fdate
+from ..charging import charge_efficiency
+from ..common import NotFound, ftime, to_local
 from ...schemas import TripGroupInfo
+from .trip_listing import _consumption
 
 
 def _group_rows(session: Session, ids: Sequence[int]) -> list[Drive]:
@@ -24,22 +26,48 @@ def _group_ids(group: TripGroup) -> list[int]:
     return [int(x) for x in group.ids.split(",")]
 
 
-def _group_info(session: Session, group: TripGroup) -> TripGroupInfo:
-    """分组条目: 段数/里程/日期跨度按当前数据现算 (行程可能已被改动)。"""
+def _group_info(session: Session, group: TripGroup,
+                effs: dict[int, float | None] | None = None) -> TripGroupInfo:
+    """分组条目: 段数/里程/日期跨度按当前数据现算 (行程可能已被改动);
+    起止/时长/最高速/电耗汇总与合并播放的流式汇总头同口径 —— 分组页
+    一打开弹层数字带就显数, 不等地图加载 (2026-09-23 用户点名「平均
+    电耗空着, 加载完地图才显示」)。effs 跨分组共用一份换算系数 (每车
+    只查一次, 列表页一组一段查会放大到几十次)。"""
     drives = _group_rows(session, _group_ids(group))
     km = round(sum(float(d.distance or 0) for d in drives), 1)
-    dates = [fdate(d.start_date) for d in drives]
+    # 跨度日期用紧凑斜杠写法 (2026/09/09, 2026-09-25 用户点名「还是显示不
+    # 全, 日期用这种紧凑写法」): 比连字符窄一档, 斜杠还是干净的断行点 ——
+    # 前端格子里装不下按 / 换行, 保底显示全
+    dates = [to_local(d.start_date).strftime("%Y/%m/%d") for d in drives]
     span = dates[0] if len(set(dates)) == 1 else f"{dates[0]}~{dates[-1]}" \
         if dates else ""
+    car_ids = {d.car_id for d in drives}
+    if effs is None:
+        effs = {}
+    for cid in car_ids:                      # 同一口径: Σ(续航差×换算系数)÷总里程
+        if cid not in effs:
+            effs[cid] = charge_efficiency(session, cid)
+    raw_kwh = sum(_consumption(d, effs.get(d.car_id))[0] or 0.0 for d in drives)
+    total_km = sum(float(d.distance or 0) for d in drives)
+    has_eff = any(effs.get(cid) for cid in car_ids)
     return TripGroupInfo(
         id=group.id, name=group.name, ids=_group_ids(group),
-        n=len(drives), km=km, span=span)
+        n=len(drives), km=km, span=span,
+        start=ftime(drives[0].start_date) if drives else None,
+        end=ftime(drives[-1].end_date) if drives and drives[-1].end_date else None,
+        min=sum(d.duration_min or 0 for d in drives) or None,
+        speed_max=max((d.speed_max or 0) for d in drives) or None if drives
+        else None,
+        kwh=round(raw_kwh, 1) if has_eff else None,
+        wh_per_km=(round(raw_kwh / total_km * 1000)
+                   if has_eff and total_km >= 1 else None))
 
 
 def list_trip_groups(session: Session, own: Session) -> list[TripGroupInfo]:
-    """全部分组 (最新存的前面)。"""
+    """全部分组 (最新存的前面; 换算系数跨分组共用一份)。"""
     groups = list(own.scalars(select(TripGroup).order_by(TripGroup.id.desc())))
-    return [_group_info(session, g) for g in groups]
+    effs: dict[int, float | None] = {}
+    return [_group_info(session, g, effs) for g in groups]
 
 
 def save_trip_group(session: Session, own: Session,

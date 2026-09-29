@@ -52,7 +52,7 @@ def test_gap_fill_post_then_track_spliced(auth, db, owndb):
     assert track["pts"][-1][:2] == [114.022, 22.5]
     assert track["ts"] == sorted(track["ts"])        # 时间单调
     assert track["ts"][0] == 0 and track["ts"][-1] == 90
-    assert [114.011, 22.5, 45.0, None] in track["pts"]   # 弧长中点: 速度 30→60 插值
+    assert [114.011, 22.5, 45.0, None, None] in track["pts"]   # 弧长中点: 速度 30→60 插值, 补路点无海拔
     # 相邻点距恒 < 160m (断档识别最低阈值) —— 不再被前端二次识别成断档
     gaps = [abs(b[0] - a[0]) * 102.87 for a, b in zip(track["pts"], track["pts"][1:])]
     assert max(gaps) < 0.16
@@ -83,7 +83,7 @@ def test_gap_fill_overwrites_same_gap(auth, db, owndb):
     track = auth.get("/tesla/trips/api/7/track").json()
     # 4 原始 + 新路径的插值点 (4 顶点 / 3 边, 各边 80m 加密共 24 点, 去掉
     # 与锚点重合的首尾 = 26): 新顶点 114.006 在弧长 1/4 处, 速度 30→60 插值 37.5
-    assert [114.006, 22.5, 37.5, None] in track["pts"]
+    assert [114.006, 22.5, 37.5, None, None] in track["pts"]
     assert len(track["pts"]) == 30
 
 
@@ -114,8 +114,8 @@ def test_gap_fill_anchors_with_inbetween_points_keep_ts_monotonic(auth, db):
     assert track["pts"][-1][:2] == [114.022, 22.5]
     assert len(track["pts"]) == 6 + 25           # 原始 6 + 补路 25 (27 加密点
     # 去掉与锚点重合的首尾), 区间内两个原始点一个不丢 —— 归并后按日期穿插
-    assert [114.0015, 22.5, 30.0, 45000.0] in track["pts"]
-    assert [114.0205, 22.5, 60.0, 45000.0] in track["pts"]
+    assert [114.0015, 22.5, 30.0, 45000.0, None] in track["pts"]
+    assert [114.0205, 22.5, 60.0, 45000.0, None] in track["pts"]
 
 
 def test_gap_fill_points_survive_downsampling(auth, db):
@@ -162,5 +162,5 @@ def test_gap_fill_spliced_into_merged_stream_too(auth, db):
     segs = lines[1:]
     assert len(segs[0]["pts"]) == 29                  # 4 原始 + 25 加密插值
     assert segs[0]["ts"][0] == 0 and segs[0]["ts"][-1] == 90
-    assert [114.011, 22.5, 45.0, None] in segs[0]["pts"]
+    assert [114.011, 22.5, 45.0, None, None] in segs[0]["pts"]
     assert len(segs[1]["pts"]) == 2

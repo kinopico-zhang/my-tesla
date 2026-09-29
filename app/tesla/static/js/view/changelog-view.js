@@ -43,7 +43,7 @@ async function clLoad() {
 
 $("#cl-retry").addEventListener("click", clLoad);
 
-/* 手势: 滚动器右划开抽屉 / 在顶下拉刷新 */
+/* 手势: 滚动器在顶下拉刷新 */
 const clScroll = $("#cl-scroll");
 bindGestures(clScroll, { drawer: true, ptr: true, onRefresh: clLoad });
 

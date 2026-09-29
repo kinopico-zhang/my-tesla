@@ -1,4 +1,6 @@
-/* tesla-map-canvas — map 页样式。拆自 map.html 的内联 <style> (结构化重构, 内容逐字节未动)。 */
+/* tesla-map-canvas — map 页样式。拆自 map.html 的内联 <style>;
+   2026-09-27 用户点名「足迹地图的页面布局和充电地图一样」: 地图套同款
+   圆角矩形卡片, 缩放钮收口到本页 (原先裸 .zoom-ctl 与充电地图的互相盖)。 */
 /* ---------- 地图 ---------- */
 main { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
 /* 旧页 #map 与壳版 #fp-map 双选择器 (壳里三张地图画布各带前缀, 防跨视图串) */
@@ -7,7 +9,20 @@ main { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
      高 z 珊格 (Leaflet pane 400+) 关进来, 不再压过 overlay/缩放钮 */
   touch-action: none;   /* 关键: 不让 iOS Safari 把双指缩放劫持成整页缩放, 必须交给地图引擎 */
 }
-#map .amap-copyright, #fp-map .amap-copyright { display: none !important; }   /* "©…auto navi" 版权文字按需求去掉 */
+#map .amap-copyright, #fp-map .amap-copyright,
+#map .amap-logo, #fp-map .amap-logo { display: none !important; }   /* "©…auto navi" 版权与 logo 都按需求去掉 */
+/* OSM 家族的瓦片压暗滤镜与 Leaflet 容器/版权角标规则已随服务商退役拆除
+   (2026-09-25 地图只留高德; 高德暗色样式自带深底, 版权/logo 已在上面撤) */
+#fp-map, #cm-map, #lv-map, #trip-map { background: #0b0d10; }   /* 瓦片未到的空窗也是暗的 (录制底色同款) */
+
+/* 地图圆角矩形 (2026-09-27, 与充电地图 #view-chargemap .map-stage 同款):
+   侧距 16px 对齐 .map-head, 圆角/发丝线/底面同款; 本页脚下没有内容行,
+   底距直接吃 --bar-clear (充电地图那边由脚下 pills 行 .cm-foot 出) */
+#view-map .map-stage {
+  margin: 10px 16px calc(var(--bar-clear) + 10px);
+  border-radius: 16px; border: 1px solid var(--hairline);
+  background: var(--surface); overflow: hidden;
+}
 .overlay {
   position: absolute; inset: 0; z-index: 20;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -41,16 +56,16 @@ main { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
 
 /* 加载条 (3.0.1 改款, 用户点名「进度条放最底下, 地图不要加模糊遮罩, 也
    不要转圈」): 不再整屏遮罩蒙住地图 —— 地图全程看得见, 轨迹边下边画;
-   只在最底下浮一条 文字+进度, 不挡地图手势 */
+   只在最底下浮一条 文字+进度, 不挡地图手势 (圆角卡内不再吃安全区) */
 .fp-load-bar {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 25;
   display: flex; flex-direction: column; align-items: center; gap: 7px;
-  padding: 12px 16px calc(env(safe-area-inset-bottom) + 14px);
+  padding: 12px 16px 14px;
   background: linear-gradient(to top, rgba(11,13,16,.94), rgba(11,13,16,0));
   pointer-events: none;
 }
-.fp-load-bar:not([hidden]) ~ .zoom-ctl {   /* 加载条贴底, 缩放钮往上让位 */
-  bottom: calc(env(safe-area-inset-bottom) + 96px);
+#view-map .fp-load-bar:not([hidden]) ~ .zoom-ctl {   /* 加载条贴底, 缩放钮往上让位 */
+  bottom: 96px;
 }
 
 /* 下载进度条 (轨迹流式下载时加载层内, 确定值): 轨迹存本地后只在补量时出现 */
@@ -63,12 +78,15 @@ main { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
   background: var(--blue); transition: width .2s;
 }
 
-.zoom-ctl {
-  position: absolute; right: 14px; bottom: calc(env(safe-area-inset-bottom) + 18px);
+/* 缩放钮收口到 #view-map (2026-09-27): 裸 .zoom-ctl 与充电地图 (后加载)
+   的同款规则互相盖 —— 卡片化后都在卡内 bottom:14px, 安全区让位由卡片
+   底距出, 钮自己不再吃 */
+#view-map .zoom-ctl {
+  position: absolute; right: 14px; bottom: 14px;
   z-index: 30; display: flex; flex-direction: column; gap: 8px;
   transition: bottom .25s ease;   /* 加载条出没时让位/回位跟着滑 */
 }
-.zoom-ctl button {
+#view-map .zoom-ctl button {
   width: 42px; height: 42px; border-radius: 14px; font-size: 23px; line-height: 1;
   background: rgba(28,28,30,.85); border: 1px solid var(--hairline); color: var(--ink-1);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
@@ -76,36 +94,15 @@ main { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
 }
 .zoom-ctl button:active { background: var(--surface-2); }
 
-/* ---------- OSM (Leaflet) 引擎外观: 深色容器 + 版权角标。引擎样式表是
-   运行时才注入 (静态表之后), 这里用地图容器 ID 抬特异性压过它 ---------- */
-#map.leaflet-container, #fp-map.leaflet-container, #cm-map.leaflet-container,
-#lv-map.leaflet-container, #trip-map.leaflet-container {
-  background: #0b0d10;   /* 瓦片未到的空当与 App 底色一致 (默认是浅灰) */
+/* ---------- 走过之路图例 (2026-09-29): 多—少热力渐变条 ---------- */
+/* 底卡 (磨砂暗卡/画布内左下角浮起) 复用充电地图的全局 .legend; .lg-cap
+   文本样式也来自那边 (同义复用不另起名), 本页只补渐变条行。图例只剩
+   渐变条 + 少/多两帽 (同日用户点名「去掉虚线, 去掉数字, 只保留多和少」) */
+#view-map .lg-grad-row { display: flex; align-items: center; gap: 6px; }
+#view-map .lg-grad {
+  width: 132px; height: 8px; border-radius: 4px; flex: none;
+  /* 渐变条与折线同口径: 四锚点 = RoadsGrid.COLORS, CSS 逐通道线性插值 =
+     JS colorOf —— 两端 0%/100%, 中间锚点恰在 1/3、2/3 */
+  background: linear-gradient(to right, #3d6fa8, #21a179 33.33%,
+                              #d9a521 66.67%, #e5484d);
 }
-.leaflet-control-attribution {
-  background: rgba(16,17,20,.72); color: var(--ink-3);
-  font-size: 9px; padding: 2px 7px; border-radius: 8px 0 0;
-}
-.leaflet-container .leaflet-control-attribution a { color: #7db3f0; }
-
-/* ---------- 行程信息底部弹层 ---------- */
-.backdrop {
-  position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.4);
-  opacity: 0; pointer-events: none; transition: opacity .2s;  /* 隐藏时必须放过点击, 否则挡住地图 */
-}
-.backdrop.show { opacity: 1; pointer-events: auto; }
-.sheet {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 91;
-  background: var(--surface-2); border-radius: 20px 20px 0 0;
-  padding: 10px 20px calc(env(safe-area-inset-bottom) + 22px);
-  transform: translateY(105%); transition: transform .28s cubic-bezier(.32,.72,.33,1);
-}
-.sheet.show { transform: translateY(0); }
-.grab { width: 38px; height: 5px; border-radius: 3px; background: var(--hairline); margin: 0 auto 14px; }
-.sh-title { font-size: 17px; font-weight: 700; }
-.sh-sub { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
-.sh-grid { display: flex; gap: 10px; margin-top: 14px; }
-.sh-cell { flex: 1; background: var(--surface); border-radius: 12px; padding: 10px 12px; }
-.sh-cell .lb { font-size: 11px; color: var(--ink-2); }
-.sh-cell .val { font-size: 18px; font-weight: 650; margin-top: 2px; font-variant-numeric: tabular-nums; }
-.sh-cell .val small { font-size: 11px; color: var(--ink-2); font-weight: 500; }

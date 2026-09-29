@@ -3,18 +3,19 @@
    充电 760) 与分组页顶置 #toast —— 谁后加载谁生效, 会把别的视图顶歪。
    这里最后压一遍: main 还原成壳的满宽视图容器, 宽度改由各视图自己的
    .view-scroll 上限管 (充电 760 默认, 统计 920, 日志 640), toast 压回壳
-   的屏底样式; 行程多选时屏底槽让给 selbar (筛条藏起); 地图类视图
-   (P5) 的摘要条/画布舞台/左缘抽屉条/驾驶舞台、设置三视图 (P6) 的 560
-   窄栏 (旧顶栏 #refresh-btn 胶囊的压回已随按钮一起撤掉) 也在这。 */
+   的屏底样式; 行程多选时屏底槽让给 selbar (底栈藏起); 地图类视图
+   (P5) 的摘要条/画布舞台、驾驶舞台、设置三视图 (P6) 的 560 窄栏也在这。 */
 main { max-width: none; margin: 0; padding: 0; }
 
-/* 视图滚动器: 满宽为默认 (充电 760), 统计宽 920, 日志窄卡 640 + 两侧留白
+/* 视图滚动器: 满宽为默认 (充电 760), 统计宽 920 (充电统计 + 行程统计
+   2026-09-27 同款图表网格), 日志窄卡 640 + 两侧留白
    (旧日志页 main 的 14px 侧内边距折到这里, #entries 卡片靠它离屏缘) */
 .view-scroll { width: 100%; max-width: 760px; margin: 0 auto; }
 #view-stats > .view-scroll { max-width: 920px; }
+#view-tripstats > .view-scroll { max-width: 920px; }
 #view-changelog > .view-scroll {
   max-width: 640px;
-  padding: calc(var(--top-clear) + 6px) 14px var(--bar-clear);
+  padding: var(--content-top) 14px var(--bar-clear);
 }
 
 /* 分组页 CSS 的顶置 toast: 壳只有一个屏底 toast (tesla-base 同款重申,
@@ -29,29 +30,31 @@ main { max-width: none; margin: 0; padding: 0; }
 }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-/* 行程多选态: selbar (z 80, tesla-trips-sheet.css) 占屏底槽, 筛条整行
-   藏起让位 (旧页是对着顶栏 refresh-btn 藏, 壳里换屏底条) */
+/* 行程多选态: selbar (z 80, tesla-trips-sheet.css) 占屏底槽, 屏底悬浮条
+   (#bar-row, 菜单圆键退役后只剩筛选条) 整个藏起让位 (旧页是对着顶栏
+   refresh-btn 藏, 壳里换屏底) */
 body.selecting #bar-row { display: none; }
 
 /* ---- 地图类视图 (P5): 足迹/充电地图 ---- */
-/* 摘要条 = 顶部手势面 (右划开抽屉/在顶下拉刷新); .stats 自带 14px 侧距,
-   头部只补顶带留白不再叠侧距。画布舞台接旧页 main 的角色 (全出血) */
-.map-head { padding: calc(var(--top-clear) + 6px) 14px 0; }
+/* 摘要条 = 顶部手势面 (在顶下拉刷新); .stats 自带 14px 侧距, 头部只补
+   内容起点不再叠侧距。画布舞台接旧页 main 的角色 (全出血) */
+.map-head { padding: var(--content-top) 16px 0; }   /* 16px 对齐各页 sec-head 侧距 */
 .map-head .stats { padding: 10px 0 0; }
 .map-stage { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
-
-/* 画布左缘 24px 抽屉条: 画布本体 touch-action:none 全给地图引擎, 右划开抽屉
-   只能从这条进 (罩在画布上, 不挡其余区域的地图手势) */
+/* 画布左缘窄条: 地图手势全给引擎, 右划开抽屉的入口折到这 (手势仲裁认它) */
 .drawer-edge {
   position: absolute; left: 0; top: 0; bottom: 0; width: 24px;
   z-index: 5; touch-action: none;
 }
 
 /* ---- 驾驶视图 (P5): 旧页 main 的布局折到舞台容器 (壳 main 满宽无内边距);
-   面板区 (仪表/电池/格子) 是手势面, 画布区只有左缘条 ---- */
+   面板区 (仪表/电池/格子) 是手势面, 画布区手势全给地图引擎, 左缘条开抽屉 ---- */
 .live-stage {
   flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px;
-  padding: calc(var(--top-clear) + 6px) 14px calc(env(safe-area-inset-bottom) + 10px);
+  /* 底距吃 --bar-clear (与各视图 .view-scroll 同款): 屏底悬浮筛选条压在
+     内容上, 原来只让 safe+10, 地图卡底下 ~50px 被条子盖着像缺了个角
+     (2026-09-26 用户报「页面歪七扭八」) */
+  padding: var(--content-top) 14px var(--bar-clear);
   overflow: hidden;
 }
 .lv-panels { display: flex; flex-direction: column; gap: 10px; }

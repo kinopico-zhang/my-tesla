@@ -1,4 +1,4 @@
-"""充电地点筛选测试: 省市区级联端点与会话过滤, 时间菜单日历,
+"""充电地点筛选测试: 省市区级联端点与会话过滤,
 弹层把手, 费用筛选菜单。
 拆自 test_charging.py (结构化重构, 代码逐字节未动)。"""
 from datetime import datetime
@@ -64,21 +64,6 @@ def test_charging_sessions_filters_by_region(auth, db):
                     params={"region": "省/市/区/街道"}).status_code == 400  # 最多 3 段
 
 
-def test_charging_view_time_menu_calendar(auth):
-    """抽屉时间下拉 (快捷档 + 自定义日历): 全壳一份, 充电视图共用。"""
-    html = served_page(auth, "/tesla")
-    for frag in ['id="time-menu"', 'data-v="24h"', 'data-v="7d"', 'data-v="30d"',
-                 'data-v="180d"', 'data-v="1y"', 'data-v="all"',
-                 'data-v="custom"', 'id="tm-cal"', 'id="tm-prev"', 'id="tm-next"',
-                 'id="tm-ym"', 'id="tm-sel"', 'id="tm-apply"', 'function calRender()',
-                 '再点结束日期']:
-        assert frag in html, f"壳缺少 {frag}"
-    assert "chips-range" not in html and 'id="tm-from"' not in html
-    for i in ('time-menu', 'time-lb', 'time-opts', 'tm-dates', 'tm-cal', 'tm-prev',
-              'tm-next', 'tm-ym', 'tm-sel', 'tm-apply'):
-        assert html.count(f'id="{i}"') == 1, f"页面 {i} 重复"
-
-
 def test_charging_view_region_chips(auth):
     """屏底筛选条三枚 chips (类型/费用/地点省市区级联), 选完即收; 偏好住
     localStorage (不再写 URL, 旧链接参数冷启折进偏好)。"""
@@ -89,7 +74,7 @@ def test_charging_view_region_chips(auth):
         "/tesla/charging/api/regions",
         # 地点省市区级联 (行程页同款): 钻取行/返回行/面包屑
         'class="loc-back"', 'class="loc-crumb"', 'class="loc-row', "钻下一级",
-        "⚡ 快充", "🔌 慢充",
+        "快充", "慢充",
         "已记录费用", "未记录费用",
         "chgSaveFilters", "refreshBarChips",
         'p.set("region", chgState.region)',   # 列表请求带地点筛选
@@ -99,20 +84,52 @@ def test_charging_view_region_chips(auth):
         assert frag in html, f"充电视图缺少 {frag}"
 
 
+def test_charging_list_month_groups(auth):
+    """充电记录按月分组 (用户点名): 列表日期倒序, 跨月处插 .month-head
+    月份小标 ("2026年9月" 款), 同月不重插; 下拉刷新/筛选重灌时月账归零
+    (chgLastMonth 清空), 不然重灌后首月没头。"""
+    page = served_page(auth, "/tesla")
+    for frag in ("month-head",                     # 小标类 (样式在 charging-cards css)
+                 "chgLastMonth",
+                 "const key = m[1] + m[2]",
+                 "if (key === chgLastMonth) return null",
+                 "`${+m[1]}年${+m[2]}月`",
+                 "frag.append(head, card)",        # 月头带首卡一起进栏 (分页骨架不动)
+                 'chgLastMonth = "";'):            # refetch 清账
+        assert frag in page, f"充电月分组缺 {frag}"
+
+
+def test_charging_list_place_and_slim_cards(auth):
+    """列表卡片 (用户点名): 地点只留最小两段 (fmtPlaceShort, 常态 区 · 地名,
+    解析不出省退化到市级) —— 前段弱色前缀 + 地名, 整链在详情底部地址;
+    卡片底下的时长/峰值/温度行撤掉, 卡片收干净。"""
+    page = served_page(auth, "/tesla")
+    for frag in ("const pp = fmtPlaceShort(it),",
+                 "pp[pp.length - 1]",
+                 'class="cs-region"',
+                 "function fmtPlaceShort(it)", "function fmtPlace(it)"):
+        assert frag in page, f"充电列表缺 {frag}"
+    for gone in ('class="cs-sub"', "fmtDur(it.duration_min)",
+                 "峰值 ${it.power_max", "const region = fmtRegion(it);"):
+        assert gone not in page, f"充电列表残留 {gone}"
+
+
 def test_charging_sheet_grab_drag_close(auth):
-    """充电详情弹层手柄: 点一下关, 拖 >90px 松手也关 (跟手 + 回弹)。
+    """充电详情弹层下滑关闭: 把手点一下关 / 拖 >90px 松手也关; 上部信息区
+    (日期/地点/标签行) 也能拖着收起 (用户点名), 点一下不关 (✕ 在上面);
+    正文整片 (统计格/费用条/图表/地址) 同绑 (用户点名: 没有下滑事件的
+    控件全补上, 点按不受影响)。拖拽本体在壳级 tesla-sheet-drag
+    (test_shell_wiring 钉), 这里钉充电侧接线与 iOS 安全规矩。
 
     iOS Safari 对 touch 指针 setPointerCapture 会当场 pointercancel
     (用户实测拉不动), move/up 挂 window 级不捕获 —— 手指出界照样收,
     各端行为一致 (2026-09-13 修)。"""
     html = served_page(auth, "/tesla")
     for frag in ['id="chg-grab-zone"', "touch-action: none",
-                 'window.addEventListener("pointermove", move)',
-                 'window.addEventListener("pointerup", release)',
-                 'window.removeEventListener("pointermove", move)',
-                 "translateY(${dy}px)", "if (dy > 90) chgCloseSheet()",
-                 # 点一下也关; 拖过 8px 抑制随后的 click (trips 手柄同款)
-                 'if (dy > 8) { dy = 0; return; }']:
+                 'bindSheetDrag(chgSheet, $("#chg-grab-zone"), chgCloseSheet, true)',
+                 'bindSheetDrag(chgSheet, $("#chg-sheet .sheet-head"), chgCloseSheet, false)',
+                 'bindSheetDrag(chgSheet, chgSheetBody, chgCloseSheet, false)',
+                 'class="sheet-head sheet-drag"']:
         assert frag in html, f"充电视图缺少 {frag}"
     # iOS capture 即 cancel, 别回潮 (抽屉的拖拽是另一模式: 元素自身捕获,
     # 串的是 d.setPointerCapture(pid), 不在此列)

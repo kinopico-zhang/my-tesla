@@ -22,7 +22,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from .. import config
-from . import repository
+from . import repository, roads_fit
 from .models import TripDriver
 from .schemas import MapManifest, MapManifestTrack, MapTrack
 
@@ -80,18 +80,32 @@ def load_tracks(factory: sessionmaker[Session]) -> list[MapTrack]:
 
 
 def build_manifest(tracks: list[MapTrack], own: Session) -> MapManifest:
-    """全量轨迹清单: 每条一行 {id, n 点数, d 驾驶员, c 车, t 日期}。
+    """全量轨迹清单: 每条一行 {id, n, d, c, t, s, rn, m}。
 
-    驾驶员标注在自有库且随标/清变动 —— 不进缓存, 清单每次现算;
+    驾驶员标注在自有库且随标/清变动 —— 不进缓存, 清单每次现算; 道路
+    拟合态 (s/rn) 同口径现算 (worker 随时在写新行), rd/rt 拼出进度。
     客户端拿清单对账本地 IndexedDB (缺的/n 不符的重下, 多余的删掉)
     并在本地按 t/c/d 做筛选, 轨迹本体不再按筛选请求。"""
     drivers: dict[int, int] = {}
     for drive_id, driver_id in own.execute(
             select(TripDriver.drive_id, TripDriver.driver_id)).all():
         drivers[drive_id] = driver_id
-    return MapManifest(v=CACHE_VERSION, tracks=[
-        MapManifestTrack(id=t.id, n=len(t.pts) // 2, d=drivers.get(t.id),
-                         c=t.car_id, t=t.date) for t in tracks])
+    roads = repository.roads_lite(own)
+    rows: list[MapManifestTrack] = []
+    done = 0
+    for t in tracks:
+        status, rn, ver = roads.get(t.id, ("", 0, 0))
+        if ver != roads_fit.ROAD_FIT_V:      # 旧算法版本的行不算数
+            status, rn = "", 0
+        else:
+            done += 1
+        s = 1 if status == "ok" else (3 if status == "guess"
+                                      else (2 if status else 0))
+        rows.append(MapManifestTrack(id=t.id, n=len(t.pts) // 2,
+                                     d=drivers.get(t.id), c=t.car_id, t=t.date,
+                                     s=s, rn=rn if s in (1, 3) else 0, m=t.min))
+    return MapManifest(v=CACHE_VERSION, tracks=rows, rv=roads_fit.ROAD_FIT_V,
+                       rd=done, rt=len(tracks))
 
 
 def warm(factory: sessionmaker[Session]) -> None:

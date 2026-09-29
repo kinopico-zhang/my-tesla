@@ -10,21 +10,19 @@ def test_config_empty_without_env(auth, monkeypatch):
     monkeypatch.delenv("AMAP_KEY", raising=False)
     monkeypatch.delenv("AMAP_SECURITY_CODE", raising=False)
     monkeypatch.delenv("AMAP_STYLE", raising=False)
-    monkeypatch.delenv("MAP_PROVIDER", raising=False)
     # 样式默认幻影黑: 底色纯黑配深色 App (用户明确要的观感); 官方深色样式
     # 按设计不带地名, 要地名走设置页 (极夜蓝或自建样式 ID)
     assert auth.get("/tesla/map/api/config").json() == \
-        {"provider": "amap", "amap_key": None, "security_code": None,
-         "style": "amap://styles/dark"}
+        {"amap_key": None, "security_code": None, "style": "amap://styles/dark"}
 
 
 def test_config_returns_env_values(auth, monkeypatch):
     monkeypatch.setenv("AMAP_KEY", "abc123")
     monkeypatch.setenv("AMAP_SECURITY_CODE", "sec456")
     monkeypatch.setenv("AMAP_STYLE", "amap://styles/light")
-    monkeypatch.setenv("MAP_PROVIDER", "osm")
+    monkeypatch.setenv("MAP_PROVIDER", "osm")   # 退役的 env, 有也不再看
     assert auth.get("/tesla/map/api/config").json() == \
-        {"provider": "osm", "amap_key": "abc123", "security_code": "sec456",
+        {"amap_key": "abc123", "security_code": "sec456",
          "style": "amap://styles/light"}
 
 

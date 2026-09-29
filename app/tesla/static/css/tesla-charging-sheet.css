@@ -1,13 +1,19 @@
-/* tesla-charging-sheet — index 页样式。拆自 index.html 的内联 <style> (结构化重构, 内容逐字节未动)。 */
+/* tesla-charging-sheet — index 页样式。拆自 index.html 的内联 <style> (结构化重构, 内容逐字节未动)。
+   v11 (2026-09-29): 统计区第二行改三格 —— 总价从占两格收成一格 (用户点名
+   「充电明细总价这个框改到1格宽」), 空出的位置给充电时间格。 */
 /* ---------- 详情 Sheet (iOS 底部弹层) ---------- */
 .sheet-backdrop {
   position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.55);
   opacity: 0; pointer-events: none; transition: opacity .3s;
 }
 .sheet-backdrop.on { opacity: 1; pointer-events: auto; }
-.sheet {
+/* 基座只认 #chg-sheet (用户点名高度贴内容): 3.0 并页后四张弹层共用 .sheet
+   类名, 各自 css 的类规则按加载顺序互相漏 —— trips 的固定高度 82dvh 把
+   这张内容不满一屏的弹层也撑出一截空白; 四张的基座规则各自收口到 id,
+   互不串台, 高度由内容自己决定 (92dvh 只做小屏兜底) */
+#chg-sheet {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 100;
-  margin: 0 auto; max-width: 640px; max-height: 92vh; max-height: 92dvh;
+  margin: 0 auto; max-width: 640px; max-height: 92vh; max-height: calc(var(--shell-h, 100dvh) * .92);
   background: var(--surface); border-radius: 20px 20px 0 0;
   border: 1px solid var(--hairline); border-bottom: 0;
   display: flex; flex-direction: column;
@@ -15,39 +21,39 @@
   transition: transform .38s cubic-bezier(.32,.72,0,1);
   box-shadow: 0 -12px 48px rgba(0,0,0,.5);
 }
-.sheet.on { transform: translateY(0); }
+/* 开态 none (非 translateY(0)): 闲置时弹层不顶独立变换层, 键盘/工具栏
+   折腾后不留旧栅格 (IMG_7556 的壳层丢失)。none↔105% 按单位矩阵插值,
+   滑入滑出照旧 */
+#chg-sheet.on { transform: none; }
 .sheet-grab-zone { padding: 7px 0 3px; touch-action: none; cursor: pointer;
                     -webkit-user-select: none; user-select: none; }
 .sheet-grab { width: 36px; height: 5px; border-radius: 3px; background: #48484a; margin: 0 auto; }
-.sheet-head { position: relative; padding: 6px 18px 13px; border-bottom: 1px solid var(--hairline); }
-.sheet-head h3 { font-size: 17px; font-weight: 700; padding-right: 36px; letter-spacing: -.2px; }
-.sheet-head .sh-loc { font-size: 13px; color: var(--ink-2); margin-top: 2px; padding-right: 36px; }
+.sheet-head { position: relative; padding: 4px 18px 10px; border-bottom: 1px solid var(--hairline); }
+.sheet-head h3 { font-size: 17px; font-weight: 700; letter-spacing: -.2px; }
+/* 日期行: 大标题在左, 快慢充标签钉右上角 (用户点名, 与日期同行) */
+.sheet-head .sh-date-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+/* 右上角标容器: Tesla 附加文字标 + 快慢充 pill (2026-09-27, 与列表卡
+   .cs-tags 同款 —— pill 常驻最右, 字标居其左); 单独一枚 pill 时
+   inline-flex 不影响布局 */
+#chg-sh-tag { display: inline-flex; align-items: center; gap: 6px; }
+.sheet-head .sh-loc { font-size: 13px; color: var(--ink-2); margin-top: 2px; }
 .sheet-head .sh-row { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
-.sheet-close {
-  position: absolute; top: 4px; right: 12px; width: 30px; height: 30px;
-  border-radius: 50%; background: rgba(255,255,255,.09);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 13px; color: var(--ink-2);
-}
-.sheet-body { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 14px 16px calc(30px + env(safe-area-inset-bottom)); }
-.st-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.st { background: #232326; border-radius: 12px; padding: 9px 12px; }
+.sheet-head .sh-row:empty { display: none; }   /* 线缆/类型都没有时不留空行 */
+/* 详情一屏装下 (用户点名: 不超窗口不滚动) —— 正文留白/格距全线收紧 */
+.sheet-body { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 10px 14px calc(16px + env(safe-area-inset-bottom)); }
+/* 统计区两行六格: 一行 = 充入/表计电量 + 续航增加; 二行 = 总价 (一格,
+   2026-09-29 从两格收一格) + 每度价格 + 充电时间 (时长当初看图就有撤掉,
+   这次点名要回, 改口充电时间) —— 曲线里有的 (电量变化/峰值功率) 不上格 */
+.st-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.st { background: #232326; border-radius: 12px; padding: 8px 11px; }
 .st .lb { font-size: 11px; color: var(--ink-2); }
-.st .val { font-size: 16.5px; font-weight: 650; margin-top: 2px; letter-spacing: -.2px; white-space: nowrap; }
+.st .val { font-size: 15.5px; font-weight: 650; margin-top: 2px; letter-spacing: -.2px; white-space: nowrap; }
 .st .val small { font-size: 11px; font-weight: 500; color: var(--ink-2); }
-.sh-chart-title { font-size: 13px; font-weight: 650; margin: 16px 0 6px; display: flex; justify-content: space-between; align-items: center; }
+.sh-chart-title { font-size: 13px; font-weight: 650; margin: 12px 0 4px; display: flex; justify-content: space-between; align-items: center; }
 .sh-chart-title:first-child { margin-top: 2px; }
-#chart-soc { height: 168px; }
-#chart-pw { height: 188px; }
-.sh-addr { font-size: 11.5px; color: var(--ink-3); margin-top: 14px; line-height: 1.5; }
-/* 导航到充电站: 详情顶部通栏, 拉起手机里装了的地图 App */
-.nav-go {
-  display: block; width: 100%; padding: 11px 0; margin-bottom: 10px;
-  border-radius: 12px; font-size: 14.5px; font-weight: 650;
-  color: #7db3f0; background: rgba(125,179,240,.14);
-}
-.nav-go:active { background: rgba(125,179,240,.26); }
-.sheet .spin { margin: 40px auto; display: block; }
+#chart-pw { height: 200px; }
+.sh-addr { font-size: 11.5px; color: var(--ink-3); margin-top: 10px; line-height: 1.5; }
+#chg-sheet .spin { margin: 40px auto; display: block; }
 
 /* ---------- 费用编辑弹窗 (iOS alert 风格) ---------- */
 .alert-backdrop {
@@ -89,21 +95,6 @@
 .al-btns { display: flex; border-top: 1px solid var(--hairline); }
 .al-btn { flex: 1; padding: 13px 0; font-size: 15.5px; color: var(--ink-1); }
 .al-btn + .al-btn { border-left: 1px solid var(--hairline); }
-/* 导航选单: 地图 App 一行一个, 点一个只拉一个 */
-.nav-hint { padding: 3px 16px 0; font-size: 11px; color: var(--ink-3); text-align: center; }
-.nav-apps { margin: 10px 16px 16px; border-radius: 10px; overflow: hidden; }
-.nav-apps button {
-  display: block; width: 100%; padding: 12px 0;
-  font-size: 15px; color: #7db3f0;
-  -webkit-touch-callout: none; user-select: none;   /* 长按隐藏别被系统长按菜单打断 */
-}
-.nav-apps button + button, .nav-restore + button, button + .nav-restore { border-top: 1px solid var(--hairline); }
-.nav-restore { padding: 2px 0 8px; }
-.nav-restore button {
-  display: inline-block; width: auto; padding: 5px 12px; margin: 5px 6px 0 8px;
-  font-size: 12px; border: 1px solid var(--hairline); border-radius: 14px; color: var(--ink-2);
-}
-.nav-apps button:active { background: rgba(255,255,255,.06); }
 .al-strong { font-weight: 650; color: #7db3f0; }
 .al-btn:active, .al-clear:active { background: rgba(255,255,255,.06); }
 
@@ -119,8 +110,11 @@
   width: fit-content; font-size: 11.5px; font-weight: 650; color: #fff;
   background: #e5484d; border: 0; border-radius: 999px; padding: 4.5px 11px;
 }
-/* Sheet 费用块 (可点编辑) */
+/* 总价与每度价格分成两个控件 (用户点名): 总价一格可点补录 (2026-09-29
+   追点「总价这个框改到1格宽」从两格收一格), 补录入口不加 ✎ 一类提示
+   —— 用户点名"怎么设置菜单出来了", 卡片胶囊自带 ✎ 已经够指路;
+   字号 18→17: 一格宽后 320 屏放不下「未记费用」四字 (nowrap 不折行) */
 .st-cost { cursor: pointer; }
+.st-cost .val { font-size: 17px; }
 .st-cost .val.red { color: #e5484d; }   /* 没记费用: 红字提醒 */
 .st-cost:active { background: #2a2a2e; }
-.st-cost .lb::after { content: " ✎"; font-size: 10px; color: var(--ink-3); }

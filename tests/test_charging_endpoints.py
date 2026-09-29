@@ -90,6 +90,26 @@ def test_sessions_sort_orders_with_nulls_last(auth, db):
     assert ids("&sort=duration_desc") == [2, 1, 3]
 
 
+def test_sessions_zero_energy_hidden(auth, db):
+    """0 kWh 幽灵会话不进列表 (用户点名「充电电量 0 的时候默认不显示」):
+    口径跟卡片一致 (energy_added ?? energy_used) —— added 有值哪怕是 0
+    就以它为准, added 缺失才看 used。"""
+    seed_addresses(db)
+    seed_charging(db, id=1)                     # 正常 45 kWh
+    seed_charging(db, id=2, charge_energy_added=0.0,   # 插枪即断的幽灵
+                  charge_energy_used=0.0,
+                  start_date=datetime(2026, 9, 8, 10, 0))
+    seed_charging(db, id=3, charge_energy_added=None,  # added 缺失但表计有数
+                  charge_energy_used=12.5,
+                  start_date=datetime(2026, 9, 9, 10, 0))
+    seed_charging(db, id=4, charge_energy_added=None,  # 两侧全空也藏
+                  charge_energy_used=None,
+                  start_date=datetime(2026, 9, 10, 10, 0))
+    d = auth.get("/tesla/charging/api/sessions").json()
+    assert d["total"] == 2
+    assert [i["id"] for i in d["items"]] == [3, 1]      # 倒序, 幽灵 2/4 不见
+
+
 def test_sessions_type_filter(auth, db):
     seed_addresses(db)
     seed_charging(db, id=1)                      # 快充 (90kW 采样)

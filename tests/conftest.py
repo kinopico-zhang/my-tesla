@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT))
 
 # sys.path 注入必须先于 app 导入 (import 位置告警属预期, 按需豁免)
 from app import account_store, authentication, config, database  # pylint: disable=wrong-import-position
-from app.tesla import tracks_cache  # pylint: disable=wrong-import-position
+from app.tesla import roads_worker, speed_hist_cache, tracks_cache  # pylint: disable=wrong-import-position
 from app.models import UsersBase  # pylint: disable=wrong-import-position
 from app.tesla.models import Base, OwnBase  # pylint: disable=wrong-import-position
 import app.main as m  # pylint: disable=wrong-import-position
@@ -32,6 +32,13 @@ TEST_PASS = "unit-test-pass"
 def isolate(tmp_path, monkeypatch):
     """每个用例独立: TeslaMate 镜像库 / 自有库 / 账号库 / 会话密钥 /
     登录限速 / 轨迹缓存互不串扰。"""
+    # sqlite 排序溢出的临时文件钉到 tmp_path 名下 (随 --basetemp 落大盘):
+    # NAS 的 /tmp 是 64MB 内存盘, 被 QNAP 系统文件占到 98% 时 ORDER BY
+    # 溢出直接报 "database or disk is full" (2026-09-28 trips 33k 行
+    # 排序用例实锤, 与 09-24 线上 503 同根)
+    sqlite_tmp = tmp_path / "sqlite-tmp"
+    sqlite_tmp.mkdir()
+    monkeypatch.setenv("SQLITE_TMPDIR", str(sqlite_tmp))
     database.init_engine(f"sqlite:///{tmp_path / 'test.db'}")
     Base.metadata.create_all(database.engine())
     database.init_own_engine(f"sqlite:///{tmp_path / 'mytesla.db'}")
@@ -57,7 +64,11 @@ def isolate(tmp_path, monkeypatch):
                             authentication._compute_legacy_secret(secret)))  # pylint: disable=protected-access
     monkeypatch.setattr(authentication, "_login_fails", {})
     tracks_cache.reset()
+    speed_hist_cache.reset()
+    roads_worker.reset()   # 拟合 worker: 收掉上个案可能起过的线程, 清记账
     monkeypatch.setenv("MAP_CACHE_FILE", str(tmp_path / "tracks_cache.json"))
+    monkeypatch.setenv("SPEED_HIST_CACHE_FILE",
+                       str(tmp_path / "speed_hist_cache.json"))
     # TeslaMate 地址固定走环境变量短路: build_db_url 永不落到 docker inspect
     # (有真容器的机器上测试会静默依赖本机 docker, CI 无 docker 直接炸)
     monkeypatch.setenv("TMDB_HOST", "127.0.0.1")

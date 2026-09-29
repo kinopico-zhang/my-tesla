@@ -1,17 +1,18 @@
 // view/trips-list-page.js — 行程列表视图 (壳版 1/6): 底座 —— 筛选状态
-// (state, 偏好持久化进 shellState.filters.trips; 时间档上移抽屉全局) +
+// (state, 偏好持久化进 shellState.filters.trips; 时间档是筛选条全局 chip) +
 // 行程卡片渲染与尾部状态 + 视图生命周期 (registerView: 首进才拉列表/
 // 起终点树/预载地图引擎, 离开时收弹层/掐在途打开/退多选)。
 // 旧版 (js/trips-list-page.js) 的 $/esc/格式化解构/getJSON/toast 全部上移
-// 壳公共件; TIME_RANGES/日历/URL 解析删 (tesla-time-range / tesla-shell);
+// 壳公共件; TIME_RANGES/日历/URL 解析删 (tesla-shell; 时间档模块 3.3.0 已随筛选下线);
 // 文件名沿用旧名 (命名普查按 basename 折叠, 旧页与壳版同名不同目录)。
 /* global $, esc, num, fmtCardDate, fmtDur, shellState, saveShell,
-          registerView, bindGestures, loadMore, pickCard, openTrip,
+          registerView, bindGestures, loadMore, pickCard, openTrip, openDrvPick,
           PRELOAD_PX, exitSelect, closeTrip, hideSheet, curKey, rec,
-          stopRecExport, ensureAMap, trFetchRegions, bumpOpenSeq */
+          sheetFrom: writable, stopRecExport, ensureAMap, trFetchRegions,
+          bumpOpenSeq */
 /* exported postJSON, TR_PAGE, KM_BUCKETS, state, trackCache, driversCache,
-            items, listEl, tailEl, renderCard, setTail, refreshList,
-            trSaveFilters */
+            items, listEl, tailEl, renderCard, marqueeCards, setTail,
+            refreshList, trSaveFilters, sheetFrom */   // sheetFrom 只写不清 (离开视图清宿主), exported 豁免
 "use strict";
 
 /* postJSON: 驾驶员标注等写操作用 (trips-sheet-driver.js); tesla-common 只
@@ -37,8 +38,7 @@ const KM_BUCKETS = [
   { v: "300+", lb: "300km 以上", min: 300, max: null },
 ];
 
-/* 筛选偏好: 上次用过的住 localStorage; 时间档不在这 (抽屉全局,
-   tesla-time-range) */
+/* 筛选偏好: 上次用过的住 localStorage (时间筛选 3.3.0 下线, 不在筛选之列) */
 const savedTr = shellState.filters.trips || {};
 const state = {
   fromLoc: typeof savedTr.fromLoc === "string" ? savedTr.fromLoc : "",
@@ -60,14 +60,25 @@ const items = [];                   // 已加载卡片数据 (与 #list 子元�
 const listEl = $("#list");
 
 /* ============================ 行程列表 (单列) ============================ */
+/* 起终点短地名 (用户点名改口径): 只看省市区链, 取「城市 + 最小行政级」
+   —— 链是 [省, 市, 区] 取后两段 (市 · 区), [省, 市] 取市, 地名 (POI) 不再
+   混进来; 解析不出链 (如直辖市旧数据) 退回整链 (from/to 是洗过的)。
+   充电列表的 fmtPlaceShort 是另一套 (区 · 地名), 互不相扰 */
+function shortPlace(region, full) {
+  const seg = (region || "").split(" · ").filter(Boolean);
+  const pp = seg.length >= 3 ? seg.slice(-2) : seg.slice(-1);
+  return pp.length ? pp.join(" · ") : full;
+}
+
 function renderCard(it) {
   const el = document.createElement("article");
   el.className = "card-t"; el.dataset.id = it.id;
-  const avg = it.km != null && it.min ? Math.round(it.km / (it.min / 60)) : null;
+  const fromP = shortPlace(it.from_region, it.from);
+  const toP = shortPlace(it.to_region, it.to);
   el.innerHTML = `
     <div class="ct-top">
       <span class="ct-date">${esc(fmtCardDate(it.start))}</span>
-      ${it.driver ?   /* 驾驶员挪行右上角 (轨迹入口按钮已撤, 整行可点开) */
+      ${it.driver ?   /* 驾驶员 pill 点一下直选标注 (用户点名, 不用进详情) */
         `<span class="ct-drv${it.driver_id != null ? "" : " def"}">${esc(it.driver)}</span>` : ""}
       <span class="pick" aria-hidden="true"></span>
     </div>
@@ -78,17 +89,35 @@ function renderCard(it) {
       ${it.kwh != null ? `<div class="ct-cell"><div class="lb">总电耗</div>
         <div class="val">${num(it.kwh)}<small>kWh</small></div></div>` : ""}
     </div>
-    <div class="ct-addr">
-      <div class="line from"><i class="dot"></i><span class="txt">${esc(it.from)}</span></div>
-      <div class="line to"><i class="dot"></i><span class="txt">${esc(it.to)}</span></div>
-    </div>
-    <div class="ct-sub">${avg ? `均速 ${avg} km/h` : ""}${avg && it.wh_per_km != null ? " · " : ""}${it.wh_per_km != null ? `平均电耗 ${num(it.wh_per_km, 0)} Wh/km` : ""}</div>`;
-  el.addEventListener("click", () => {
+    <div class="ct-addr mq-line"><span class="mq-run"><i class="dot f"></i>${esc(fromP)}<span class="arr">→</span><i class="dot t"></i>${esc(toP)}</span></div>`;
+  el.addEventListener("click", e => {
+    if (e.target.closest(".ct-drv")) { openDrvPick(it); return; }   // 驾驶员直选
     if (document.body.classList.contains("selecting")) pickCard(el);
     else openTrip(it);
   });
   return el;
 }
+
+/* 起终点一行 (用户点名): 放得下静止, 放不下挂 .marquee 来回滚 —— 音乐
+   迷你条同款, 两端各停一拍 (10% 行程) 再往回走。卡片进 DOM 后量宽;
+   转屏/改窗口行宽变了要重量 (防抖)。列表没显示时量不出宽, 跳过不挂。 */
+function marqueeCards() {
+  for (const line of listEl.querySelectorAll(".mq-line")) {
+    const run = line.querySelector(".mq-run");
+    run.classList.remove("marquee");
+    if (!line.clientWidth) continue;         // 视图藏着 (display:none): 量不出
+    const over = run.scrollWidth - line.clientWidth;
+    if (over <= 2) continue;                 // 放得下: 不滚
+    run.style.setProperty("--mq-dx", `${-over}px`);
+    run.style.setProperty("--mq-dur", `${Math.max(8, over / 18)}s`);
+    run.classList.add("marquee");
+  }
+}
+let mqTimer = 0;
+addEventListener("resize", () => {
+  clearTimeout(mqTimer);
+  mqTimer = setTimeout(marqueeCards, 200);
+});
 
 /* 尾部 id 加 tr- 前缀: 壳里统计视图已占了 errbox/errmsg/retry/loader-spin
    (P3 先到先得), 行程这边的同名者让路 */
@@ -104,7 +133,7 @@ function setTail() {
 
 const trScroll = $("#tr-scroll");
 
-/* ---------- 整页刷新 (下拉刷新/抽屉刷新钮/换车/换时间档都走这) ---------- */
+/* ---------- 整页刷新 (下拉刷新/换车/换时间档都走这) ---------- */
 async function refreshList() {
   if (state.loading) return;
   items.length = 0;
@@ -122,7 +151,7 @@ new IntersectionObserver(es => {
 
 $("#tr-retry").addEventListener("click", () => { state.err = null; loadMore(); });
 
-/* 手势: 列表滚动器右划开抽屉 / 在顶下拉刷新 */
+/* 手势: 列表滚动器在顶下拉刷新 */
 bindGestures(trScroll, { drawer: true, ptr: true, onRefresh: refreshList });
 
 /* ============================ 生命周期 ============================ */
@@ -141,6 +170,7 @@ registerView("trips", {
      检查失效) / 导出录制 / 弹层 (含地址栏镜像) / 多选态 */
   hide() {
     bumpOpenSeq();
+    sheetFrom = null;   // 主动离开行程视图 (底栈换页等): 关弹层不再拽回分组页
     if (rec) stopRecExport(true);
     if (curKey != null) closeTrip();
     else if ($("#sheet").classList.contains("show")) hideSheet();

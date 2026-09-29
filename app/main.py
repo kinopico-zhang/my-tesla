@@ -28,7 +28,8 @@ from .home import STATIC_DIR as HOME_STATIC_DIR
 from .home import accounts_api, middleware as home_middleware
 from .home import pages as home_pages, session_api
 from .models import UsersBase
-from .tesla import settings_store, tracks_cache
+from .tesla import (roads_worker, settings_store, speed_hist_cache,
+                    tracks_cache)
 from .tesla.models import OwnBase
 from .tesla.routers import (charging as charging_routes,
                             changelog as changelog_routes,
@@ -45,9 +46,17 @@ def _migrate_own_db() -> None:
         if "amap_style" not in cols:   # v: 高德地图样式 (设置页可换, 三页地图共用)
             conn.exec_driver_sql(
                 "ALTER TABLE app_settings ADD COLUMN amap_style TEXT NOT NULL DEFAULT ''")
-        if "map_provider" not in cols:  # v: 地图服务商 (高德/OSM, 设置页切换)
+        if "map_provider" not in cols:  # v: 地图服务商 (2026-09-25 起只留高德,
+            # 列不再读写; 已装库的列留着, 迁移测试仍盖着加列路径)
             conn.exec_driver_sql(
                 "ALTER TABLE app_settings ADD COLUMN map_provider TEXT NOT NULL DEFAULT ''")
+        if "amap_web_key" not in cols:  # v: 高德 Web 服务 key (足迹道路拟合)
+            conn.exec_driver_sql(
+                "ALTER TABLE app_settings ADD COLUMN amap_web_key TEXT NOT NULL DEFAULT ''")
+        rcols = {r[1] for r in conn.exec_driver_sql("PRAGMA table_info(drive_roads)")}
+        if "gaps" not in rcols:  # v: 推断层顶点区间 (可能走过, 虚线渲染)
+            conn.exec_driver_sql(
+                "ALTER TABLE drive_roads ADD COLUMN gaps VARCHAR NOT NULL DEFAULT '[]'")
 
 
 @asynccontextmanager
@@ -75,6 +84,14 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     # 后台预热轨迹缓存 (全量下采样 ~15s, 不阻塞启动)
     threading.Thread(target=tracks_cache.warm,
                      args=(database.session_factory(),), daemon=True).start()
+    # 速度直方图预热 (行车采样积分, 冷启全量 ~60s; 有盘缓存时秒级)
+    threading.Thread(target=speed_hist_cache.warm,
+                     args=(database.session_factory(),), daemon=True).start()
+    # 足迹「走过之路」拟合 worker (高德纠偏回填, 没配 Web 服务 key 就空转;
+    # worker 自身先睡 90s 让两条预热先跑)
+    threading.Thread(target=roads_worker.start,
+                     args=(database.session_factory(),
+                           database.own_session_factory()), daemon=True).start()
     yield
     database.dispose_engine()
     database.dispose_own_engine()

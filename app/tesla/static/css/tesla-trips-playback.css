@@ -1,13 +1,18 @@
 /* tesla-trips-playback — trips 页样式。拆自 trips.html 的内联 <style> (结构化重构, 内容逐字节未动)。 */
 /* ---------- 播放控制条 ---------- */
-.playbar {   /* 浮层胶囊: 贴弹层底部; 地图已 margin-bottom 让位, 不再压住轨迹 */
-  position: absolute; left: 14px; right: 14px;
-  bottom: calc(env(safe-area-inset-bottom) + 16px);
-  z-index: 6; display: flex; align-items: center; gap: 10px;
+.playbar {   /* 轨迹页数字带下的一行 (2026-09-27 随三页独立住回轨迹页 ——
+  各页自有布局恒定, 不再随翻页收放; 视觉栈照旧: 地图↑数字带↑播放条)。
+  更早沿革: 2026-09-25 三页等高修平时曾挪出分页当公共带 + 二三页整带收放
+  (#sheet.no-band), 带子一收一还地图就变一次大小 —— 「地图大小变来变去」
+  正是这么来的, 整套撤掉; 2026-09-22 用户点名「播放按钮不要放在地图里
+  面」+ 底部空间没吃满 / 控制框周围黑边 —— 不浮地图里也不留让位带, 不播
+  时整行收掉 ([hidden] !important) 不占位; 浮层投影一并撤掉: 深底上那圈
+  黑影正是「周围有黑边」的观感来源; 胶囊玻璃底照旧 */
+  flex: none; margin: 8px 0 0;
+  display: flex; align-items: center; gap: 10px;
   padding: 9px 12px; border-radius: 999px;
   background: rgba(22,24,29,.82);
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 6px 18px rgba(0,0,0,.35);
 }
 .pb-btn {
   flex: none; width: 32px; height: 32px; border-radius: 50%;
@@ -22,11 +27,22 @@
   font-variant-numeric: tabular-nums;
 }
 .pb-seek {   /* min-width: 0 必须: flex 项默认 min-width:auto = 控件内在宽
-  (进度条 Chromium 129px / Safari 更宽), 窄屏时把 +/- 视角钮挤出屏幕右缘 */
-  flex: 1; min-width: 0;
+  (进度条 Chromium 129px / Safari 更宽), 窄屏时把倍速/录制钮挤出屏幕右缘。
+  touch-action: none: 播放条住回横滚分页里的轨迹页 (2026-09-27), 拖进度
+  的横向手势别漏给原生滚页或任何别的横向消费方 (切页转发就不认 .pb-seek
+  起手, 见 trips-sheet-stats) */
+  flex: 1; min-width: 0; touch-action: none;
   -webkit-appearance: none; appearance: none; height: 28px; background: transparent; cursor: pointer; }
-/* 视角基线微调: 整条随速变焦曲线平移 (慢近快远不变, 只挪基准远近) */
-.pb-zoom { flex: none; display: flex; align-items: center; gap: 3px; }
+/* 视角基线微调: 整条随速变焦曲线平移 (慢近快远不变, 只挪基准远近)。
+   从播放条挪出来, 浮在地图右下角 (用户点名) —— 播放条同款玻璃胶囊 */
+.pb-zoom {
+  position: absolute; right: 10px; bottom: 10px; z-index: 12;
+  display: flex; align-items: center; gap: 3px;
+  padding: 5px 7px; border-radius: 999px;
+  background: rgba(22,24,29,.82);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+}
 .pb-zb {
   flex: none; width: 26px; height: 26px; border-radius: 50%;
   background: var(--surface-3); color: var(--ink-1); font-size: 15px; line-height: 1;
@@ -42,13 +58,15 @@
   height: 4px; border-radius: 2px;
   background: linear-gradient(to right, var(--blue) var(--pb, 0%), var(--surface-3) var(--pb, 0%));
 }
+/* 圆钮不用白 (用户点名「不要使用白色」) 也不要那圈黑影 (用户点名「不要
+   边框」): 跟进度线同蓝, 位置直接看线端 */
 .pb-seek::-webkit-slider-thumb {
   -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%;
-  background: #fff; margin-top: -5.5px; box-shadow: 0 1px 4px rgba(0,0,0,.55);
+  background: var(--blue); margin-top: -5.5px;
 }
 .pb-seek::-moz-range-track { height: 4px; border-radius: 2px; background: var(--surface-3); }
 .pb-seek::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--blue); }
-.pb-seek::-moz-range-thumb { width: 15px; height: 15px; border: 0; border-radius: 50%; background: #fff; }
+.pb-seek::-moz-range-thumb { width: 15px; height: 15px; border: 0; border-radius: 50%; background: var(--blue); }
 
 /* ---------- 导出视频 ---------- */
 #pb-rec .rec-dot {   /* 录制点: 平时灰, 录制中红 + 呼吸 */

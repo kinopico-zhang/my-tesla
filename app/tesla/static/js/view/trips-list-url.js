@@ -2,11 +2,10 @@
 // (PRELOAD_PX 预载区, 首屏不满"视口+预载区"链式补载) 与筛选变化 resetList。
 // 旧版 (js/trips-list-url.js) 的地址栏一族 (filterQS/listURL/urlTripKey/
 // syncURL/setTimeRange) 全删: 3.0 壳零历史条目, 筛选住 localStorage
-// (tesla-shell), 打开的行程由弹层自己 replaceState 镜像 (trips-sheet-open);
-// 时间档上移抽屉全局 (tesla-time-range 的 timeRangeParams 直接穿参)。
+// (tesla-shell), 打开的行程由弹层自己 replaceState 镜像 (trips-sheet-open)。
 // 文件名沿用旧名 (命名普查按 basename 折叠, 旧页与壳版同名不同目录)。
-/* global getJSON, TR_PAGE, KM_BUCKETS, timeRangeParams, shellState, state,
-   items, listEl, tailEl, renderCard, setTail, PRELOAD_PX */
+/* global getJSON, TR_PAGE, KM_BUCKETS, shellState, state,
+   items, listEl, tailEl, renderCard, marqueeCards, setTail, PRELOAD_PX */
 /* exported loadMore, resetList */
 "use strict";
 
@@ -14,9 +13,8 @@ async function loadMore() {
   if (state.loading || state.done) return;
   state.loading = true; state.err = null; setTail();
   try {
-    /* 时间档全局 (抽屉): {from?, to?} 直接摊平; 车与行程筛选各自拼 */
-    const p = new URLSearchParams({ offset: state.offset, limit: TR_PAGE,
-                                     ...timeRangeParams() });
+    /* 车与行程筛选各自拼 (时间不筛, 全时段) */
+    const p = new URLSearchParams({ offset: state.offset, limit: TR_PAGE });
     if (shellState.carId != null) p.set("car_id", String(shellState.carId));
     if (state.fromLoc) p.set("from_loc", state.fromLoc);
     if (state.toLoc) p.set("to_loc", state.toLoc);
@@ -28,6 +26,7 @@ async function loadMore() {
     state.total = d.total; state.offset += d.items.length;
     if (state.offset >= d.total) state.done = true;
     d.items.forEach(it => { items.push(it); listEl.appendChild(renderCard(it)); });
+    marqueeCards();   // 新卡进 DOM 了, 量一遍起终点行的溢出
   } catch (e) {
     state.err = "数据加载失败: " + e.message;
   }

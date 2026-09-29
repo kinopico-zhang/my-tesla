@@ -8,7 +8,7 @@ import math
 from typing import NamedTuple
 from collections.abc import Sequence
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from ...models import Position, TrackFill
@@ -20,9 +20,22 @@ EARTH_RADIUS_KM = 6371.0
 GAP_ANCHOR_MAX_KM = 0.15   # 断档端点离真实轨迹点多近才算锚上 (规划结果与采样本就有几十米差)
 
 
+def _drive_of(p: Position) -> int:
+    """挂的行程 id —— 本管线的点位都按 drive_id 过滤来着 (列可空是停车充电采样)。"""
+    assert p.drive_id is not None
+    return p.drive_id
+
+
+def fills_version(session: Session) -> int:
+    """自有库补路版本号 (track_fills 最大行号, 0 = 还没有补路): 轨迹类
+    接口 ETag 的变更分量 —— 已结束行程的 positions 在 TeslaMate 里不可变,
+    会让轨迹响应变的只有补路 (单条/合并都在服务端拼入补点)。一次
+    SELECT max(id), 304 重校验不必重算轨迹。"""
+    return session.scalar(select(func.max(TrackFill.id))) or 0
+
+
 def _wgs_km(a: Sequence[float], b: Sequence[float]) -> float:
-    """两个 WGS [lng, lat] 点的近似球面距离 (等距圆柱投影, 与前端
-    TrackUtil.ptDistKm 同口径)。"""
+    """两个 WGS [lng, lat] 点的近似球面距离 (等距圆柱投影, 同前端 TrackUtil.ptDistKm)。"""
     mid_lat = math.radians((a[1] + b[1]) / 2)
     dx = math.radians(b[0] - a[0]) * math.cos(mid_lat)
     dy = math.radians(b[1] - a[1])
@@ -38,6 +51,7 @@ class _TrackPoint(NamedTuple):
     lat: float
     speed: float
     power: float | None
+    elevation: float | None   # 海拔米: 原始采样可带, 补路点没有 (None)
 
 
 def _interpolated_fill(a: Position, b: Position,
@@ -58,20 +72,19 @@ def _interpolated_fill(a: Position, b: Position,
     anchors = {(round(a.longitude, 5), round(a.latitude, 5)),
                (round(b.longitude, 5), round(b.latitude, 5))}
     return [_TrackPoint(
-        a.drive_id,
+        _drive_of(a),
         a.date + timedelta(seconds=span * f),
         round(float(lng), 5), round(float(lat), 5),
-        round(speed_a + (speed_b - speed_a) * f, 1), None)
+        round(speed_a + (speed_b - speed_a) * f, 1), None, None)
         for (lng, lat), f in zip(path, frac)
         if (round(float(lng), 5), round(float(lat), 5)) not in anchors]
 
 
 def _fill_points(own: Session,
                  positions: Sequence[Position]) -> dict[int, list[_TrackPoint]]:
-    """读自有库断档补路, 按 a_pos_id 返回待插入的补路点。
-
+    """读自有库断档补路, 按 a_pos_id 返回待插入的补路点;
     锚点行不在本次轨迹里 (理论上不会发生) 就整条跳过。"""
-    drive_ids = sorted({p.drive_id for p in positions})
+    drive_ids = sorted({_drive_of(p) for p in positions})
     fills = own.scalars(
         select(TrackFill).where(TrackFill.drive_id.in_(drive_ids))).all()
     by_id = {p.id: p for p in positions}
@@ -97,8 +110,9 @@ def _track_points(own: Session, positions: Sequence[Position]
     返回 (points, fill_indices): 补路点在 points 里的下标集合 —— 它们
     本就稀疏珍贵, 下采样时全部保留, 不能被等间隔抽掉 (抽掉等于白补)。
     """
-    pts = [_TrackPoint(p.drive_id, p.date, round(float(p.longitude), 5),
-                       round(float(p.latitude), 5), p.speed or 0.0, p.power)
+    pts = [_TrackPoint(_drive_of(p), p.date, round(float(p.longitude), 5),
+                       round(float(p.latitude), 5), p.speed or 0.0, p.power,
+                       p.elevation)
            for p in positions]
     fills = _fill_points(own, positions)
     if not fills:

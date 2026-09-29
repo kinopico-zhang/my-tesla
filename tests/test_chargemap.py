@@ -88,17 +88,25 @@ def test_map_locations_empty(auth, db):
 
 # ---------------------------------------------------------------- 视图
 def test_chargemap_view_skeleton(auth):
-    """充电地图视图: 全屏热力图 + 三视图度量切换 + 颜色梯度图例 + 点击就近
+    """充电地图视图: 圆角矩形地图 + 三视角度量 pills + 颜色梯度图例 + 点击就近
     取点弹详情 (壳内撞名 id 加 cm- 前缀, 裸 #map/#legend/#keyhint 归别的
-    视图; 生命周期/手势断言在 test_shell_views)。"""
+    视图; 生命周期/手势断言在 test_shell_views)。2026-09-27 用户点名两轮:
+    先「地图要放在一个圆角矩形里 / 视图切换和图例放到一个水平线上」,
+    再「图例放在地图内部左下角, 视图切换按钮居中放在地图外部下方」+
+    「缩放的时候, 最大值最小值要动态的变化, 根据视野内的数字计算。
+    最大值的颜色一直是红色的, 最小值是蓝色」「上面的三个数字也要跟着变,
+    显示视野内的数据」: 图例回画布内左下角浮卡, 极值/汇总三数/热力归一
+    全按视野内地点算 (平移/缩放收尾 updateViewport 重算)。"""
     html = served_page(auth, "/tesla")
     for frag in [
         'id="view-chargemap"', 'data-view="chargemap"',
         'id="cm-map"',
-        'registerChips("chargemap"',                            # 度量收进屏底筛选条
-        '"视角: " + cmViews[cmMode].lb',                        # chip 文案随度量走
-        'id="st-places"', 'id="st-sessions"', 'id="st-energy"',   # 汇总行
-        'id="cm-legend"', 'id="lg-mode"', 'id="lg-ramp"', 'id="lg-row"',   # 热力图例
+        'class="mini-seg cm-views" id="cm-views"',            # 度量 pills (地图外脚下, 居中)
+        'data-v="energy">充电电量', 'data-v="sessions">充电次数',
+        'data-v="cost">充电费用',
+        'function cmSyncViews()',                              # 换档亮灯 + 重画热力
+        'id="st-places"', 'id="st-sessions"', 'id="st-energy"',   # 汇总行 (视野内口径)
+        'id="cm-legend"', 'id="lg-ramp"', 'id="lg-row"',       # 热力图例 (画布内左下角)
         'id="sh-name"', 'id="sh-sessions"', 'id="sh-fast"',
         'id="sh-energy"', 'id="sh-cost"',                          # 详情弹层
         'id="cm-keyhint"', 'id="cm-zin"', 'id="cm-zout"',          # Key 引导 + 缩放钮
@@ -111,12 +119,33 @@ def test_chargemap_view_skeleton(auth):
         '"/tesla/map/api/config?_="',                              # 高德配置 (Key/样式)
         "const cmViews = {",                                       # 三视图 (壳内防撞名前缀)
         "renderLegend", "setFitView", "gradientCss",
+        "visibleLocations", "updateViewport",                      # 视野内极值/汇总
+        'for (const ev of ["moveend", "zoomend"]) cmMap.on(ev, updateViewport)',
+        "hmNormMax",                                               # 热力归一跟视野最大走 (红端)
         "gesturestart",                                            # iOS 双指缩放防劫持
         "cmSaveFilters",                                           # 度量偏好持久化 (替代旧 syncURL)
     ]:
         assert frag in html, f"充电地图视图缺少 {frag}"
-    # 度量切换收进屏底筛选条 (摘要条不放控件, 时间档在抽屉) —— 顶部不再
-    # 留任何筛选控件 (用户点名: 所有页面的筛选都在屏底固定位置)
+    # 地图套圆角矩形卡片 (侧距 16px 对齐 .map-head, 与状态页地图卡同款)
+    assert "#view-chargemap .map-stage {" in html
+    for frag in ("margin: 10px 16px 0", "border-radius: 16px",
+                 "border: 1px solid var(--hairline)", "overflow: hidden"):
+        assert frag in html[html.index("#view-chargemap .map-stage {"):
+                            html.index("}", html.index("#view-chargemap .map-stage {"))], \
+            f"地图圆角矩形缺 {frag}"
+    # 脚下只剩度量 pills 一件, 整行居中 (底距吃 --bar-clear)
+    assert ".cm-foot {" in html and ".cm-views { flex: none; }" in html
+    assert "justify-content: center" in html[html.index(".cm-foot {"):
+                                       html.index("}", html.index(".cm-foot {"))]
+    assert '<div class="legend" id="cm-legend" hidden>' in html
+    # 图例浮在画布内左下角 (磨砂浮卡), 与缩放钮 (右下角) 分居两侧
+    lg = html[html.index(".legend {"):html.index("}", html.index(".legend {"))]
+    for frag in ("position: absolute", "left: 14px", "bottom: 14px"):
+        assert frag in lg, f"图例画布内左下角缺 {frag}"
+    # 度量切换退役的两件不许回潮: 屏底筛选条 chip 与图例档名行
+    assert 'registerChips("chargemap"' not in html
+    assert '"视角: " + cmViews[cmMode].lb' not in html
+    assert 'id="lg-mode"' not in html
     assert 'id="view-seg"' not in html
 
 

@@ -25,7 +25,8 @@ def init_own_engine(url: str | None = None) -> None:
         if str(parent):
             parent.mkdir(parents=True, exist_ok=True)
     _OwnEngineState.engine = create_engine(
-        url, connect_args={"check_same_thread": False})   # 请求线程池会换线程复用连接
+        url, connect_args={"check_same_thread": False,   # 请求线程池会换线程复用连接
+                           "timeout": 30})   # 足迹道路 worker 写库 vs API 读并发, busy 等待加长
     _OwnEngineState.factory = sessionmaker(_OwnEngineState.engine,
                                            expire_on_commit=False)
 

@@ -22,7 +22,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
                "Helvetica Neue", system-ui, sans-serif;
   font-size: 14px; line-height: 1.45;
-  min-height: 100vh; min-height: 100dvh;
+  /* body 尺寸只在 tesla-base.css 定 (var(--shell-h)): 这里再定 100dvh 会盖掉钉高 */
 }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
 /* 触屏双击控件不再触发整页放大 (manipulation 保留平移/捏合, 只去掉双击缩放) */
@@ -94,23 +94,44 @@ header {
   .nav-menu .menu { left: 12px; right: 12px; }
 }
 
-/* ---------- 分组列表 (样式承接行程页分组面板, 面板已删) ---------- */
-.sec-head { display: flex; align-items: baseline; gap: 8px; padding: 16px 16px 4px; }
-.sec-head h2 { font-size: 17px; font-weight: 650; letter-spacing: -.2px; }
-.count-badge { font-size: 12px; color: var(--ink-3); }
-.gp-list { padding: 4px 16px calc(env(safe-area-inset-bottom) + 20px); }
-.gp-item { display: flex; align-items: center; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--hairline); }
-.gp-main { flex: 1; min-width: 0; text-align: left; }
-.gp-name {
-  font-size: 15px; font-weight: 600; color: var(--ink-1);
+/* ---------- 分组列表 (卡片化, 2026-09-22 对齐行程列表: 卡底/统计格用
+   tesla-trips-cards.css 的 .card-t/.ct-cells 同一套, 这里只补分组自己的件) ---------- */
+.sec-head { display: flex; align-items: baseline; gap: 8px; padding: 0 16px 4px; }
+/* 页面级标题 26px (用户点名对齐音乐 App 大标题; 三份副本一起改) */
+.sec-head h2 { font-size: 26px; font-weight: 700; letter-spacing: -.5px; }
+/* 条数副题 (N 组) 加大 (2026-09-22 用户点名: 12px 太小, 14px 还嫌小,
+   再放大到 16px; 三份副本 charging-cards/groups/trips-page 一起改) */
+.count-badge { font-size: 16px; color: var(--ink-3); }
+.gp-list { display: flex; flex-direction: column; gap: 10px;
+  padding: 8px 14px calc(env(safe-area-inset-bottom) + 20px); }
+@media (max-width: 719px) { .gp-list { padding-left: 12px; padding-right: 12px; } }
+.gp-name {   /* 卡片主名: 分组的身份就是名字, 比行程卡的日期行重一档 */
+  font-size: 15px; font-weight: 650; color: var(--ink-1);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.gp-meta { font-size: 12px; color: var(--ink-3); margin-top: 3px; }
+.gp-count {  /* 段数 pill: 行程卡驾驶员 pill 同款 */
+  flex: none; font-size: 10.5px; color: var(--ink-2);
+  background: rgba(255,255,255,.08); padding: 2.5px 9px; border-radius: 999px;
+}
+/* 跨度格子三重修复 (2026-09-25 用户两轮实报「还是显示不全」):
+   1) 旧 .gp-span { font-size: 15px } 特异性 (0,1,0) 永远输给后加载的
+      trips-cards .ct-cell .val (0,2,0), 从未生效 —— 跨度一直按 17px 渲染;
+      这里 .gp-list .val.gp-span 抬到 (0,3,0) 才真收一档。
+   2) 服务端日期改紧凑斜杠 (2026/09/09): 比连字符窄, 且斜杠是干净断行点。
+   3) nowrap/省略号改 normal: 真装不下按 / 换行, 保底显示全, 不再截尾。 */
+.gp-list .val.gp-span { font-size: 15px; white-space: normal; }
+/* 跨度没显示全第一轮 (2026-09-25): 行程卡的统计格对半分 (flex:1) 是给
+   短数值设计的, 跨度是日期串在半格里必触发省略号截尾。里程格数值短,
+   收成按内容宽, 跨度格吃剩下整段 —— 只钉分组卡 (.gp-list 下), 行程卡
+   三格照旧均分 */
+.gp-list .ct-cell:first-child { flex: none; }
+.gp-acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 9px; }
 .gp-act {
   flex: none; font-size: 12.5px; color: var(--ink-2); padding: 6px 10px;
   border-radius: 999px; border: 1px solid var(--hairline);
 }
 .gp-act.arm { color: #ff6961; border-color: rgba(255,105,97,.4); }   /* 删除二次确认态 */
+.gp-edit { display: flex; align-items: center; gap: 8px; }   /* 行内改名: 输入框 + 确定/取消 */
 .gp-input {
   flex: 1; min-width: 0; font-size: 15px; color: var(--ink-1);
   padding: 7px 10px; border-radius: 10px;

@@ -22,7 +22,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
                "Helvetica Neue", system-ui, sans-serif;
   font-size: 14px; line-height: 1.45;
-  min-height: 100vh; min-height: 100dvh;
+  /* body 尺寸只在 tesla-base.css 定 (var(--shell-h)): 这里再定 100dvh 会盖掉钉高 */
 }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
 /* 触屏双击控件不再触发整页放大 (manipulation 保留平移/捏合, 只去掉双击缩放) */
@@ -94,7 +94,7 @@ header {
 
 /* 时间菜单的自定义日历: 月历网格, 同一个日历连点两次 (第一下起点, 第二下终点) */
 .time-menu .tm-custom { border-top: 1px solid var(--hairline); margin-top: 5px; padding-top: 5px; }
-.time-menu .menu { max-height: calc(100vh - 130px); overflow-y: auto; }  /* 矮屏展开日历时兜底滚动 */
+.time-menu .menu { max-height: calc(var(--shell-h, 100vh) - 130px); overflow-y: auto; }  /* 矮屏展开日历时兜底滚动 */
 .tm-dates { padding: 6px 8px 3px; }
 .tm-cal-top { display: flex; align-items: center; gap: 4px; padding: 0 2px 5px; }
 .tm-cal-top b { flex: 1; text-align: center; font-size: 13px; font-weight: 600; }
@@ -118,17 +118,17 @@ header {
 }
 main { max-width: 920px; margin: 0 auto; padding-bottom: 40px; }
 
-/* ---------- 统计卡片横滑行 ---------- */
-.snap-row {
-  display: flex; gap: 10px; overflow-x: auto;
-  scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
-  padding: 12px 14px 6px; scrollbar-width: none;
-}
-.snap-row::-webkit-scrollbar { display: none; }
-.snap-row > * { scroll-snap-align: start; flex: none; }
+/* ---------- 页名 + 统计卡网格 ---------- */
+/* 一级标题 (2026-09-26 界面优化补上, 与其他页同款) */
+.sec-head { display: flex; align-items: baseline; gap: 8px; padding: 0 16px 4px; }
+.sec-head h2 { font-size: 26px; font-weight: 700; letter-spacing: -.5px; }
+/* 统计卡纵向网格 (2026-09-26 用户点名「整体不要有左右滑, 只有上下滑」——
+   原横滑 snap 行退役): 手机两列, 宽屏三列 (六卡两行) */
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 14px 6px; }
+@media (min-width: 720px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } }
 .stat {
-  min-width: 148px; background: var(--surface); border-radius: 16px;
-  padding: 12px 14px; border: 1px solid var(--hairline);
+  background: var(--surface); border-radius: 16px;
+  padding: 12px 14px; border: 1px solid var(--hairline); min-width: 0;
 }
 .stat .lb { font-size: 12px; color: var(--ink-2); }
 .stat .val { font-size: 25px; font-weight: 650; letter-spacing: -.5px; margin-top: 3px; }
@@ -145,18 +145,48 @@ main { max-width: 920px; margin: 0 auto; padding-bottom: 40px; }
 .chart-card .cc-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 8px 0; }
 .chart-card .cc-title { font-size: 14px; font-weight: 650; }
 .chart-card .cc-sub { font-size: 11px; color: var(--ink-3); margin-top: 1px; }
-.mini-seg { display: flex; background: rgba(118,118,128,.24); border-radius: 8px; padding: 2px; }
-.mini-seg button { padding: 3px 9px; border-radius: 6px; font-size: 11px; color: var(--ink-2); }
-.mini-seg button.on { background: #636366; color: #fff; }
 .chart-box { height: 232px; }
-#chart-monthly-cost { height: 118px; }  /* 月费用图矮版 (原内联样式) */
-.chart-table { font-size: 12px; max-height: 232px; overflow-y: auto; }
-.chart-table table { width: 100%; border-collapse: collapse; }
-.chart-table th, .chart-table td { text-align: right; padding: 5px 8px; font-variant-numeric: tabular-nums; }
-.chart-table th { color: var(--ink-3); font-weight: 500; position: sticky; top: 0; background: var(--surface); }
-.chart-table td:first-child, .chart-table th:first-child { text-align: left; padding-left: 4px; }
-.chart-table tbody tr + tr { border-top: 1px solid var(--grid); }
-.chart-table td { color: var(--chart-ink); }
+/* 名字类柱状图 (充电点/地点/司机/城市): 2026-09-28 横向条形改竖排, 名字
+   竖排铺柱底 (每字一行), 7-9 根柱最长的名字要占 7 行 × 12px ≈ 84px ——
+   比横向条形时代多要一截高度, 加高 32px 给标签留位 */
+.chart-box.chart-vlabel { height: 264px; }
+/* 月度趋势卡 (2026-09-27 重做): 表格视图退役, 充电量/充电费用拆两幅柱状,
+   各带一行小标 (名字 + 窗口合计), 底下两图共享的时间窗滑块。
+   2026-09-27 行程统计视图复用同款 (里程/电耗两幅): 月度两幅的降高与
+   滑块轨道样式改类选择器, 不再钉充电视图的 id */
+.chart-monthly-pair { height: 180px; }
+.mc-row { display: flex; align-items: baseline; justify-content: space-between; padding: 10px 4px 2px 0; }
+.mc-name { font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.mc-total { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.mc-slider { padding: 4px 0 0; }
+.mc-ticks { display: flex; justify-content: space-between; padding: 0 3px; font-size: 10px; color: var(--ink-3); }
+/* 时间窗滑块: 轨道 = 全部历史 (素色细轨), 滑块块身 = 12 个月窗口本体 ——
+   宽度由 JS 设 --win (12/N 轨道宽, 数学上块身边缘恰好对准窗口首末月,
+   见 stats-chart-trend), 半透明蓝窗口块压在轨上, 拖着它在历史上平移。
+   touch-action:none + touchstart preventDefault: 拖动手势归自管指针
+   (原生宽钮拖拽会把钮心吸到手指 = 半个窗口的跳变), 手势仲裁同样不认
+   range 起手 (见 tesla-gesture) */
+.mc-slider input[type="range"] {
+  width: 100%; touch-action: none;
+  -webkit-appearance: none; appearance: none; height: 28px;
+  background: transparent; cursor: pointer;
+}
+.mc-slider input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 2px; background: var(--surface-3);
+}
+.mc-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; box-sizing: border-box;
+  width: var(--win, 18px); height: 18px; border-radius: 5px;
+  background: rgba(57,135,229,.32); border: 2px solid var(--blue);
+  margin-top: -7px;
+}
+.mc-slider input[type="range"]::-moz-range-track {
+  height: 4px; border-radius: 2px; background: var(--surface-3);
+}
+.mc-slider input[type="range"]::-moz-range-thumb {
+  box-sizing: border-box; width: var(--win, 18px); height: 18px;
+  border-radius: 5px; background: rgba(57,135,229,.32); border: 2px solid var(--blue);
+}
 
 /* ---------- 加载/错误 ---------- */
 .tail { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 18px 0 40px; }
@@ -172,5 +202,10 @@ main { max-width: 920px; margin: 0 auto; padding-bottom: 40px; }
   padding: 8px 22px; border-radius: 12px; background: var(--surface-2);
   color: var(--ink-1); font-weight: 600; font-size: 13.5px;
 }
-#charts-grid.dim { opacity: .45; pointer-events: none; }
-#charts-grid { transition: opacity .25s; }
+.charts-grid.dim { opacity: .45; pointer-events: none; }
+.charts-grid { transition: opacity .25s; }
+/* 电池健康度页的口径脚注 (2026-09-27 新视图): 弱色小字, 与图卡同宽收在网格里 */
+.bh-note {
+  grid-column: 1 / -1; margin: -6px 2px 0; color: var(--ink-3);
+  font-size: 11.5px; line-height: 1.6;
+}

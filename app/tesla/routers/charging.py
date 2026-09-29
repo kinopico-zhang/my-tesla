@@ -7,9 +7,11 @@ from .. import repository
 from ._common import date_range_or_400
 from ..schemas import (
     CarInfo,
+    BatteryHealth,
     ChargingSessionDetail,
     ChargingSummary,
     ChargingSessionsPage,
+    DistrictStat,
     MonthlyStat,
     LocationStat,
     CostUpdateResult,
@@ -47,6 +49,22 @@ def get_charging_dimensions(
         db: Session = Depends(database.get_db)) -> ChargeDims:
     """充电统计维度聚合: 快慢/开始时段/起充 SOC/峰值功率/城市 (统计页图表)。"""
     return repository.charging_dimensions(db, date_range_or_400(frm, to), car_id)
+
+
+@charging.get("/battery")
+def get_battery_health(
+        car_id: int | None = None,
+        db: Session = Depends(database.get_db)) -> BatteryHealth:
+    """电池健康度: 每日满电续航曲线 + 当前/峰值 (续航与容量), 电池健康页。"""
+    return repository.battery_health(db, car_id)
+
+
+@charging.get("/districts")
+def get_charging_districts(
+        city: str, car_id: int | None = None,
+        db: Session = Depends(database.get_db)) -> list[DistrictStat]:
+    """城市下钻: 某市内的区/县/镇充电分布 (统计页城市图双击展开, 2026-09-27)。"""
+    return repository.district_stats(db, car_id, city)
 
 
 @charging.get("/map-locations")

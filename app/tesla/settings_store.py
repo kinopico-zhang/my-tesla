@@ -18,7 +18,7 @@ from .schemas import (AmapSettings, SettingsState,
                       SettingsUpdate, TeslaMateSettings)
 
 _FIELDS = ("tmdb_host", "tmdb_port", "tmdb_user", "tmdb_password", "tmdb_name",
-           "amap_key", "amap_security_code")
+           "amap_key", "amap_security_code", "amap_web_key")
 
 
 class EngineError(RuntimeError):
@@ -29,12 +29,9 @@ class StyleError(ValueError):
     """地图样式格式不合法 (调用方转 400, 未写库)。"""
 
 
-class ProviderError(ValueError):
-    """地图服务商不认识 (调用方转 400, 未写库)。"""
-
-
-# 地图服务商 (用户点名: 可切换, 支持高德 / OpenStreetMap 等; 空串 = 高德)
-MAP_PROVIDERS = ("amap", "osm")
+# 地图服务商 (2026-09-25 用户点名「地图只保留高德」, 可切换的 OSM 官方源/
+# dhuar 国内镜像整链退役): DB 的 map_provider 列保留但不再读写 (迁移测试
+# 仍盖着加列路径), 读方一律当高德。
 
 
 # 地图样式: amap://styles/<官方样式名或自定义ID>。默认幻影黑 (dark) —— 底色
@@ -101,11 +98,11 @@ def amap_style_value(own: Session) -> str:
             or AMAP_STYLE_DEFAULT)
 
 
-def map_provider_value(own: Session) -> str:
-    """地图服务商现值 (设置行 > env > 高德): amap / osm。
-    OSM 不需要 Key, 选它即开箱即用; 高德仍用存的 Key/样式。"""
-    value = _row(own).map_provider or os.environ.get("MAP_PROVIDER", "")
-    return value if value in MAP_PROVIDERS else "amap"
+def amap_web_key_value(own: Session) -> str:
+    """高德 Web 服务 key 现值 (设置行 > env): 足迹道路拟合 worker 每轮现读,
+    换 key 不用重启。与 JS 端 Key 分开 —— 纠偏/规划是服务端 REST, 要 Web 服务
+    类型的 key (个人实名认证后 1 万次/天)。"""
+    return _row(own).amap_web_key or os.environ.get("AMAP_WEB_KEY", "")
 
 
 def settings_state(own: Session) -> SettingsState:
@@ -119,9 +116,10 @@ def settings_state(own: Session) -> SettingsState:
             host=eff["host"], port=eff["port"], user=eff["user"],
             name=eff["name"], password_set=bool(eff["password"])),
         amap=AmapSettings(
-            provider=map_provider_value(own),
             key_masked=_masked(key), security_code_set=bool(code),
-            style=amap_style_value(own)))
+            style=amap_style_value(own),
+            web_key_masked=_masked(_row(own).amap_web_key
+                                   or os.environ.get("AMAP_WEB_KEY", ""))))
 
 
 def save_settings(own: Session, body: SettingsUpdate) -> tuple[SettingsState, bool]:
@@ -130,22 +128,16 @@ def save_settings(own: Session, body: SettingsUpdate) -> tuple[SettingsState, bo
     TeslaMate 连接串变了 → 换引擎并实测 SELECT 1; 连不上抛 EngineError,
     设置行与引擎都回滚到旧值 (服务不断)。返回 (新状态, 是否换了引擎)。"""
     row = _row(own)
-    provider = body.map_provider.strip()
-    if provider and provider not in MAP_PROVIDERS:
-        raise ProviderError(f"地图服务商不认识: {provider} (可选 {'/'.join(MAP_PROVIDERS)})")
     style = body.amap_style.strip()
     if style and not _STYLE_RE.fullmatch(style):
         raise StyleError(f"地图样式不合法: {style} (应为 amap://styles/<样式名或ID>)")
     old_url = database.build_db_url(effective_tmdb(own))
     old_values = {f: getattr(row, f) for f in _FIELDS}
     old_values["amap_style"] = row.amap_style   # 引擎验证失败要一起回滚
-    old_values["map_provider"] = row.map_provider
     for field in _FIELDS:
         value = getattr(body, field).strip()
         if value:
             setattr(row, field, value)
-    if provider:
-        row.map_provider = provider
     if style:
         row.amap_style = style
     own.commit()

@@ -72,6 +72,7 @@ function stopAnim() {
   if (rec) stopRecExport(true);   // 关弹层/换行程: 录制中的导出一并取消
   releaseScreenAwake();     // 关弹层/换行程都走这, 一并允许熄屏
   $("#playbar").hidden = true;
+  $("#pb-zoom").hidden = true;    // 视角基线 ± 在地图右下角, 跟播放条一起收
 }
 
 /* 播放中点一下地图 = 跳过动画, 直接收尾 (亮线删除, 淡线变亮, 拉远全局) */

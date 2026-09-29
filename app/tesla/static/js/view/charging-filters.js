@@ -1,6 +1,6 @@
 // view/charging-filters.js — 充电记录视图 (壳版 3/6): 屏底筛选条的三枚
 // chips —— 类型/费用/地点 (省市区级联, 旧页同款树与交互, 渲染目标从悬浮
-// 下拉换成 #fb-pop 弹层)。时间档/日历上移抽屉 (tesla-time-range.js)。
+// 下拉换成 #fb-pop 弹层)。时间筛选 3.3.0 下线 (全时段), 条里再无全局 chip。
 /* global esc, getJSON, chgState, chgSaveFilters, chgRefetch, shellState,
           onCarChange, registerChips, refreshBarChips, closeFbPop */
 /* exported chgFetchRegions */
@@ -33,7 +33,7 @@ function buildOptsPop(pop, opts, cur, onPick) {
 /* ---------- 类型 / 费用 ---------- */
 function buildTypePop(pop) {
   buildOptsPop(pop,
-    [{ v: "all", lb: "全部" }, { v: "fast", lb: "⚡ 快充" }, { v: "slow", lb: "🔌 慢充" }],
+    [{ v: "all", lb: "全部" }, { v: "fast", lb: "快充" }, { v: "slow", lb: "慢充" }],
     chgState.type, v => {
       chgState.type = v;
       chgSaveFilters(); refreshBarChips(); chgRefetch();

@@ -72,6 +72,20 @@ def test_accounts_page_and_verify_file(client, auth):  # pylint: disable=unused-
     assert client.get("/whatever.txt").status_code == 404
 
 
+def test_legacy_page_routes_to_shell(auth):
+    """旧页路由搬家: 真深链 (收藏/聊天记录) view= 保留, query 原样跟;
+    唯 /tesla/charging 回裸壳 —— 2.x manifest 的 start_url 烙在已装主屏
+    图标里, 带 view= 会永远压过壳的「记住上次视图」(用户报每次冷启都
+    落充电页), 见 pages.py 同名注释。"""
+    r = auth.get("/tesla/charging", follow_redirects=False)
+    assert r.status_code == 302 and r.headers["location"] == "/tesla"
+    r = auth.get("/tesla/stats", follow_redirects=False)
+    assert r.status_code == 302 and r.headers["location"] == "/tesla?view=stats"
+    # 原有 query 在前, view= 追加在后 (dict 保序)
+    r = auth.get("/tesla/trips?id=5", follow_redirects=False)
+    assert r.status_code == 302 and r.headers["location"] == "/tesla?id=5&view=trips"
+
+
 def test_legacy_moved_urls(client):
     """账号体系的旧地址 (还在 /tesla 下时留下的): 接口 307 / 页面 302
     搬到根路径, 查询串跟着走 —— 老书签和已发出的邀请链接还能用。"""

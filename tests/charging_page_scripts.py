@@ -14,4 +14,4 @@ CHARGING_ASSETS = ("css/tesla-charging-page.css", "css/tesla-charging-cards.css"
                    "css/tesla-charging-sheet.css", "js/format.js",
                    "js/view/charging-page.js", "js/view/charging-cards.js",
                    "js/view/charging-filters.js", "js/view/charging-detail.js",
-                   "js/view/charging-nav.js", "js/view/charging-cost.js")
+                   "js/view/charging-cost.js")

@@ -20,7 +20,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
                "Helvetica Neue", system-ui, sans-serif;
   font-size: 14px; line-height: 1.45;
-  height: 100vh; height: 100dvh;
+  /* 壳高只在 tesla-base.css 定 (var(--shell-h)): 视图 css 再定 body 尺寸, 同特异度后来者会把它盖掉 (3.0 并页踩过, 钉高全盘失灵) */
   display: flex; flex-direction: column; overflow: hidden;
 }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
@@ -112,7 +112,7 @@ header {
 }
 /* 时间菜单的自定义日历: 月历网格, 同一个日历连点两次 (第一下起点, 第二下终点) */
 .time-menu .tm-custom { border-top: 1px solid var(--hairline); margin-top: 5px; padding-top: 5px; }
-.time-menu .menu { max-height: calc(100vh - 130px); overflow-y: auto; }  /* 矮屏展开日历时兜底滚动 */
+.time-menu .menu { max-height: calc(var(--shell-h, 100vh) - 130px); overflow-y: auto; }  /* 矮屏展开日历时兜底滚动 */
 .tm-dates { padding: 6px 8px 3px; }
 .tm-cal-top { display: flex; align-items: center; gap: 4px; padding: 0 2px 5px; }
 .tm-cal-top b { flex: 1; text-align: center; font-size: 13px; font-weight: 600; }
@@ -145,3 +145,10 @@ header {
 .stat .val { font-size: 19px; font-weight: 650; letter-spacing: -.4px; margin-top: 2px;
              font-variant-numeric: tabular-nums; }
 .stat .val small { font-size: 11px; font-weight: 500; color: var(--ink-2); margin-left: 2px; }
+
+/* ---------- 一级标题 (3.3.0 用户令「最上面也有一级标题」, 与其他页同款) ----------
+   住 .map-head 里: 侧距由 map-head 出 (16px), 这里不叠; 顶距 0 —— 全 app
+   标题统一落在 --content-top 一条线 (2026-09-27)。h2 规则与充电/分组/
+   行程三份副本逐字同款 (锁步钉在 test_asset_versions) */
+.map-head .sec-head { display: flex; align-items: baseline; gap: 8px; padding: 0 0 4px; }
+.sec-head h2 { font-size: 26px; font-weight: 700; letter-spacing: -.5px; }

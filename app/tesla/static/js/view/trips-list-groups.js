@@ -13,8 +13,8 @@ let gpIds = [];         // 进入命名模式时快照的选中 ids (之后划�
 // ---- 多选栏: 存为分组 (命名模式, 预填日期跨度) ----
 $("#gp-btn").addEventListener("click", () => {
   gpIds = items.slice(selRange[0], selRange[1] + 1).map(it => it.id);
-  const dNew = items[selRange[0]].date.slice(5);   // 列表时间倒序: [0] 最新 [末] 最旧
-  const dOld = items[selRange[1]].date.slice(5);
+  const dNew = items[selRange[0]].date.slice(5).replace(/-/g, "/");   // 列表时间倒序: [0] 最新 [末] 最旧
+  const dOld = items[selRange[1]].date.slice(5).replace(/-/g, "/");  // 斜杠写法与分组卡跨度同款 (2026-09-25)
   $("#gp-name").value = dNew === dOld ? dNew : `${dOld}~${dNew}`;   // 预填日期跨度, 可改
   $("#gp-save").disabled = false;
   $("#selbar").classList.add("naming");

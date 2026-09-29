@@ -1,11 +1,13 @@
 // trips-gap-routing.js — 播放 (3/13): 断档补路 —— 高德驾车规划求真实道路
 // 路径 (距离优先), 病态路线判别 (端点吸附对向车道规划出掉头环线) 与上下文
-// 重规划, 规划成功回传自有库存档 (下次服务端直接下发拼好的连续轨迹)。
-// 规划收口到 mapLib.drivingSearch (OSM 没有免费驾车规划 → null, 调用方
-// 保持直线虚线占位); 坐标换算走 mapLib.gcj (高德 GCJ-02 / OSM 原样)。
+// 重规划, 规划成功回传自有库存档 (下次服务端直接下发拼好的连续轨迹),
+// 匀速补路队列 (分组合并一次上百个断档, 并发全发必撞限流; 关掉的弹层
+// 排队尾巴照样发 —— 只为归档, 且给活会话让路)。
+// 规划收口到 mapLib.drivingSearch (失败/不可用 → null, 调用方
+// 保持直线虚线占位); 坐标换算走 mapLib.gcj (高德 GCJ-02)。
 /* global mapLib, GCJ02, TrackUtil */
 /* exported routeCache, routeBetween, toGcj, postGapFill, routeLooksWrong,
-   routeGapCtx */
+   routeGapCtx, queueWireGap */
 "use strict";
 /* 断档两点间的真实道路路径 (高德驾车规划 · 距离优先/最短路程):
    返回 gcj 路径数组, 失败/没路返回 null, 调用方回退直线。 */
@@ -16,18 +18,44 @@ function routeBetween(aGcj, bGcj) {
 
 const toGcj = p => mapLib.gcj(p);
 
+/* 匀速补路队列: 每个断档登记进来就排上 (addGap), 350ms 一个匀速发 —— 单
+   条行程断档寥寥; 分组合并一次上百个, 并发全发必撞高德限流 (3~4 个紧挨着
+   都偶发)。wired 在入队时即置位 (防重排/重发)。发的时候活会话优先: 关掉
+   的弹层留着的尾巴 (规划结果只用来归档, 不再上图) 给新打开的让路, 没有
+   活会话的活儿再按序清尾巴 —— 否则关一个 123 洞的分组紧接着开新行程,
+   新行程的断档要排 40 多秒的队。 */
+const wireQueue = [];
+let wireBusy = false;
+function queueWireGap(rec) {
+  if (!rec || rec.wired || !rec.wire) return;
+  rec.wired = true;
+  wireQueue.push(rec);
+  if (wireBusy) return;
+  wireBusy = true;
+  (function pump() {
+    setTimeout(() => {
+      let i = wireQueue.findIndex(r => r.sess && r.sess.alive);
+      if (i < 0) i = 0;
+      wireQueue.splice(i, 1)[0].wire();
+      if (wireQueue.length) pump();
+      else wireBusy = false;
+    }, 350);
+  })();
+}
+
 /* 规划成功的断档补路回传服务端: 存进 app 自有库 (TeslaMate 原库只读不动),
    之后轨迹接口直接下发服务端拼好的连续轨迹, 前端不再重新规划。
    高德路线是 GCJ, 转回 WGS 上传; 端点 g.pts 本就是 WGS 采样点, 服务端按
    最近点锚定。回传失败无所谓 —— 下次播放这个断档还在, 会再规划再传。
-   只回传单条轨迹; 合并轨迹的断档服务端已拼好, 根本走不到这里。 */
+   合并流的断档带所属段 id (g.did, 服务端 gaps 三元组), 归档到段自己头上。 */
 function postGapFill(it, g, route) {
-  if (typeof it.id !== "number") return;
+  const did = g.did != null ? g.did : it.id;
+  if (typeof did !== "number") return;
   fetch("/tesla/trips/api/gap_fill", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      drive_id: it.id,
+      drive_id: did,
       a: g.pts[0].slice(0, 2), b: g.pts[1].slice(0, 2),
       path: route.map(p => GCJ02.gcj02ToWgs84(p[0], p[1])),
     }),

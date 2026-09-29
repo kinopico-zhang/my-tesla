@@ -26,6 +26,23 @@
     const d = parseLocal(s);
     return `${d.getMonth() + 1}月${d.getDate()}日 周${WEEK[d.getDay()]} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
+  /* 完整日期 (带年份, 不带时刻): 行程弹层头部用 (用户点名日期显到年月日) */
+  function fmtFullDate(s) {
+    const d = parseLocal(s);
+    return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 周${WEEK[d.getDay()]}`;
+  }
+  /* 完整日期 + 时刻 (星期让位, 用户点名要具体几点几分): 分组播放副标题用 */
+  function fmtFullStamp(s) {
+    const d = parseLocal(s);
+    return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  /* 时刻平移 (播放跟轨迹走, 用户点名「时间要实时变」): "YYYY-MM-DD HH:MM"
+     + 秒 → 同格式串 —— 合并播放各段只有段首时刻, 段内任意点 = 段首 +
+     段内行驶秒 (段内 ts 是原始时间戳差, 跨零点跨日都自然滚) */
+  function shiftStamp(s, sec) {
+    const d = new Date(parseLocal(s).getTime() + Math.round((sec || 0) * 1000));
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
   function fmtTime(s) {
     const d = parseLocal(s);
     return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -43,6 +60,22 @@
     return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
   }
   const num = (v, d = 1) => v == null ? "—" : Number(v).toFixed(d).replace(/\.0+$/, "");
+  /* 地点行 (用户点名大→小): 省市区链在前, 具体地名在后; 解析不出省市区
+     (region 为空) 退化到市级字段, 再退化到光地名 */
+  function fmtRegion(it) {
+    return it.region || it.city || "";
+  }
+  /* 只留最小两段 (用户点名): 全链取尾部 —— 常态 区 · 地名, 区缺位退化
+     市 · 地名, 无地区信息时光地名; 整链留在详情底部地址 */
+  function fmtPlaceShort(it) {
+    const r = fmtRegion(it);
+    return (r ? r.split(" · ") : []).concat(it.location ? [it.location] : []).slice(-2);
+  }
+  function fmtPlace(it) {
+    return fmtPlaceShort(it).join(" · ");
+  }
 
-  return { pad, parseLocal, WEEK, fmtCardDate, fmtTime, fmtDur, fmtDurLive, num };
+  return { pad, parseLocal, WEEK, fmtCardDate, fmtFullDate, fmtFullStamp,
+           shiftStamp, fmtTime, fmtDur, fmtDurLive, num, fmtRegion,
+           fmtPlaceShort, fmtPlace };
 });

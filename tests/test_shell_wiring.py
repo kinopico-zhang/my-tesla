@@ -1,11 +1,16 @@
 """3.0 单壳 (/tesla) 布线棘轮 (P2 立, P7 切换后壳是唯一页面)。
 
-壳的骨架约定用字符串断言钉住: 三层结构 (视图列表 → 悬浮筛选条 → 弹层)、
-右划抽屉 + 下拉刷新手势面、touch-action 禁缩放、--top-clear 顶带留白、
-零历史条目 (无 pushState)、echarts 按需注入、充电视图 registerView
-生命周期、car_id 多车穿参。P3-P6 每搬入一个视图这里相应放宽 (如
-data-view 计数), 但已立下的约定只许收紧不许回潮。
+壳的骨架约定用字符串断言钉住: 视图直挂 main → 悬浮筛选条/菜单键 → 抽屉 →
+弹层、下拉刷新手势面、touch-action 禁缩放、--top-clear 顶带留白、零历史
+条目 (无 pushState)、echarts 按需注入、car_id 多车穿参。
+P3-P6 每搬入一个视图这里相应放宽 (如 data-view 计数), 但已立下的约定只许
+收紧不许回潮。3.3.0 抽屉的分组/拖拽/边条结构住 test_drawer。
+充电视图生命周期 2026-09-26 搬去 test_shell_views (逐视图生命周
+期本就住那边), 页面标题锁步拆去 test_asset_versions —— 这边满 200 行
+硬上限。
 """
+import re
+
 from tests.tesla_static_files import (page_asset_paths, page_js,
                                       served_page)
 
@@ -20,44 +25,29 @@ def test_unauth_redirected_to_login(client):
 
 
 def test_shell_skeleton(auth):
-    """壳骨架: 三层结构 + 顶带留白 + 各固定层的标记都在。"""
+    """壳骨架: 12 视图直挂 main + 顶带留白 + 各固定层的标记都在
+    (3.3.0 定稿: 筛选条 + 左抽屉; tab-dock 整编退役; 菜单圆键 2026-09-27
+    退役 —— 边缘右划呼出抽屉全覆盖, 用户点名撤)。"""
     html = auth.get(SHELL).text
-    for token in ('id="top-blur"', 'id="view-charging"',
-                  'data-view="charging"', 'id="ptr"', 'id="bar-row"',
-                  'id="menu-key"', 'id="filter-bar"', 'id="fb-pop"',
+    for token in ('id="top-clear-probe"', 'id="view-charging"',
+                  'data-view="charging"', 'id="filter-bar"',
+                  'id="fb-pop"',
                   'id="drawer-mask"', '<aside id="drawer"', 'id="toast"'):
         assert token in html, f"壳缺骨架标记 {token}"
+    assert 'id="menu-key"' not in html, "菜单圆键回潮了 (边缘右划已全覆盖)"
+    # tab-dock 时代的标记不许回潮 (底部常驻页签/组包裹/二级横滑)
+    for gone in ('id="tab-dock"', 'class="tab-group"', 'class="sub-pager"',
+                 'class="sub-tabs"', "tesla-tab-dock", "syncTabDock"):
+        assert gone not in html, f"tab-dock 残留 {gone}"
+    # 下拉刷新改橡皮筋 + 文字提示 (用户点名): 药丸指示器浮层不许回潮,
+    # 提示与手势钉在 test_pull_refresh_wiring
+    assert 'id="ptr"' not in html and "ptr-lb" not in html
     # P2 充电 1 个 → P3 +统计/分组/日志 = 4 个 → P4 +行程 = 5 个 →
     # P5 +充电地图/足迹/驾驶 = 8 个 → P6 +设置三视图 (数据来源/地图设置/
-    # 驾驶员; 日志 P3 已在设置组) = 11 个到齐
-    assert html.count('data-view="') == 11
-
-
-def test_drawer_anatomy(auth):
-    """抽屉: 分组导航全量 (用户原话的四组), 顶=时间/车辆, 底=账号/登出。
-    刷新按钮已撤 (用户点名): 每个视图都能下拉刷新, 按钮是冗余入口。"""
-    js = page_js(auth, SHELL)
-    page = served_page(auth, SHELL)
-    for token in ('"充电记录"', '"充电统计"', '"充电地图"',
-                  '"行程列表"', '"行程分组"', '"足迹地图"', '"驾驶"',
-                  '"数据来源"', '"地图设置"', '"驾驶员"', '"更新日志"',
-                  'bootDrawer', "car-pills",
-                  '$("#acct-row")', "logout", "drwIcon"):
-        assert token in js, f"抽屉缺 {token}"
-    assert "NAV_GROUPS" in js          # 分组显示 (不是平铺列表)
-    # 刷新按钮不许回来 (下拉刷新 + 换车/换时间档整页重拉已覆盖)
-    assert 'id="refresh-btn"' not in page
-    assert "refresh-spin" not in page
-    # 导航 = 图标瓦片网格 (用户点名: 抽屉加宽, 子项每行 4 个压纵向空间)
-    assert ".drw-grid" in page and "repeat(4, 1fr)" in page
-    assert "width: min(400px, 92vw)" in page
-    # 顶部一排: 车辆在前, 时间范围在后 (用户点名); 时间菜单要写明是时间范围
-    assert page.index('id="drw-cars"') < page.index('id="time-menu"')
-    assert '<span class="drw-lb">时间范围</span>' in page
-    # 首行控件不进顶部模糊带 (用户点名, 与视图内容同一条全局上边界)
-    assert "padding: calc(var(--top-clear) + 14px) 14px 10px;" in page
-    # 时间菜单展开时整块占满一行 (日历 7×34px 在半宽里放不下)
-    assert ".drw-menu[open] { flex-basis: 100%; }" in page
+    # 驾驶员; 日志 P3 已在设置组) = 11 个到齐; 3.3.0 定稿回 11 视图直挂;
+    # 2026-09-27 账号设置拆独立页 → 12 个, 同日行程统计入行程组 → 13 个,
+    # 同日电池健康度入充电组 → 14 个
+    assert html.count('data-view="') == 14
 
 
 def test_zero_history_entries(auth):
@@ -70,7 +60,7 @@ def test_zero_history_entries(auth):
 
 
 def test_zoom_and_gesture_surfaces(auth):
-    """禁双指缩放 (body 收口 pan-y) + 手势面接线: 列表滚动器右开抽屉/
+    """禁双指缩放 (body 收口 pan-y) + 手势面接线: 列表滚动器右划开抽屉/
     在顶下拉刷新, 筛选条横滑区手势仲裁不掺和。"""
     page = served_page(auth, SHELL)
     assert "touch-action: pan-y" in page          # 禁缩放的主闸
@@ -78,47 +68,71 @@ def test_zoom_and_gesture_surfaces(auth):
     js = page_js(auth, SHELL)
     assert "bindGestures(chgScroll, { drawer: true, ptr: true, onRefresh: chgRefetch })" in js
     assert "GESTURE_SLOP" in js                   # 8px 轴仲裁
+    # 抽屉支线 (3.3.0 定稿回归): 仲裁只认右划 (dx > 0), 左划交还系统
+    assert 'mode = "drawer"' in js and "drawerDragMove(dx)" in js
+    # ptr 判定收紧 (2026-09-27 用户点名「左右滑会被判定下滑」): 明确向下
+    # (dy > 2|dx|) 且在顶才算下拉刷新, 45° 斜角一律交还系统
+    assert "dy > Math.abs(dx) * 2 && el.scrollTop <= 0" in js
 
 
 def test_top_clear_band(auth):
-    """顶部模糊带不放固定控件: 列表初始态停在 --top-clear 界下,
-    顶带本体只是视觉层。"""
+    """顶部几何 (3.3.0 两级口径; 2026-09-27 用户报「状态页面最上面进入到了
+    模糊地带」→ 全 app 统一): --content-top 直接落全局上边界 --top-clear
+    (安全区+36px 起, 独立模式的系统磨砂带 ~96px 不再压内容, music 同款),
+    各页 sec-head 的 20px 顶距随之退役 —— 全 app 标题同一水平线;
+    --top-clear 只管钉顶的固定控件 (下拉刷新提示/抽屉躲系统磨砂带),
+    量尺探针还在。"""
     page = served_page(auth, SHELL)
     assert "--top-clear" in page
-    assert "calc(var(--top-clear) + 6px) 0 var(--bar-clear)" in page  # 滚动器让位
+    assert "--content-top: var(--top-clear)" in page
+    assert "padding: var(--content-top) 0 var(--bar-clear)" in page  # 滚动器起点
+    assert "calc(var(--top-clear) + 6px)" not in page   # 旧内容起点退役
+    assert "calc(env(safe-area-inset-top, 0px) + 14px)" not in page   # 旧 14px 起点退役
+    # sec-head 20px 顶距不许回潮 (标题统一落 --content-top 一条线)
+    assert "padding: 20px 16px 4px" not in page
+    assert "padding: 20px 0 4px" not in page
 
 
 def test_z_ladder(auth):
-    """z 阶梯 (自定义属性): 内容 < 筛选条 < 抽屉 < 充电弹层 < alert < toast。"""
+    """z 阶梯 (自定义属性): 内容 < 筛选条/菜单键 < 筛选弹层 < 抽屉 < 充电
+    弹层 < alert < toast。"""
     page = served_page(auth, SHELL)
-    for token in ("--z-bar: 50", "--z-drawer: 96", "--z-chg-sheet: 100",
+    for token in ("--z-bar: 50", "--z-fb-pop: 85", "--z-drawer-mask: 95",
+                  "--z-drawer: 96", "--z-chg-sheet: 100",
                   "--z-alert: 120", "--z-toast: 130"):
         assert token in page, f"z 阶梯缺 {token}"
 
 
 def test_pull_refresh_wiring(auth):
-    """每页下拉刷新: 指示器文案三态, 松手才真正拉数据, 取消 (touchcancel)
-    弹回不刷新。"""
+    """每页下拉刷新 (橡皮筋款, 用户点名): 绑定面跟手阻尼下移, 过阈值
+    (~70px 阻尼后) 浮出「松开刷新」裸文字提示; 松手 armed 才真正拉数,
+    取消 (touchcancel) 只弹回不刷新。药丸气泡不许回潮。"""
     page = served_page(auth, SHELL)
-    for token in ("下拉刷新", "松手刷新", "正在刷新"):
-        assert token in page, f"下拉刷新缺文案 {token}"
+    # 橡皮筋与提示: 弹回过渡 + 拉动跟手 + 过阈值浮出的裸文字
+    for token in ('id="ptr-hint"', "松开刷新", ".ptr-elastic", ".ptr-pulling"):
+        assert token in page, f"下拉刷新橡皮筋缺 {token}"
+    # 药丸气泡不许回潮: 无 spinner/箭头骨架, 无第三态文案
+    for token in ("正在刷新", 'id="ptr"', 'class="ptr-'):
+        assert token not in page, f"下拉刷新气泡回潮 {token}"
     js = page_js(auth, SHELL)
     assert "ptrRelease" in js
     assert 'e.type === "touchcancel"' in js       # 系统打断只弹回不刷
     # 回调登记收进 bindGestures (cfg.onRefresh): 视图漏给 bindPTR 传回调
-    # 的话指示器会空转不拉数 (P5 前踩过, 四个视图一起中招)
+    # 的话手势会空转不拉数 (P5 前踩过, 四个视图一起中招)
     assert "if (cfg.ptr) bindPTR(el, cfg.onRefresh)" in js
 
 
-def test_charging_view_lifecycle(auth):
-    """充电视图生命周期: registerView 注册, IO 哨兵随 show/hide 建拆,
-    首进 boot, 换车/换筛选整页重拉。"""
+def test_boot_first_navigate_hides_default_view(auth):
+    """冷启首跳把默认亮着的状态页藏净 (P2 叠影教训): HTML 里默认亮着
+    view-live (其余 13 页 hidden), navigate 第一次跳转时还没有「上一视图」
+    可藏 —— 恢复上次视图直跳行程页时状态页留在原地就是两页叠影。首跳
+    (无上一视图) 必须把其余视图全藏掉。"""
     js = page_js(auth, SHELL)
-    assert 'registerView("charging"' in js
-    assert "makePager(" in js
-    assert "chgBooted" in js                       # 首次进视图才 boot
-    assert "chgPager.start()" in js and "chgPager.stop()" in js
-    assert "chgRefetch" in js                      # 详情缓存同页要清
+    assert "querySelectorAll" in js
+    assert "冷启首跳" in js
+    html = served_page(auth, SHELL)
+    assert 'class="view" id="view-live" data-view="live">' in html   # 唯一亮着
+    assert len(re.findall(r'<section class="view"[^>]* hidden>', html)) == 13
 
 
 def test_echarts_lazy_loaded(auth):
@@ -141,33 +155,34 @@ def test_car_id_wiring(auth):
 
 
 def test_url_consumed_at_load(auth):
-    """旧链接 (?type=/?region=/?cost=/?range=/?from=&to=) 加载期消费进
-    壳状态, 随后洗掉 —— 分享链接进壳不丢筛选。"""
+    """旧充电链接 (?type=/?region=/?cost=) 加载期消费进壳状态, 随后洗掉
+    —— 分享链接进壳不丢筛选; 时间参数 (?range=/?from=&to=) 3.3.0 随时间
+    筛选下线, 进来直接被洗掉。"""
     js = page_js(auth, SHELL)
     assert 'qs.get("type")' in js
     assert 'qs.get("cost")' in js
     assert 'qs.get("region")' in js
-    assert 'trQs.get("range")' in js or 'qs.get("range")' in js
     assert "脏参数丢弃" in js                      # 越界参数静默丢弃, 不 500
 
 
-def test_time_range_shared(auth):
-    """时间筛选五份合一份: 档位/日历在 tesla-time-range, 抽屉里改档
-    当前视图整体重拉。"""
-    js = page_js(auth, SHELL)
-    assert "const TIME_RANGES" in js
-    for v in ('"24h"', '"7d"', '"30d"', '"180d"', '"1y"', '"all"'):
-        assert f"v: {v}," in js, f"时间档缺 {v}"
-    assert "onTimeChange" in js and "setTimeRange" in js
+def test_time_filter_retired(auth):
+    """时间筛选 3.3.0 整链下线 (用户令「时间筛选去掉, 所有的视图都是所有
+    时间」): 档位/日历/时间 chip/参数拼装全拆, 各视图拉数不带 from/to
+    (全时段); 模块文件本身也退役 (404)。"""
+    page = served_page(auth, SHELL)
+    for gone in ('id="time-menu"', "timeRangeParams", "timeLabel",
+                 "onTimeChange", 'qs.get("range")'):
+        assert gone not in page, f"时间筛选残留 {gone}"
+    assert auth.get("/tesla/static/js/tesla-time-range.js").status_code == 404
 
 
 def test_filter_bar_chips(auth):
-    """悬浮筛选条: 有筛选的视图全部走 chips (充电三枚 / 行程 / 足迹 / 充电
-    地图的度量), 弹层 #fb-pop 锚在 chip 上方, 没注册 chips 的视图整条收起。
-    用户点名两条硬规矩: 筛选只在屏底固定位置 (顶部不许再有筛选控件),
-    chip 是裸文字不框椭圆 (选中靠底色, 不靠边框)。"""
+    """悬浮筛选条: 有筛选的视图走 chips (充电三枚 / 行程 / 足迹), 弹层
+    #fb-pop 锚在 chip 上方, 没注册 chips 的视图整条收起 (充电地图的度量
+    2026-09-27 搬进页内 pills)。用户点名两条硬规矩: 筛选只在屏底固定位置
+    (顶部不许再有筛选控件), chip 是裸文字不框椭圆 (选中靠底色, 不靠边框)。"""
     js = page_js(auth, SHELL)
-    for v in ("charging", "trips", "map", "chargemap"):
+    for v in ("charging", "trips", "map"):
         assert f'registerChips("{v}"' in js
     assert '"no-chips"' in js
     assert "anchorPop" in js

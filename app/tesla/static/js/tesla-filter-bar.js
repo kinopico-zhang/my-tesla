@@ -1,14 +1,19 @@
-// tesla-filter-bar — 屏底悬浮筛选条: 菜单圆键 (开抽屉, 在 tesla-drawer 绑)
-// + 当前视图的筛选 chips (横滑, 放不下左右滚)。视图经 registerChips(key,
-// chips) 注册; chip = {id, label(), isOn()?, build(pop)} —— label 每次渲染
-// 刷 (选中态文案), build 往 #fb-pop 填交互 (选完视图自己 closeFbPop +
-// refreshBarChips)。弹层 fixed 锚在被点 chip 上方, 不放进横滚条 (防裁剪)。
+// tesla-filter-bar — 屏底悬浮条 (3.3.0 定稿; 菜单圆键 2026-09-27 退役后
+// 只剩它自己住 #bar-row): 当前视图的筛选 chips (横滑, 放不下左右滚)。全局
+// chips 已双双退役 —— 车辆选择住抽屉顶 (tesla-car-switcher), 时间筛选整个
+// 下线 (所有视图全时段, 用户点名「时间筛选去掉, 所有的视图都是所有时间」)。
+// 视图经 registerChips(key, chips) 注册; chip = {id, label(), isOn()?,
+// build(pop)} —— label 每次渲染刷 (选中态文案), build 往 #fb-pop 填交互
+// (选完视图自己 closeFbPop + refreshBarChips)。弹层 fixed 锚在被点 chip
+// 上方, 不放进横滚条 (防裁剪)。
 "use strict";
 /* global $, esc */
 /* exported registerChips, setBarView, refreshBarChips, closeFbPop, bindFilterBar */
 
 const BAR_CHIPS = {};   // 视图键 → chip 定义数组
 let barViewKey = "";
+
+function barChips() { return BAR_CHIPS[barViewKey] || []; }
 
 function registerChips(viewKey, chips) { BAR_CHIPS[viewKey] = chips; }
 
@@ -17,12 +22,18 @@ function closeFbPop() {
   if (pop) { pop.classList.remove("on"); delete pop.dataset.chip; }
 }
 
-/* 重渲染当前视图的 chips (筛选变了刷 label/高亮; 视图切换时 setBarView 调) */
+/* 重渲染当前视图的 chips (筛选变了刷 label/高亮; 视图切换时 setBarView 调)。
+   菜单圆键 2026-09-27 退役 (用户点名: 任意页右划都能呼出抽屉, 圆键冗余):
+   没有任何 chip 的视图 (状态/分组/统计/设置组) 屏底什么也不剩 —— 整条
+   #bar-row 收起, 底部让位高度 --bar-clear 也跟着收 (body.no-bar, 几何在
+   tesla-base) */
 function refreshBarChips() {
   const bar = $("#filter-bar");
   if (!bar) return;
-  const chips = BAR_CHIPS[barViewKey] || [];
-  bar.classList.toggle("no-chips", !chips.length);
+  const chips = barChips();
+  const noChips = !chips.length;
+  $("#bar-row").classList.toggle("no-chips", noChips);
+  document.body.classList.toggle("no-bar", noChips);
   bar.innerHTML = chips.map((c, i) =>
     `<button type="button" class="fchip${c.isOn && c.isOn() ? " on" : ""}" data-i="${i}">${esc(c.label())}</button>`).join("");
 }
@@ -52,8 +63,7 @@ function bindFilterBar() {
   bar.addEventListener("click", e => {
     const btn = e.target.closest("button.fchip");
     if (!btn) return;
-    const chips = BAR_CHIPS[barViewKey] || [];
-    const chip = chips[+btn.dataset.i];
+    const chip = barChips()[+btn.dataset.i];
     if (!chip) return;
     const pop = $("#fb-pop");
     const reopen = pop && pop.dataset.chip !== btn.dataset.i;   // 换 chip / 首开

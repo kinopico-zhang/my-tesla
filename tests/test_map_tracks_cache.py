@@ -32,7 +32,8 @@ def test_tracks_cold_cache_queries_everything(auth, db, tmp_path, monkeypatch):
     r = auth.get(MANIFEST)
     assert r.status_code == 200
     assert r.json()["v"] == tracks_cache.CACHE_VERSION
-    assert _rows(r) == [{"id": 5, "n": 2, "d": None, "c": 1, "t": "2026-09-01"}]
+    assert _rows(r) == [{"id": 5, "n": 2, "d": None, "c": 1, "t": "2026-09-01",
+                          "s": 0, "rn": 0, "m": 25}]   # 3.3.3 起带道路层字段
     assert seen["after"] == -1                    # 无缓存 → 全量
     # 结果落盘 (JSONL: 首行头 {v, max_id}, 之后一行一条轨迹, pts 扁平)
     lines = (tmp_path / "tracks_cache.json").read_text(
@@ -66,7 +67,8 @@ def test_tracks_disk_cache_used_without_query(auth, db, tmp_path, monkeypatch):
 
     monkeypatch.setattr(repository, "query_tracks", boom)
     assert _rows(auth.get(MANIFEST)) == [
-        {"id": 3, "n": 2, "d": None, "c": 1, "t": "2026-07-01"}]
+        {"id": 3, "n": 2, "d": None, "c": 1, "t": "2026-07-01",
+         "s": 0, "rn": 0, "m": 5}]
 
 
 def test_tracks_old_cache_version_triggers_full_rebuild(

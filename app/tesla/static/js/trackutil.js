@@ -3,9 +3,8 @@
    阈值自适应 (段长中位数的 10 倍, 下限 ~0.0016° ≈ 160m):
    - 城市轨迹段长 10-30m, 断档 700m+ → 拆;
    - 概览粗轨迹 (40 点/条, 段长常达公里级) → 阈值跟着变大, 不误拆。
-   点对版 (splitGaps) 供行程/回放; 足迹地图 v4 起轨迹是全精度扁平数组
-   [lng, lat, lng, lat, ...] (75 万点点对嵌套会翻几倍内存), 配套
-   splitGapsFlat / decimateFlat —— 概览/细化抽稀全在客户端做。
+   (扁平数组版 splitGapsFlat/decimateFlat 曾供足迹地图全精度层,
+   2026-09-29 足迹地图只画「走过的路」后随原始轨迹层退役。)
    本文件管几何/着色/测距/功耗; 播放节拍与描画路径 (animAt/splicePath/
    pathPointAt/lngLatToTile) 按域拆去了 track-animation.js。
    UMD: 浏览器挂 window.TrackUtil, node (测试) 走 module.exports。 */
@@ -42,44 +41,6 @@
     segs.push(cur);
     const ok = segs.filter(s => s.length >= 2);
     return ok.length ? ok : [pts];   // 全是孤立点时按原样画, 不能让轨迹消失
-  }
-
-  /* ---- 扁平数组版 (足迹地图 v4): pts 是 [lng, lat, lng, lat, ...] ----
-     段拆与点对版同一套阈值逻辑; decimateFlat 把一条轨迹抽稀到 ~per 个点
-     (首末必留, 等步长), 概览 ~40 点/条与缩放档位 800/2000 都走它。 */
-  function segLenFlat(pts, i, j) {   // 第 i/j 点的段长 (取经纬度差较大者, 度)
-    return Math.max(Math.abs(pts[j * 2] - pts[i * 2]),
-                    Math.abs(pts[j * 2 + 1] - pts[i * 2 + 1]));
-  }
-
-  function splitGapsFlat(pts) {   // → [扁平段, ...] (每段 ≥ 2 点)
-    const n = pts.length / 2;
-    if (n < 2) return [];
-    const lens = [];
-    for (let i = 1; i < n; i += 7) lens.push(segLenFlat(pts, i - 1, i));
-    lens.sort((a, b) => a - b);
-    const med = lens[lens.length >> 1];   // n ≥ 2 → 至少 1 个样本, 不会越界
-    const thresh = Math.max(MIN_GAP, med * 10);
-    const segs = [];
-    let cur = [pts[0], pts[1]];
-    for (let i = 1; i < n; i++) {
-      if (segLenFlat(pts, i - 1, i) > thresh) { segs.push(cur); cur = []; }
-      cur.push(pts[i * 2], pts[i * 2 + 1]);
-    }
-    segs.push(cur);
-    const ok = segs.filter(s => s.length >= 4);
-    return ok.length ? ok : [pts];   // 全是孤立点时按原样画, 不能让轨迹消失
-  }
-
-  function decimateFlat(pts, per) {   // 抽稀到 ~per 个点 (首末必留); per<2 不动
-    const n = pts.length / 2;
-    if (per < 2 || n <= per) return pts;
-    const stride = Math.max(1, Math.floor(n / per));
-    const out = [];
-    for (let i = 0; i < n; i += stride) { out.push(pts[i * 2], pts[i * 2 + 1]); }
-    const lx = pts[(n - 1) * 2], ly = pts[(n - 1) * 2 + 1];
-    if (out[out.length - 2] !== lx || out[out.length - 1] !== ly) out.push(lx, ly);
-    return out;
   }
 
   /* ---- 速度着色: 慢=红 快=绿 (行程弹层轨迹) ----
@@ -154,10 +115,11 @@
     return gaps;
   }
 
-  /* ---- 平均功耗 (W): 相邻点按时间差加权平均, 没有功耗数据的段不计入 ----
-     pts[i][3] 为瓦特 (正=放电 负=回收, 可 null), ts[i] 为相对起点秒。 */
-  function meanPowerW(pts, ts) {
-    let es = 0, t = 0;                       // Σ W·s, Σ s
+  /* ---- 平均功率 (kW): 相邻点按时间差加权平均, 没有功率数据的段不计入 ----
+     pts[i][3] 为千瓦 (TeslaMate positions.power 原生单位; 正=放电 负=回
+     收, 可 null), ts[i] 为相对起点秒。 */
+  function meanPowerKw(pts, ts) {
+    let es = 0, t = 0;                       // Σ kW·s, Σ s
     for (let i = 1; i < pts.length; i++) {
       const dt = ts[i] - ts[i - 1];
       if (!(dt > 0)) continue;
@@ -169,9 +131,27 @@
     return t ? es / t : null;
   }
 
+  /* ---- 总爬升 (米): 逐点海拔差累加, ±3m 迟滞带滤 GPS 噪声 ----
+     pts[i][4] 为海拔米 (可 null, 补路点没有)。小抖动 (带内) 不计, 真实
+     起伏一次过阈才累计、基准跟着走 —— 裸累加正差会把 ±1m 噪声放大成
+     上百米的假爬升。全程无海拔数据返回 null (调用方显 — 占位)。 */
+  function elevClimbM(pts) {
+    let ref = null, climb = 0;
+    for (const p of pts) {
+      const e = p[4];
+      if (e == null) continue;
+      if (ref == null) { ref = e; continue; }
+      if (e > ref + 3) { climb += e - ref; ref = e; }      // 爬过带顶: 计爬升
+      else if (e < ref - 3) ref = e;                        // 跌过带底: 只降基准
+    }
+    return ref == null ? null : Math.round(climb);
+  }
+
   return { splitGaps: splitGaps, gapsBetween: gapsBetween, speedLines: speedLines, cumDistKm: cumDistKm,
-           splitGapsFlat: splitGapsFlat, decimateFlat: decimateFlat,
-           meanPowerW: meanPowerW,
+           meanPowerKw: meanPowerKw, elevClimbM: elevClimbM,
            speedBucket: speedBucket, ptDistKm: ptDistKm, bearingDeg: bearingDeg,
+           /* SPEED_STOPS 漏导出过一版 (2026-09-23): 统计页直方图接线要它,
+              拿到 undefined 一抛带死整条画图循环, 动态/统计两页全空 */
+           SPEED_STOPS: SPEED_STOPS,
            SPEED_COLORS: SPEED_COLORS, MIN_GAP_KM: MIN_GAP_KM, _segLen: segLen };
 });

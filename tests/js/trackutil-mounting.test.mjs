@@ -52,8 +52,17 @@ test("gapsBetween: 端点纬度 0 走 || 0 兜底, 仍量得出跳变", () => {
   assert.ok(gaps[0].km > 1 && gaps[0].km < 1.5);
 });
 
-test("meanPowerW: 时间戳持平/回退的段跳过 (不贡献平均)", () => {
-  const w = TrackUtil.meanPowerW(
+test("meanPowerKw: 时间戳持平/回退的段跳过 (不贡献平均)", () => {
+  const w = TrackUtil.meanPowerKw(
     [[0, 0, 0, 1000], [0, 0, 0, 1000], [0, 0, 0, 1000]], [0, 0, 5]);
   assert.equal(w, 1000);   // 只有 dt=5 的第 2 段计入
+});
+
+/* 2026-09-23 事故回归: 统计页直方图接线用 TrackUtil.SPEED_STOPS, 可它一直
+   没进导出清单 —— speedBucket 拿 undefined 当档位数组, build() 一抛带死
+   整条 rAF 循环, 动态/统计两页图全空 (node 传显式数组测不到, 只有真
+   require 模块看导出才能抓住)。顺带钉住档数与配色数配套 (K 桶配 K 色)。 */
+test("SPEED_STOPS 已导出: 档位阈值真值 + 与 SPEED_COLORS 桶数配套", () => {
+  assert.deepEqual(TrackUtil.SPEED_STOPS, [15, 40, 70, 100]);
+  assert.equal(TrackUtil.SPEED_COLORS.length, TrackUtil.SPEED_STOPS.length + 1);
 });

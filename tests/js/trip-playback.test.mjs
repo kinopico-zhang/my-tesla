@@ -10,6 +10,7 @@ const TripPlayback = require("../../app/tesla/static/js/trip-playback.js");
 const {
   speedZoom, clampZoomBias, windowMeanSpeed, hysteresisZoom, easeZoomStep,
   animDurMs, energyWeightKm, energyStep, energyCurve, fracValue, splitSegments,
+  sliceAtGaps,
 } = TripPlayback;
 
 const TrackUtil = require("../../app/tesla/static/js/trackutil.js");
@@ -138,6 +139,38 @@ test("splitSegments: 每段独立识别断档, 段间跳变不在此拆", () => 
 test("splitSegments: 空段列表回落整体 splitGaps", () => {
   const pts = Array.from({ length: 5 }, (_, i) => [114 + i * M, 22.5]);
   assert.equal(splitSegments(pts, []).length, 1);
+});
+
+/* ---------------- 服务端断档切段 (sliceAtGaps) ---------------- */
+test("sliceAtGaps: 按下发断档对切段, 对端点保留在两侧段里", () => {
+  const pts = Array.from({ length: 8 }, (_, i) => [114 + i * M, 22.5]);
+  pts[4] = [114.008, 22.5];   // 4→5 瞬移 ~1km: 服务端口径的洞 (客户端阈值测不测得出不管)
+  const segs = sliceAtGaps(pts, [[4, 5, 7]]);
+  assert.deepEqual(segs.map(s => s.length), [5, 3]);   // [0..4] / [5..7], 岸点各留
+});
+
+test("sliceAtGaps: starts 只切跨段跳变, 同点续段不切", () => {
+  const pts = Array.from({ length: 8 }, (_, i) => [114 + i * M, 22.5]);
+  // 段边界 3→4 是同一个点 (停车原地): 不切, 连成一段
+  assert.deepEqual(sliceAtGaps(pts, [], [0, 3]).map(s => s.length), [8]);
+  // 段边界 2→3 (starts=[0,3] 的对岸) 挪了 ~220m (0.002°): 切 (与 gapsBetween
+  // 同一道 160m 阈值)
+  const moved = [...pts];
+  moved[3] = [114 + 2 * M + 0.002, 22.5];
+  const segs = sliceAtGaps(moved, [], [0, 3]);
+  assert.deepEqual(segs.map(s => s.length), [3, 5]);
+});
+
+test("sliceAtGaps: 相邻断档共享岸点, 孤立岸点段被丢弃不炸", () => {
+  const pts = Array.from({ length: 10 }, (_, i) => [114 + i * M, 22.5]);
+  const segs = sliceAtGaps(pts, [[3, 4, 7], [4, 5, 7]]);   // 连环洞: 点 4 夹在两个洞之间
+  assert.deepEqual(segs.map(s => s.length), [4, 5]);       // [0..3] / [5..9], 孤立点 4 不成段
+});
+
+test("sliceAtGaps: 越界/倒序对忽略, 全空回落整段", () => {
+  const pts = Array.from({ length: 6 }, (_, i) => [114 + i * M, 22.5]);
+  assert.equal(sliceAtGaps(pts, [[6, 7, 7], [4, 4, 7], [-1, 0, 7]]).length, 1);
+  assert.deepEqual(sliceAtGaps(pts, null, null).map(s => s.length), [6]);
 });
 
 /* ---------------- UMD 挂载 ---------------- */

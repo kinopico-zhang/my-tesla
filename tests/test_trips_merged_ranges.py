@@ -47,17 +47,20 @@ def test_merged_range_form_expands_closed_drives(auth, db):
 
 
 def test_merged_range_form_requires_enough_drives(auth, db):
-    """区间展开后不足 2 段或超 100 段 → 400 (与逗号形式同口径)。"""
+    """区间展开后不足 2 段 → 400; 段数上限 2026-09-25 用户点名撤掉,
+    101 段的大区间照放 (大分组靠区间短链 + 逐段流式扛)。"""
     _seed_pair(db)
     assert auth.get("/tesla/trips/api/merged?ids=11-11").status_code == 400
     assert auth.get("/tesla/trips/api/merged?ids=99-100").status_code == 400
-    # 展开后 101 段 → 400 (上限与逗号形式一致, 区间跨度本身不设限)
     t = datetime(2026, 9, 10, 0, 32)
     for drive_id in range(13, 112):       # 已有 11,12 → 共 101 段
         seed_drive(db, id=drive_id, start_date=t + timedelta(hours=drive_id),
                    end_date=t + timedelta(hours=drive_id, minutes=5))
-    assert auth.get("/tesla/trips/api/merged?ids=11-111").status_code == 400
-    # 恰 100 段 (空轨迹段只进 ids 不进 pts) → 放行, 边界不差一
+    # 101 段 (旧上限之外) → 200, 不再截断/拒绝
+    r = auth.get("/tesla/trips/api/merged?ids=11-111")
+    assert r.status_code == 200
+    assert r.json()["n"] == 101
+    # 恰 100 段 (旧上限边界) → 照常 200
     r = auth.get("/tesla/trips/api/merged?ids=11-110")
     assert r.status_code == 200
     assert r.json()["n"] == 100
@@ -77,10 +80,16 @@ def test_merged_stream_ndjson_summary_then_segments(auth, db):
     segs = lines[1:]
     assert len(segs) == 2
     assert all(len(s["pts"]) == 2 for s in segs)
+    # 每行段首时刻 t0 (本地 "YYYY-MM-DD HH:MM", 与整包 seg_t0s 同源): ts 是
+    # 累计行驶秒, 客户端推不出各段墙钟日期 —— 弹层标题随段切换「第 x 段
+    # 行程 · 年月日」(2026-09-25 用户点名) 靠它。_seed_pair 的段起点按
+    # drive_id 小时错开 (11 段 11:32Z → 19:32 北京, 12 段 12:32Z → 20:32)
+    assert [s["t0"] for s in segs] == ["2026-09-10 19:32", "2026-09-10 20:32"]
     # 流式拼接 == 整包接口 (前端两种消费方式数据同源)
     full = auth.get("/tesla/trips/api/merged?ids=11-12").json()
     assert [p for s in segs for p in s["pts"]] == full["pts"]
     assert [t for s in segs for t in s["ts"]] == full["ts"]
+    assert [s["t0"] for s in segs] == full["seg_t0s"]
 
 
 def test_merged_stream_404_before_first_line(auth, db):
@@ -90,6 +99,26 @@ def test_merged_stream_404_before_first_line(auth, db):
     r = auth.get("/tesla/trips/api/merged_stream?ids=11,99")
     assert r.status_code == 404
     assert "不存在或未完成" in r.json()["detail"]
+
+
+def test_merged_summary_lightweight_header(auth, db):
+    """合并深链的轻量汇总 (2026-09-24 用户再报「加载地图时平均电耗空着,
+    过一会儿才出来」): 深链重开手里没卡片数据, 流式汇总头又要等地图引擎
+    装载后才随流发出 —— 这里只查 drives 现算汇总头 (不碰 positions), 弹层
+    一开就有数; 字段与整包 /merged 的头部同构, 校验口径 (单段/坏区间 400,
+    不存在 404) 同 /merged。"""
+    _seed_pair(db)
+    r = auth.get("/tesla/trips/api/merged_summary?ids=11-12")
+    assert r.status_code == 200
+    head = r.json()
+    assert head["ids"] == [11, 12] and head["n"] == 2
+    full = auth.get("/tesla/trips/api/merged?ids=11-12").json()
+    for k in ("ids", "n", "date", "start", "end", "km", "min", "speed_max",
+              "kwh", "wh_per_km"):
+        assert head[k] == full[k], f"汇总头与整包头部字段 {k} 不一致"
+    assert auth.get("/tesla/trips/api/merged_summary?ids=11-11").status_code == 400
+    assert auth.get("/tesla/trips/api/merged_summary?ids=14-11").status_code == 400
+    assert auth.get("/tesla/trips/api/merged_summary?ids=11,99").status_code == 404
 
 
 def test_merged_budget_proportional_to_segment_size(auth, db):

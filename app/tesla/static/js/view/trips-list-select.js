@@ -1,13 +1,14 @@
 // trips-list-select.js — 行程页 (5/6): 多选连续行程 —— 长按卡片进入 (触屏/
-// 桌面按住 480ms), 两段式点选定范围, 底栏全选 (没装够先补载) / 上限提示 /
-// 合并播放 (openMerged 在后加载的 trips-sheet-page.js, 点击时才解析)。
+// 桌面按住 480ms), 两段式点选定范围, 底栏全选 (没装够先补载) / 合并播放
+// (openMerged 在后加载的 trips-sheet-page.js, 点击时才解析)。
 // 由 trips-list.js 按域拆出 (结构化重构: 代码逐字节未动, 经典脚本按
 // trips.html 里的顺序加载, 跨模块引用走全局); 底座在 trips-list-page.js。
 /* global $, num, items, listEl, state, loadMore, openMerged */
 /* exported pickCard, exitSelect, selRange */
 "use strict";
 /* ============================ 多选: 连续行程拼成一条轨迹 ============================ */
-const MERGE_MAX = 100;             // 合并接口上限 (后端 /api/merged 校验 2~100 段)
+/* 一次最多 100 段的上限 2026-09-25 用户点名撤掉 (前端封顶/上限提示/后端
+   校验/schema max_length 一并退役) —— 大列表全选补载到底, 播放走逐段流式 */
 let selAnchor = -1;                 // 范围锚点 (点选的第一张卡)
 let selRange = [-1, -1];            // 当前选中范围 [from, to] (闭区间, 必连续)
 
@@ -18,10 +19,8 @@ function applyPick() {
   const km = on ? items.slice(a, b + 1).reduce((s, it) => s + (it.km || 0), 0) : 0;
   $("#sel-count").textContent = n;
   $("#sel-km").textContent = num(km);
-  /* 上限提示: 划选超上限, 或全选封顶 (列表还有更多段装不进) 都亮 */
-  $("#sel-cap").hidden = n < MERGE_MAX || items.length <= MERGE_MAX;
-  $("#sel-go").disabled = n < 2 || n > MERGE_MAX;
-  $("#gp-btn").disabled = n < 2 || n > MERGE_MAX;   // 存分组与合并播放同一上限
+  $("#sel-go").disabled = n < 2;
+  $("#gp-btn").disabled = n < 2;            // 存分组与合并播放同一口径 (≥2)
   $("#sel-all").textContent =             // 已选全部 → 再点一次变清空
     on && a === 0 && b === items.length - 1 ? "清空" : "全选";
 }
@@ -97,27 +96,40 @@ function exitSelect() {
   });
 })();
 $("#sel-cancel").addEventListener("click", exitSelect);
-/* 全选: 选中当前筛选下的全部行程, 没装够的页先补载; 合并接口一次最多
-   MERGE_MAX 段, 超出只选最新的 (列表按时间倒序) 前 100 段。已选全部时
-   按钮变"清空", 再点一次取消选择。 */
+/* 全选: 选中当前筛选下的全部行程, 没装够的页先补载到底 (100 段封顶
+   2026-09-25 用户点名撤掉)。已选全部时按钮变"清空", 再点一次取消选择。 */
 $("#sel-all").addEventListener("click", async () => {
   const isAll = selRange[0] === 0 && selRange[1] === items.length - 1;
   if (!isAll) {
     const btn = $("#sel-all");
     btn.disabled = true;
     try {
-      const target = Math.min(state.total || items.length, MERGE_MAX);
+      const target = state.total || items.length;
       while (!state.done && !state.err && items.length < target) await loadMore();
     } finally { btn.disabled = false; }
     if (state.err) return;        // 补载失败: 列表区已有重试入口, 不动现有选择
   }
   selAnchor = -1;
-  selRange = isAll || items.length < 2 ? [-1, -1]
-    : [0, Math.min(MERGE_MAX, items.length) - 1];
+  selRange = isAll || items.length < 2 ? [-1, -1] : [0, items.length - 1];
   applyPick();
 });
 $("#sel-go").addEventListener("click", () => {
-  const ids = items.slice(selRange[0], selRange[1] + 1).map(it => it.id);
+  const picked = items.slice(selRange[0], selRange[1] + 1);   // 新→旧排序
+  const ids = picked.map(it => it.id);
+  /* 多选聚合 (2026-09-23 用户点名弹层一开就显数, 不等地图): 列表新→旧,
+     时间上首段在末尾; 电耗 ΣkWh÷Σkm 与合并汇总头同口径, 没电耗数据的
+     段不计入, 全都没数据就留空 (弹层显 —) */
+  const km = picked.reduce((a, it) => a + (it.km || 0), 0);
+  const kws = picked.map(it => it.kwh).filter(v => v != null);
+  const kwh = kws.length ? kws.reduce((a, b) => a + b, 0) : null;
   exitSelect();
-  openMerged(ids);
+  openMerged(ids, null, {
+    n: picked.length,
+    start: picked[picked.length - 1].start, end: picked[0].end,
+    km: Math.round(km * 10) / 10,
+    min: picked.reduce((a, it) => a + (it.min || 0), 0),
+    speed_max: Math.max(...picked.map(it => it.speed_max || 0)) || null,
+    kwh: kwh == null ? null : Math.round(kwh * 10) / 10,
+    wh_per_km: kwh != null && km >= 1 ? Math.round(kwh / km * 1000) : null,
+  });
 });

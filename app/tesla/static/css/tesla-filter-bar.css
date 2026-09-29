@@ -1,5 +1,9 @@
-/* tesla-filter-bar — 屏底悬浮筛选条: 菜单圆键 (左) + 当前视图的筛选 chips
+/* tesla-filter-bar — 屏底悬浮条: 只剩筛选条 —— 当前视图的筛选 chips
    (横滑, 放不下左右滚); 弹层 #fb-pop 锚在条上方 (不放进滚动器, 防裁剪)。
+   3.3.0 全局 chips 双双退役: 车辆选择住抽屉顶, 时间筛选整个下线 (所有
+   视图全时段)。菜单圆键 2026-09-27 退役 (用户点名「所有的页面都是边缘
+   呼出设置, 设置按钮就不需要了」): 没有 chips 的视图整条 #bar-row 收起,
+   底部让位 --bar-clear 跟着收 (body.no-bar, 几何在 tesla-base)。
    用户点名: 筛选按钮调整到屏幕的下方, 显示不开可以左右滑动。 */
 #bar-row {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-bar);
@@ -10,19 +14,7 @@
            max(10px, env(safe-area-inset-right));
   pointer-events: none;   /* 子件单独放行, 透明区域不挡列表点击 */
 }
-#menu-key {
-  pointer-events: auto; flex-shrink: 0;
-  width: var(--bar-h); height: var(--bar-h); border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  color: var(--ink-1);
-  background: rgba(44,44,46,.7);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid var(--hairline);
-  box-shadow: 0 8px 24px rgba(0,0,0,.45);
-  transform: translateZ(0);   /* 自家合成层: 邻居层动起来时防复印 */
-}
-#menu-key:active { transform: translateZ(0) scale(.92); }
+#bar-row.no-chips { display: none; }   /* 视图没有 chips: 屏底什么都不剩 */
 /* 筛选条本体: 无限宽错觉 (左右 padding 渐隐由渐变遮罩造), 横滑不显示滚动条 */
 #filter-bar {
   pointer-events: auto;
@@ -40,8 +32,6 @@
   touch-action: pan-x;   /* 横滑是它的原生滚动, 手势仲裁不掺和 (竖向交还) */
 }
 #filter-bar::-webkit-scrollbar { display: none; }
-/* 视图没有筛选 (如地图页): 条整个让位, 只剩菜单键 */
-#filter-bar.no-chips { display: none; }
 /* chip: 裸文字 (用户点名: 不再框椭圆), 选中靠底色高亮 */
 .fchip {
   flex-shrink: 0;
