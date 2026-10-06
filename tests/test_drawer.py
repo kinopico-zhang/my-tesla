@@ -125,6 +125,25 @@ def test_gesture_surfaces_and_edges(auth):
         assert frag in block, f"边条规则缺 {frag}"
 
 
+def test_footprint_map_gate(auth):
+    """足迹地图闸 (2026-10-06 用户点名「足迹道路拟合的 key 没填, 那么足迹
+    地图将不可用, 菜单灰色」): 没配 Web 服务 Key 就没有道路拟合数据, 整页
+    没意义 —— 菜单叶行灰掉不可点 (pointer-events 掐掉), navigate 拦旁路
+    (上次停留视图恢复), 地图设置存上 Key 即时开闸 (mapSetLoad 同步现值,
+    不用刷新); 默认放行, 设置拉取失败不误锁。"""
+    js = _js(auth, DRAWER_JS)
+    for frag in ("function setMapGate(", "function mapGateOpen()",
+                 "async function initMapGate()", 'drw-leaf[data-nav="map"]',
+                 'classList.toggle("off"', "web_key_masked", "initMapGate();"):
+        assert frag in js, f"足迹地图闸缺 {frag}"
+    nav = _js(auth, "js/tesla-navigation.js")
+    assert 'if (key === "map" && !mapGateOpen()) return;' in nav, \
+        "navigate 没拦足迹地图旁路"
+    css = _js(auth, "css/tesla-drawer.css")
+    assert ".drw-leaf.off { opacity: .4; pointer-events: none; }" in css, \
+        "闸灰行样式缺"
+
+
 # ---------------------------------------------------------------- 导航通路
 def test_navigation_plain_hidden(auth):
     """navigate 唯一通路: 页面各自 hidden 切换 (3.3.0 草稿的 tab-group 组

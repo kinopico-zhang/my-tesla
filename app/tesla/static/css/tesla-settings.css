@@ -132,6 +132,32 @@ input::placeholder { color: var(--ink-3); }
 .plain:active { transform: scale(.97); }
 .plain:disabled { opacity: .4; }
 
+/* 「Key 的获取方式」折叠块 (v23, 2026-10-06 用户点名「默认折叠, 展开后
+   markdown 条目渲染, 超链接可以点开」): 原生 <details> 管开合, 平时一行
+   小蓝字带箭头 (箭头展开旋 90°), 展开是条目列表; 条目内容由
+   settings-map.js 从 markdown 渲染, 链接下划线新标签页打开 */
+.howto summary {
+  display: flex; align-items: center; gap: 6px;
+  list-style: none; font-size: 12px; color: #7db3f0;
+  margin: 4px 0 10px; cursor: pointer;
+  -webkit-user-select: none; user-select: none;
+}
+.howto summary::-webkit-details-marker { display: none; }
+.howto summary::after {
+  content: "▸"; font-size: 10px; color: var(--ink-3);
+  transition: transform .15s ease;
+}
+.howto[open] summary::after { transform: rotate(90deg); }
+.howto summary:active { opacity: .7; }
+.howto .md { margin: 2px 0 14px; padding-left: 18px; }
+.howto .md li {
+  font-size: 12px; color: var(--ink-2); line-height: 1.55;
+  margin-bottom: 4px;
+}
+.howto .md li::marker { color: var(--ink-3); }
+.howto .md a { color: #7db3f0; text-decoration: underline; }
+.howto .md a:active { opacity: .7; }
+
 /* ---------- 驾驶员列表 ---------- */
 .drv-add { display: flex; gap: 8px; margin-bottom: 12px; }
 .drv-add input { flex: 1; }

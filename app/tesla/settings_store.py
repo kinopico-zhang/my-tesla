@@ -100,7 +100,7 @@ def settings_state(own: Session) -> SettingsState:
             host=eff.host, port=eff.port, user=eff.user,
             name=eff.name, password_set=bool(eff.password)),
         amap=AmapSettings(
-            key_masked=_masked(key), security_code_set=bool(code),
+            key_masked=_masked(key), security_code_masked=_masked(code),
             web_key_masked=_masked(_row(own).amap_web_key
                                    or os.environ.get("AMAP_WEB_KEY", ""))))
 

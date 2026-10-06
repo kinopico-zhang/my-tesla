@@ -31,7 +31,9 @@ def test_settings_get_defaults_from_env(auth, monkeypatch):
     assert d["tmdb"] == {"host": "10.0.0.8", "port": "5432", "user": "tmuser",
                          "name": "teslamate", "password_set": False}
     assert d["amap"]["key_masked"] == "test****3456"
-    assert d["amap"]["security_code_set"] is False
+    # 安全码也头尾掩码回显 (2026-10-06 用户点名「安全码也是显示头尾, 中间
+    # mask 掉」) —— 未设就是空串, 不再是「在用」布尔
+    assert d["amap"]["security_code_masked"] == ""
 
 
 def test_settings_save_amap_and_map_config_reflects(auth, monkeypatch):
@@ -42,6 +44,7 @@ def test_settings_save_amap_and_map_config_reflects(auth, monkeypatch):
                   json={"amap_key": "abcd1234efgh5678", "amap_security_code": "9182ac3b"})
     assert r.status_code == 200
     assert r.json()["amap"]["key_masked"] == "abcd****5678"
+    assert r.json()["amap"]["security_code_masked"] == "****"   # 8 位不过头尾窗, 全掩
     assert auth.get("/tesla/map/api/config").json() == {
         "amap_key": "abcd1234efgh5678", "security_code": "9182ac3b"}
     # 留空 = 保持现值
@@ -57,8 +60,9 @@ def test_settings_map_provider_field_retired(auth, monkeypatch):
     monkeypatch.setenv("MAP_PROVIDER", "osm")   # env 也不再看 (有也不生效)
     monkeypatch.setenv("AMAP_STYLE", "amap://styles/light")
     state = auth.get("/tesla/api/settings").json()["amap"]
-    assert set(state) == {"key_masked", "security_code_set",
-                          "web_key_masked"}   # 3.3.3 起加轨迹拟合 Web 服务 Key
+    assert set(state) == {"key_masked", "security_code_masked",
+                          "web_key_masked"}   # 3.3.3 起加轨迹拟合 Web 服务 Key;
+                                              # 安全码 2026-10-06 起打码回显 (原「在用」布尔)
     cfg = auth.get("/tesla/map/api/config").json()
     assert set(cfg) == {"amap_key", "security_code"}
     r = auth.post("/tesla/api/settings",
@@ -197,10 +201,11 @@ def test_settings_views_and_entries(auth):
                  'id="tm-host"', 'id="tm-save"', "保存并连接", 'id="amap-key"',
                  'id="drv-list"', "/tesla/api/settings", "/tesla/api/drivers",
                  'id="toast"', "设为默认",
-                 # 高德两把 Key 各配一行获取方式 + 已填的在框里显掩码
-                 # (2026-10-05 用户点名, 掩码住 placeholder 不入提交值)
-                 "高德开放平台", "类型选「Web端 (JS API)」", "类型选「Web服务」",
-                 "两种类型, 不能混用",
+                 # 高德两把 Key 各配一个「获取方式」折叠块 (2026-10-06 用户
+                 # 点名「默认折叠, 展开后 markdown 条目渲染, 超链接可以点开」)
+                 # + 已填的在框里显掩码 (掩码住 placeholder 不入提交值)
+                 '<details class="howto">', "<summary>Key 的获取方式</summary>",
+                 'id="amap-howto"', 'id="amap-web-howto"',
                  # 驾驶员页 10-04 左滑三钮 (v5): 常显钮退役, 改名是行内编辑
                  'class="swipe-edit set-def">设为默认', 'class="swipe-edit ren">改名',
                  'class="drv-input"', "window.confirm(`删除驾驶员",
@@ -226,10 +231,24 @@ def test_settings_views_and_entries(auth):
                  '$("#amap-web-save").disabled',
                  'addEventListener("input"'):     # 输入一变作废重测
         assert frag in sm, f"地图设置脚本缺 {frag}"
+    # 折叠块内容 (markdown 条目) 与渲染器: 条目在 JS 里记, [字](网址) 转成
+    # 新标签页链接; 安全码掩码回显住 placeholder (2026-10-06 用户点名
+    # 「默认折叠/markdown 条目/链接可点开」「安全码也是显示头尾」)
+    for frag in ("HOWTO_JS", "HOWTO_WEB", "function mdItems(",
+                 'target="_blank"', "https://console.amap.com",
+                 "服务平台选「Web端 (JS API)」", "服务平台选「Web服务」",
+                 "两种类型, 不能混用",
+                 'security_code_masked || "未设置"',
+                 'web_key_masked || "未设置"', "setMapGate("):
+        assert frag in sm, f"获取方式折叠块/掩码回显缺 {frag}"
+    # 通行一次性 (2026-10-06 用户点名「修改后, 保存按钮灰色, 要测试通过
+    # 才能保存」): 存完回灰再存要重测; 「留空保持」文案同日退役
+    assert "保存消费掉通行" in sm
+    assert "留空保持" not in sm
     # v12 的「测已保存值/未保存先拦」旧路退役 (与保存闸死循环, 不许回潮)
     assert "先保存再测" not in sm
     css = auth.get("/tesla/static/css/tesla-settings.css").text
-    for frag in (".btn-row {", ".plain {"):
+    for frag in (".btn-row {", ".plain {", ".howto summary {", ".howto .md a {"):
         assert frag in css, f"设置样式缺 {frag}"
     # 服务商切换/地图样式选择/长说明已退役 (2026-09-25/10-05, 用户点名):
     # 下拉/收组逻辑/样式保存不许回潮; 样式固定幻影黑住适配层
@@ -237,6 +256,7 @@ def test_settings_views_and_entries(auth):
                  'id="amap-rows"', '<option value="osm">',
                  'id="amap-style"', "amap_style:", "styles/darkblue",
                  'id="amap-style-custom"', 'id="amap-now"', 'id="amap-web-now"',
-                 "首次打开过一两秒才出现", "留空 = 保持现值"):
+                 "首次打开过一两秒才出现", "留空 = 保持现值",
+                 "留空保持现值"):   # 「留空保持」文案 2026-10-06 用户点名退役
         assert gone not in html, f"退役的片段回潮: {gone}"
     assert "无地名" not in html   # 深色样式有地名, 旧说法不许回潮

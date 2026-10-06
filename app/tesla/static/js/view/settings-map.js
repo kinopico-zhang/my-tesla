@@ -17,18 +17,58 @@
 // 未保存先拦」旧路退役 —— 那路与保存闸死循环)。
 // v15/v16 (同日两修, 详见适配层): 探针判据改逆地理真伪 (出图判不了),
 // 通过时带回结论整句 (正常 / Key 有效但限流), 这里只转述。
-/* global $, toast, getJSON, sendJSON, mapLib, bindGestures, registerView */
+// v17 (同日三连点): ① 「Key的获取方式默认折叠, 展开后用markdown item格式
+// 渲染, 提供的超链接可以点开」—— 一行小字说明换成 <details> 折叠块 (原生
+// 开合), 条目在这里用 markdown 记, [字](网址) 渲染成新标签页链接; ② 「安全
+// 码也是显示头尾, 中间mask掉」「留空=保持的说明文案删掉」—— 三个框的 placeholder 只
+// 显掩码值 (安全码掩码是新加的下发字段), 「· 留空=保持」后缀全退役; ③ 「修改
+// 后, 保存按钮灰色, 要测试通过才能保存」—— 输入一变即锁 (原有), 存完也
+// 回灰: 通行是一次性的, 保存就消费掉, 再存要重测。
+/* global $, toast, getJSON, sendJSON, mapLib, bindGestures, registerView,
+          setMapGate */
 "use strict";
+
+/* ---------- 「Key 的获取方式」折叠块: markdown 条目渲染 ---------- */
+const HOWTO_JS = `
+- 打开 [高德开放平台控制台](https://console.amap.com), 注册并登录
+- 左侧「应用管理」→「创建新应用」
+- 在应用里「添加 Key」, 服务平台选「Web端 (JS API)」
+- Key 生成后点开详情, 「安全密钥」就是这里的安全码 —— Key 和安全码配套, 换新 Key 要配新安全码
+`;
+const HOWTO_WEB = `
+- 在同一个应用的「添加 Key」再来一把, 服务平台选「Web服务」
+- 和上面的地图 Key 是两种类型, 不能混用
+- 只在服务端用: 把足迹轨迹拟合到实际道路
+`;
+
+// 极简 markdown: 一行一条 item (- 开头), [字](网址) 转链接 (新标签页)。
+// 先转义再链接化, 文案里夹的尖括号 & 不会变成活的标签
+function mdItems(md) {
+  const escHtml = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  const linkify = s => escHtml(s).replace(
+    /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+    '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  return md.trim().split("\n")
+    .map(l => l.trim())
+    .filter(Boolean)
+    .map(l => `<li>${linkify(l.startsWith("- ") ? l.slice(2) : l)}</li>`)
+    .join("");
+}
+$("#amap-howto").innerHTML = mdItems(HOWTO_JS);
+$("#amap-web-howto").innerHTML = mdItems(HOWTO_WEB);
 
 async function mapSetLoad() {
   const s = await getJSON("/tesla/api/settings");
-  // 已填的 key 在框里显掩码 (2026-10-05 用户点名「中间几位用 * 掩掉」):
-  // 住 placeholder —— 留空提交仍是「保持现值」, 掩码串不会被打包存成新 key
-  $("#amap-key").placeholder = s.amap.key_masked
-    ? `${s.amap.key_masked} · 留空保持` : "未设置";
-  $("#amap-code").placeholder = s.amap.security_code_set ? "已设置 · 留空保持" : "未设置";
-  $("#amap-web-key").placeholder = s.amap.web_key_masked
-    ? `${s.amap.web_key_masked} · 留空保持` : "未设置";
+  // 已填的值在框里显头尾掩码 (2026-10-05 用户点名「中间几位用 * 掩掉」;
+  // 同日追点「安全码也是显示头尾」): 住 placeholder —— 留空提交仍是
+  // 「保持现值」, 掩码串不会被打包存成新值。掩码就是全部文案,
+  // 留空=保持的说明文案已删 (2026-10-06 用户点名)
+  $("#amap-key").placeholder = s.amap.key_masked || "未设置";
+  $("#amap-code").placeholder = s.amap.security_code_masked || "未设置";
+  $("#amap-web-key").placeholder = s.amap.web_key_masked || "未设置";
+  // 足迹地图闸顺带同步: Web 服务 Key 存上即时开菜单 (抽屉 initMapGate 管
+  // 开机那次, 这里管「刚存完」这次 —— 不用刷新页面)
+  setMapGate(!!s.amap.web_key_masked);
 }
 
 /* 保存闸状态: 候选测试通过了才 true (输入一变作废) —— 两个保存钮的
@@ -63,6 +103,7 @@ $("#amap-save").addEventListener("click", async () => {
       : keyChanged ? "已保存; 高德 Key 换了刷新一次页面才生效 (Key 绑在地图引擎上)"
       : "已保存, 打开地图即生效");
     await mapSetLoad();
+    amapOk = false;                     // 保存消费掉通行: 存完回灰, 再存要重测
   } catch (err) {
     toast(`保存失败: ${err.message}`);
   } finally {
@@ -88,6 +129,7 @@ $("#amap-web-save").addEventListener("click", async () => {
       toast("已保存");
     }
     await mapSetLoad();
+    webOk = false;                      // 同上: 存完回灰, 再存要重测
   } catch (err) {
     toast(`保存失败: ${err.message}`);
   } finally {

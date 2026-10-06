@@ -103,11 +103,15 @@ def test_guard_assets_versioned_on_shell(auth):
                                                          # 同一水平线, music 同款)
                                                          # + 菜单圆键退役后无 chips 视图底部让位收起
                                                          #   (body.no-bar, --bar-clear 只剩安全区)
-                   ("css/tesla-drawer.css", 9),         # v9: 二级叶行缩进 45→28 (用户点名
+                   ("css/tesla-drawer.css", 10),        # v10: 足迹地图闸灰行 (.drw-leaf.off,
+                                                         #   拟合 Key 没填菜单不可点);
+                                                         #   v9: 二级叶行缩进 45→28 (用户点名
                                                          #   嫌深); v8: 车辆选择卡住抽屉顶
                    ("css/tesla-filter-bar.css", 5),     # 菜单圆键退役 (#menu-key 拆净,
                                                          # #bar-row.no-chips 整条收起)
-                   ("css/tesla-settings.css", 22),      # v22: 「测试」次钮
+                   ("css/tesla-settings.css", 23),      # v23: 「获取方式」折叠块
+                                                         #   (markdown 条目 + 可点链接);
+                                                         #   v22: 「测试」次钮
                                                          #   (.btn-row 并排 +
                                                          #   .plain 描边蓝字);
                                                          #   v21: 行卡 wrap 加
@@ -128,8 +132,13 @@ def test_guard_assets_versioned_on_shell(auth):
                                                          #   账号三卡
                    ("css/tesla-shell-floor.css", 9),    # v9: 设置族卡间纵距 + 账号/地点视图
                                                          #   补进族规则 (v8: 左缘边条 40px)
-                   ("js/tesla-navigation.js", 3),       # 视图直挂 hidden + 冷启首跳藏净
-                   ("js/tesla-drawer.js", 9),           # v9: 设置组加常用地点行
+                   ("js/tesla-navigation.js", 4),       # v4: 足迹地图闸 (navigate 拦旁路);
+                                                         #   v3: 视图直挂 hidden + 冷启首跳藏净
+                   ("js/tesla-drawer.js", 10),          # v10: 足迹地图闸
+                                                         #   (setMapGate/mapGateOpen/
+                                                         #   initMapGate, 拟合 Key 没填
+                                                         #   菜单灰 + 不可导航);
+                                                         #   v9: 设置组加常用地点行
                                                          # + 树状导航 + Lucide 图标表 (DRW_ICONS)
                                                          # + 账号设置独立页入组 (首位)
                                                          # + 行程统计入行程组 (trips 后)
@@ -202,10 +211,21 @@ def test_guard_assets_versioned_on_shell(auth):
                                                          # v9: 驻车画最后一程轨迹+车位点收进视野
                                                          # (lvDrawLastTrack 按 id 记账不重拉)
                                                          # + v8: 驻车直达最后一程 + 标题两态 + 常显化
-                   ("js/view/settings-db.js", 4),       # bindGestures 回 drawer
+                   ("js/view/settings-db.js", 5),       # v5: 「留空保持」后缀退役;
+                                                         #   v4: bindGestures 回 drawer
                    ("js/view/settings-drivers.js", 6),  # v6: 加载失败 toast (别装空列表);
                                                          # v5: 左滑三钮 + 行内改名 (v4: bindGestures)
-                   ("js/view/settings-map.js", 16),     # v16: 探针结论转述
+                   ("js/view/settings-map.js", 18),     # v18: markdown 一条一行
+                                                         # (折行被当第二条);
+                                                         # v17: 获取方式折叠块
+                                                         # (markdown 条目渲染 +
+                                                         # 链接可点) + 三框掩码
+                                                         # placeholder (安全码
+                                                         # 也头尾) + 「留空保持」
+                                                         # 退役 + 存完回灰 (通行
+                                                         # 一次性) + 足迹地图闸
+                                                         # 同步;
+                                                         # v16: 探针结论转述
                                                          # (v15: toast(verdict));
                                                          # v14: 闸状态声明序 (lint);
                                                          # v13: 测试改测框里的候

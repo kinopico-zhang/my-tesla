@@ -10,9 +10,9 @@
 // 账号设置独立页 (2026-09-27 拆页, 设置组首位) —— 抽屉本体只管导航。
 "use strict";
 /* global $, layerMotion, VIEWS, navigate, closeFbPop, bindSheetSettle,
-          GESTURE_SLOP */
+          GESTURE_SLOP, getJSON */
 /* exported openDrawer, closeDrawer, drawerDragMove, drawerDragEnd,
-            syncDrawerNav, bootDrawer */
+            syncDrawerNav, bootDrawer, setMapGate, mapGateOpen */
 
 /* ---------- 导航分组 (顺序按用户原话: 状态/行程/充电/设置) ----------
    ic = 分组行图标; 单页组 (状态) 不需要 —— 直接渲染成叶行 */
@@ -199,6 +199,26 @@ function syncDrawerNav(key) {
     c.classList.toggle("open", !!c.querySelector(`.drw-leaf[data-nav="${key}"]`)));
 }
 
+/* ---------- 足迹地图闸 (2026-10-06 用户点名「足迹道路拟合的 key 没填,
+   那么足迹地图将不可用, 菜单灰色」): 没配 Web 服务 Key 就没有道路拟合数据,
+   整页没意义 —— 菜单叶行灰掉不可点 (pointer-events 掐掉, 点击都进不来),
+   navigate 也拦一道 (上次停留视图恢复等旁路)。开闸即时生效: 地图设置存上
+   Key 后 mapSetLoad 会带现值来 sync, 不用刷新页面。默认放行 —— 设置拉取
+   失败 (网络抖动) 时别误锁, 地图页有自己的错误兜底 */
+let mapOpen = true;
+function setMapGate(open) {
+  mapOpen = open;
+  const leaf = document.querySelector('#drw-nav .drw-leaf[data-nav="map"]');
+  if (leaf) leaf.classList.toggle("off", !open);
+}
+function mapGateOpen() { return mapOpen; }
+async function initMapGate() {
+  try {
+    const s = await getJSON("/tesla/api/settings");
+    setMapGate(!!s.amap.web_key_masked);
+  } catch { /* 拉不到设置: 保持放行, 别把菜单误锁死 */ }
+}
+
 /* ---------- 接线 (app-boot 调; 那时视图都已注册) ---------- */
 function bootDrawer() {
   /* 开合入口只剩蒙版点击 + 右划/左划拖拽 —— 菜单圆键退役 (2026-09-27
@@ -212,6 +232,7 @@ function bootDrawer() {
     e.stopImmediatePropagation();
   });
   buildNav();
+  initMapGate();            // 足迹地图闸: 按设置里的 Web 服务 Key 有无开/灰
   bindDrawerDrag();
   /* 抽屉也是 fixed + 磨砂 + transform 的层: 视口折腾 (键盘/回前台) 后旧栅格
      保险同五张弹层 (7556 第五道保险), 复用 bindSheetSettle 的微变换收净 */

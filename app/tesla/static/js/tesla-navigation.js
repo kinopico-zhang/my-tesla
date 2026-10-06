@@ -5,7 +5,7 @@
 // 3.3.0 定稿回到抽屉导航: 页面各自 hidden 切换 (tab-group 整编/pager 横滑
 // 已撤, 用户点名二级页直挂抽屉菜单), navigate 是唯一通路。
 "use strict";
-/* global setBarView, syncDrawerNav, layerMotion, saveLastView */
+/* global setBarView, syncDrawerNav, layerMotion, saveLastView, mapGateOpen */
 /* exported VIEWS, registerView, navigate, currentView, refreshCurrent */
 
 const VIEWS = {};            // key → {title, el, show(), hide(), refresh()}
@@ -22,6 +22,10 @@ function viewScroller(key) {
 function navigate(key) {
   const next = VIEWS[key];
   if (!next || !next.el) return;
+  /* 足迹地图闸 (2026-10-06 用户点名「拟合 key 没填, 足迹地图不可用」):
+     没配 Web 服务 Key 整页没意义 —— 菜单行已灰 (点击进不来), 这里拦
+     恢复上次停留视图等旁路; 默认放行 (设置拉取失败别误锁) */
+  if (key === "map" && !mapGateOpen()) return;
   if (key === currentKey) { refreshCurrent(); return; }   // 点当前项 = 刷新
   if (currentKey && VIEWS[currentKey]) {
     const prev = VIEWS[currentKey];

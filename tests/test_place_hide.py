@@ -145,7 +145,7 @@ def test_management_page_frontend(auth, db):
     """
     page = auth.get("/tesla/app", follow_redirects=True).text
     for token in ('id="plc-hid-sec"', 'id="plc-hid-list"',
-                  "tesla-settings.css?v=22",
+                  "tesla-settings.css?v=23",
                   'id="placed-sheet"', 'class="placed-edge"',
                   'id="placed-back"', 'id="placed-title"', 'id="placed-rename"',
                   'id="placed-input"', 'id="placed-cancel"',

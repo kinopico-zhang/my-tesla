@@ -18,7 +18,7 @@
      inset-grouped 卡片, 车辆选择住抽屉顶全局生效), 时间筛选下线 (所有
      视图全时段, 用户点名), 账号卡进设置页; 旧 9 路由 P7 切换下线 -->
 <link rel="stylesheet" href="/tesla/static/css/tesla-base.css?v=8">
-<link rel="stylesheet" href="/tesla/static/css/tesla-drawer.css?v=9">
+<link rel="stylesheet" href="/tesla/static/css/tesla-drawer.css?v=10">
 <link rel="stylesheet" href="/tesla/static/css/tesla-filter-bar.css?v=5">
 <link rel="stylesheet" href="/tesla/static/css/tesla-pull-refresh.css?v=2">
 <link rel="stylesheet" href="/tesla/static/css/tesla-charging-page.css?v=2">
@@ -37,7 +37,7 @@
 <link rel="stylesheet" href="/tesla/static/css/tesla-chargemap-map.css?v=7">
 <link rel="stylesheet" href="/tesla/static/css/tesla-live-page.css?v=2">
 <link rel="stylesheet" href="/tesla/static/css/tesla-live-driving.css?v=20">
-<link rel="stylesheet" href="/tesla/static/css/tesla-settings.css?v=22">
+<link rel="stylesheet" href="/tesla/static/css/tesla-settings.css?v=23">
 <link rel="stylesheet" href="/tesla/static/css/tesla-shell-floor.css?v=9">
 </head>
 <body>
@@ -756,10 +756,16 @@
                  「每个类型的 key 给出获取方式 + 已填的 key 在框里显掩码」——
                  掩码住 placeholder (留空仍 = 保持现值, 掩码串不会被存成新 key,
                  mapSetLoad 填); 地图样式选择同日退役 (不允许用户选择, 固定
-                 幻影黑住适配层) -->
-            <p class="hint">获取: 高德开放平台 (console.amap.com) → 应用管理 → 创建应用 → 添加 Key, 类型选「Web端 (JS API)」; 安全码在 Key 详情页。</p>
-            <label><span>Key</span><input type="text" id="amap-key" placeholder="留空保持现值" autocomplete="off" spellcheck="false"></label>
-            <label><span>安全码</span><input id="amap-code" type="password" placeholder="留空保持现值" autocomplete="new-password"></label>
+                 幻影黑住适配层)。2026-10-06 第四轮 (用户点名「获取方式默认
+                 折叠, 展开后 markdown 条目渲染, 超链接可以点开」): 一行小字
+                 换成 <details> 折叠块, 条目与链接由 settings-map.js 从 markdown
+                 渲染 (内容进 JS 不进壳, 壳里只剩骨架) -->
+            <details class="howto">
+              <summary>Key 的获取方式</summary>
+              <ul class="md" id="amap-howto"></ul>
+            </details>
+            <label><span>Key</span><input type="text" id="amap-key" autocomplete="off" spellcheck="false"></label>
+            <label><span>安全码</span><input id="amap-code" type="password" autocomplete="new-password"></label>
           </div>
           <!-- 保存 + 测试并排 (2026-10-06 用户点名「添加两个测试按钮」+ 同日
                追点「只有测试正常才能保存」): 测试测框里的候选 Key, 通过
@@ -772,8 +778,11 @@
         <section class="card">
           <h2>足迹道路拟合</h2>
           <div>
-            <p class="hint">获取: 高德开放平台 → 同一应用再添加一把 Key, 类型选「Web服务」—— 和上面的地图 Key 是两种类型, 不能混用。只在服务端用, 把足迹轨迹拟合到实际道路。</p>
-            <label><span>Web 服务 Key</span><input type="password" id="amap-web-key" placeholder="留空保持现值" autocomplete="new-password"></label>
+            <details class="howto">
+              <summary>Key 的获取方式</summary>
+              <ul class="md" id="amap-web-howto"></ul>
+            </details>
+            <label><span>Web 服务 Key</span><input type="password" id="amap-web-key" autocomplete="new-password"></label>
           </div>
           <div class="btn-row">
             <button type="button" class="primary" id="amap-web-save">保存</button>
@@ -1067,11 +1076,11 @@
 <script src="/tesla/static/js/tesla-common.js?v=5"></script>
 <script src="/tesla/static/js/tesla-map-adapter.js?v=14"></script>
 <script src="/tesla/static/js/tesla-shell.js?v=1"></script>
-<script src="/tesla/static/js/tesla-navigation.js?v=3"></script>
+<script src="/tesla/static/js/tesla-navigation.js?v=4"></script>
 <script src="/tesla/static/js/tesla-viewport.js?v=4"></script>
 <script src="/tesla/static/js/tesla-pull-refresh.js?v=3"></script>
 <script src="/tesla/static/js/tesla-gesture.js?v=8"></script>
-<script src="/tesla/static/js/tesla-drawer.js?v=9"></script>
+<script src="/tesla/static/js/tesla-drawer.js?v=10"></script>
 <script src="/tesla/static/js/tesla-car-switcher.js?v=6"></script>
 <script src="/tesla/static/js/tesla-filter-bar.js?v=7"></script>
 <script src="/tesla/static/js/tesla-paged-list.js?v=1"></script>
@@ -1123,8 +1132,8 @@
 <script src="/tesla/static/js/view/map-filters.js?v=17"></script>
 <script src="/tesla/static/js/view/live-page.js?v=9"></script>
 <script src="/tesla/static/js/view/live-driving.js?v=13"></script>
-<script src="/tesla/static/js/view/settings-db.js?v=4"></script>
-<script src="/tesla/static/js/view/settings-map.js?v=16"></script>
+<script src="/tesla/static/js/view/settings-db.js?v=5"></script>
+<script src="/tesla/static/js/view/settings-map.js?v=18"></script>
 <script src="/tesla/static/js/tesla-swipe-delete.js?v=4"></script>
 <script src="/tesla/static/js/view/settings-drivers.js?v=6"></script>
 <script src="/tesla/static/js/view/trips-place-detail.js?v=12"></script>

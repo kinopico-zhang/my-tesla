@@ -14,7 +14,9 @@ async function dbLoad() {
   $("#tm-user").value = s.tmdb.user;
   $("#tm-name").value = s.tmdb.name;
   $("#tm-pass").value = "";
-  $("#tm-pass").placeholder = s.tmdb.password_set ? "已设置 · 留空保持" : "未设置";
+  // 密码只报在用 (不掩码回显 —— 不是 hex key, 头尾露出白泄密);
+  // 「留空保持」说明 2026-10-06 用户点名删 (地图设置卡同批)
+  $("#tm-pass").placeholder = s.tmdb.password_set ? "已设置" : "未设置";
 }
 
 /* TeslaMate: 保存并实测 (改完立即换库重连, 连不上后端自动回滚) */

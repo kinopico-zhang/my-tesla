@@ -114,3 +114,7 @@
   min-width: 0; white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis;
 }
+/* 足迹地图闸 (v10, 2026-10-06 用户点名「拟合 key 没填, 足迹地图不可用,
+   菜单灰色」): 没配 Web 服务 Key 时叶行半透明 + 不可点 (pointer-events
+   掐掉, 点击压根进不来), navigate 另拦一道旁路 */
+.drw-leaf.off { opacity: .4; pointer-events: none; }
