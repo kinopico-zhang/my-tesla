@@ -11,10 +11,12 @@
 // 配一枚「测试」。
 // v13 (同日追点「测试正常只显示正常就行了, 只有测试正常才能保存」): 测试
 // 改测「框里的候选」—— Web端走适配层 mapLib.probeKey 在独立 iframe 里装
-// 引擎建小图 (Key/安全码钉在引擎脚本上, 与本页引擎互不沾, 不用先保存也
-// 不用刷新页面), Web服务把候选 POST 给服务端打一次逆地理; 通过只报
-// 「正常」, 输入一变作废重测, 测试通过才解锁保存 (v12 的「测已保存值/
+// 引擎 (Key/安全码钉在引擎脚本上, 与本页引擎互不沾, 不用先保存也
+// 不用刷新页面), Web服务把候选 POST 给服务端打一次逆地理;
+// 输入一变作废重测, 测试通过才解锁保存 (v12 的「测已保存值/
 // 未保存先拦」旧路退役 —— 那路与保存闸死循环)。
+// v15/v16 (同日两修, 详见适配层): 探针判据改逆地理真伪 (出图判不了),
+// 通过时带回结论整句 (正常 / Key 有效但限流), 这里只转述。
 /* global $, toast, getJSON, sendJSON, mapLib, bindGestures, registerView */
 "use strict";
 
@@ -117,7 +119,7 @@ $("#amap-test").addEventListener("click", async () => {
       code = code || cfg.security_code || "";
     }
     if (!key) { toast("测试未通过: 还没填 Key"); return; }
-    // 独立 iframe 装候选引擎建小图 + 逆地理验真伪 (探针住适配层);
+    // 独立 iframe 装候选引擎, 逆地理验真伪 (探针住适配层);
     // 通过时带回结论整句 (正常 / Key 有效但限流), 直接转述
     const verdict = await mapLib.probeKey(key, code);
     amapOk = true; amapGate();

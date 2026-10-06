@@ -27,22 +27,22 @@ def test_adapter_loaded_before_view_scripts(auth):
 def test_adapter_dialect_surface():
     """适配层方言面: 高德单服务商 (引擎按需注入 + 缺 Key 自报) + 坐标口径
     (高德要 GCJ-02, 视图统一喂 WGS-84) + 规划降级 (不可用/失败 → null)
-    + 候选 Key 探针 (设置页「测试」钮: 独立 iframe 装引擎建小图 + 逆地理
-    验真伪 —— 出图不验 Key, 坏 Key 也照样 complete, 真伪只在服务接口)。"""
+    + 候选 Key 探针 (设置页「测试」钮: 独立 iframe 装引擎, 逆地理验真伪
+    —— 出图不验 Key, 高德给坏 Key 照样发 JS 照样渲染, 出图一步已退役:
+    iOS 离屏 iframe 掐渲染, complete 永远等不来)。"""
     src = ADAPTER.read_text(encoding="utf-8")
     for frag in [
         "webapi.amap.com/maps?v=2.0",                # 高德引擎按需注入
         "function probeKey(",                        # 候选 Key 探针 (设置页「测试」钮)
         "win._AMapSecurityConfig",                   # 探针: 候选安全码钉 iframe 窗口
-        "12 秒内没有出图",                            # 探针第一步: 出图 (只证渲染链路通)
-        "AMap.Geocoder",                             # 探针第二步: 逆地理 (插件先装后用)
+        "contentDocument",                           # 探针: onload 轮询双保险 (WebKit 不保证 onload)
+        "AMap.Geocoder",                             # 探针: 逆地理验真伪 (插件先装后用)
         "INVALID_USER_KEY",                          # 坏 Key: 高德错误码直译
         "INVALID_USER_SCODE",                        # 安全码不配: 同上
         "USERKEY_PLAT_NOMATCH",                      # Key 类型不配 (Web服务 Key 误进 JS 卡)
         "高德限流/配额",                              # 限流/配额算 Key 有效 (与服务端同口径)
         "引擎没起来 (Key 不对?)",                      # 探针: 坏 Key 不见裸 TypeError
         "高德报: ",                                  # 探针: 别的高德错码原样带回
-        'm.on("complete"',
         'e.noKey = true',                            # 高德缺 Key: 视图各自引导
         "GCJ02.wgs84ToGcj02",                        # 坐标口径: 高德要 GCJ-02
         "drivingSearch",                             # 规划原语 (断档补路 + 高速费)

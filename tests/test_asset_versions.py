@@ -26,7 +26,13 @@ def test_guard_assets_versioned_on_shell(auth):
                    ("css/tesla-map-canvas.css", 21),    # v21: 驾驶员筛选并播放条行 + 进度条封顶
                                                          #   220px + 日期浮标去磨砂 (性能);
                                                          #   v20: 播放条挪地图卡外脚下
-                   ("js/tesla-map-adapter.js", 13),       # v13: 类型错配人话
+                   ("js/tesla-map-adapter.js", 14),       # v14: 探针手机端二修
+                                                         # —— 出图一步整段退役
+                                                         # (iOS 离屏 iframe 掐渲染,
+                                                         # complete 永远等不来, 且
+                                                         # 出图本就不验 Key) +
+                                                         # onload 轮询双保险;
+                                                         # v13: 类型错配人话
                                                          # (USERKEY_PLAT_NOMATCH →
                                                          # 「要 Web端 JS API 类型」);
                                                          # v12: 探针改两步验 (出图只证
@@ -199,8 +205,8 @@ def test_guard_assets_versioned_on_shell(auth):
                    ("js/view/settings-db.js", 4),       # bindGestures 回 drawer
                    ("js/view/settings-drivers.js", 6),  # v6: 加载失败 toast (别装空列表);
                                                          # v5: 左滑三钮 + 行内改名 (v4: bindGestures)
-                   ("js/view/settings-map.js", 15),     # v15: 测试结论改转述探针
-                                                         # 回话 (正常/Key 有效但限流);
+                   ("js/view/settings-map.js", 16),     # v16: 探针结论转述
+                                                         # (v15: toast(verdict));
                                                          # v14: 闸状态声明序 (lint);
                                                          # v13: 测试改测框里的候
                                                          # 选 + 通过才解锁保存

@@ -4,8 +4,8 @@
 // 充电地图/实时/轨迹弹层) 统一经 mapLib 建图建层, 直通原生 AMap 对象;
 // 坐标口径也归这管: 高德渲染要 GCJ-02, 视图统一喂 WGS-84 点、经
 // mapLib.gcj() 转渲染坐标。高德驾车规划 (断档补路 + 高速费估价) 同在这层;
-// 设置页「测试」钮的候选 Key 探针 (独立 iframe 装引擎建小图) 也收在这层
-// —— AMap 知识不出这个文件。
+// 设置页「测试」钮的候选 Key 探针 (独立 iframe 装引擎, 逆地理验真伪) 也
+// 收在这层 —— AMap 知识不出这个文件。
 // WebGL 保留缓冲补丁 (导出视频要 drawImage 地图画布, 上下文属性建时即定)
 // 挪到这: 页面加载即装, 任何视图先后起地图都赶在画布上下文创建之前。
 /* global GCJ02, getJSON */
@@ -119,51 +119,43 @@ const mapLib = (() => {
     });
   }
 
-  /* 设置页「测试」钮的候选 Key 探针 (2026-10-06): 独立 iframe 里装指定
-     Key/安全码的引擎, 建一张小图 + 打一发逆地理 —— 两步各有各的验法:
-     出图只证明渲染链路通 (实测高德给格式合法的坏 Key 也照样发全量 JS、
-     complete 照样触发, 光出图判不了真伪), Key/安全码真伪在逆地理服务
-     接口上验, error 时回调 result 就是高德错误码 (INVALID_USER_KEY /
-     INVALID_USER_SCODE), 直译给人看, 不用猜。引擎装在 iframe 自己的
-     window, 与本页已装的引擎互不沾, 候选不用先保存也不用刷新。
-     iframe 必须带 src —— 裸 iframe 的 onload 在 Safari 不保证触发
-     (桌面 Chrome 一直好使, 手机上干等到超时)。配额/限流只发生在有效
-     Key 上, 算「Key 有效」(与服务端 Web 服务测试同口径); 45 秒总闸
-     兜一切卡死。 */
+  /* 设置页「测试」钮的候选 Key 探针 (2026-10-06 二修): 独立 iframe 里装指定
+     Key/安全码的引擎, 打一发逆地理验真伪 —— 引擎脚本对格式合法的坏 Key
+     照样下发, 图也照样渲染 (complete 照样触发), 真伪只在服务接口上验,
+     error 时回调 result 就是高德错误码 (INVALID_USER_KEY /
+     INVALID_USER_SCODE / USERKEY_PLAT_NOMATCH), 直译给人看, 不用猜。
+     引擎装在 iframe 自己的 window, 与本页已装的引擎互不沾, 候选不用先
+     保存也不用刷新。同日手机端两连修: ① 裸 iframe 的 onload 在 WebKit
+     不保证触发 (桌面 Chrome 一直好使) —— 显式 src + 文档就绪轮询双保险,
+     谁先到谁起; ② 出图一步整段退役 —— iOS 对离屏 iframe 掐渲染 (rAF/
+     瓦片不跑), complete 永远等不来, 而出图本就不验 Key (上面的判据),
+     白等 12 秒还误报「没出图」。配额/限流只发生在有效 Key 上, 算「Key
+     有效」(与服务端 Web 服务测试同口径); 45 秒总闸兜一切卡死。 */
   function probeKey(key, code) {
     return new Promise((resolve, reject) => {
       const fr = document.createElement("iframe");
-      fr.src = "about:blank";   // Safari: 裸 iframe 不保证 onload, 显式 src 才稳
+      fr.src = "about:blank";   // WebKit: 裸 iframe 不保证 onload, 显式 src 才稳
       fr.style.cssText = "position:fixed;left:-9999px;top:0;width:220px;height:220px;border:0;";
-      let kill = 0;   // 先占位再补真值 (fin 要引用 kill, 声明序别让 lint 挑刺)
-      const fin = (fn, arg) => { clearTimeout(kill); fr.remove(); fn(arg); };
+      let kill = 0, poll = 0;   // 先占位再补真值 (fin 要引用, 声明序别让 lint 挑刺)
+      const fin = (fn, arg) => { clearTimeout(kill); clearInterval(poll); fr.remove(); fn(arg); };
       kill = setTimeout(() => fin(reject, new Error("测试超时")), 45000);
-      fr.onload = async () => {
+      let booted = false;       // onload 与轮询谁先到谁起, 只起一次
+      const boot = async () => {
+        if (booted) return;
+        booted = true;
         try {
           const win = fr.contentWindow, doc = win.document;
-          if (!doc.body) throw new Error("iframe 文档没起来");
-          doc.body.style.margin = "0";
           if (code) win._AMapSecurityConfig = { securityJsCode: code };
           await injectScript("https://webapi.amap.com/maps?v=2.0&key="
             + encodeURIComponent(key), doc);
           // 坏 Key (格式非法): 脚本下得来但引擎不建 —— 引擎脚本会把错误码
           // 写进 body, 有就带给人看; 别让裸 TypeError 见人
           if (!win.AMap) {
-            const why = (doc.body.textContent || "").trim().slice(0, 120);
+            const why = (doc.body ? doc.body.textContent : "").trim().slice(0, 120);
             throw new Error(why ? `引擎没起来 — 高德说: ${why}`
                                 : "引擎没起来 (Key 不对?)");
           }
-          const box = doc.createElement("div");
-          box.style.cssText = "width:100%;height:100%;";
-          doc.body.appendChild(box);
-          // 第一步: 出图 (complete 与各视图建图同一条判据)
-          await new Promise((res, rej) => {
-            const m = new win.AMap.Map(box, { zoom: 11, center: [114.05, 22.55] });
-            const timer = setTimeout(() => rej(
-              new Error("12 秒内没有出图 (Key 或安全码不对?)")), 12000);
-            m.on("complete", () => { clearTimeout(timer); res(); });
-          });
-          // 第二步: 逆地理验真伪 (Geocoder 是插件, 先装后用)
+          // 逆地理验真伪 (Geocoder 是插件, 先装后用)
           await new Promise(res => win.AMap.plugin("AMap.Geocoder", res));
           const verdict = await new Promise((res, rej) => {
             new win.AMap.Geocoder().getAddress([114.05, 22.55], (status, result) => {
@@ -190,6 +182,11 @@ const mapLib = (() => {
           fin(reject, err);
         }
       };
+      fr.onload = boot;
+      poll = setInterval(() => {   // onload 保险: 文档一就绪就起, 不干等事件
+        const d = fr.contentDocument;
+        if (d && d.body) { clearInterval(poll); boot(); }
+      }, 50);
       document.body.appendChild(fr);
     });
   }
