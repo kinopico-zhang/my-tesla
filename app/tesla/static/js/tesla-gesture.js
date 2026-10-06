@@ -17,7 +17,8 @@
 // 2026-10-04 ptrMove 透传: 下拉的位移挂载元素 (宿主下面有兄弟画布的舞台
 // 视图传整舞台, 位移不沉底 —— 见 tesla-pull-refresh 头注)。
 "use strict";
-/* global drawerDragMove, drawerDragEnd, ptrPull, ptrRelease, bindPTR */
+/* global drawerDragMove, drawerDragEnd, ptrPull, ptrRelease, bindPTR,
+          DRAWER_EDGE */
 /* exported bindGestures, GESTURE_SLOP */
 
 const GESTURE_SLOP = 8;
@@ -54,7 +55,14 @@ function bindGestures(el, cfg) {
     const dx = t.clientX - sx, dy = t.clientY - sy;
     if (!mode) {                                     // slop 内不定轴
       if (Math.abs(dx) < GESTURE_SLOP && Math.abs(dy) < GESTURE_SLOP) return;
-      if (cfg.drawer && dx > 0 && Math.abs(dx) > Math.abs(dy)) mode = "drawer";
+      // drawer 支线让出左缘带 (2026-10-07 用户点名「所有页面统一: 左边缘
+      // 任意位置右划呼出」): 起手 ≤40px 的右划归壳级 bindDrawerEdge
+      // (tesla-drawer, 所有表面通吃) —— 两路都喂 drawerDragMove 会把
+      // 甩动测速清零。例外是 .drawer-edge 自己 (地图页左缘条/缝条:
+      // 画布手势全给引擎, 只有绑在条上的这路能认, 壳级在条上让位)
+      if (cfg.drawer && dx > 0 && Math.abs(dx) > Math.abs(dy)
+          && (sx > DRAWER_EDGE || el.classList.contains("drawer-edge")))
+        mode = "drawer";
       else if (cfg.ptr && dy > Math.abs(dx) * 2 && el.scrollTop <= 0) mode = "ptr";
       else mode = "done";                            // 原生滚动/左划: 交还系统
     }

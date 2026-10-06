@@ -42,5 +42,5 @@ def test_map_gutter_forensics_wiring(auth):
                  'diag("fp_drawer_open"', "const fpOrigOpenDrawer = openDrawer;"):
         assert frag in mf, f"缝条取证缺 {frag}"
     page = served_page(auth, SHELL)
-    assert "tesla-gesture.js?v=8" in page, "手势仲裁没升 v8"
+    assert "tesla-gesture.js?v=9" in page, "手势仲裁没升 v9"
     assert "map-filters.js?v=17" in page, "map-filters 没升 v17"

@@ -134,7 +134,11 @@ def test_guard_assets_versioned_on_shell(auth):
                                                          #   补进族规则 (v8: 左缘边条 40px)
                    ("js/tesla-navigation.js", 4),       # v4: 足迹地图闸 (navigate 拦旁路);
                                                          #   v3: 视图直挂 hidden + 冷启首跳藏净
-                   ("js/tesla-drawer.js", 10),          # v10: 足迹地图闸
+                   ("js/tesla-drawer.js", 11),          # v11: 左缘右划统一呼出
+                                                         #   (bindDrawerEdge 壳级
+                                                         #   document 捕获段,
+                                                         #   所有页面通用);
+                                                         #   v10: 足迹地图闸
                                                          #   (setMapGate/mapGateOpen/
                                                          #   initMapGate, 拟合 Key 没填
                                                          #   菜单灰 + 不可导航);
@@ -144,7 +148,9 @@ def test_guard_assets_versioned_on_shell(auth):
                                                          # + 行程统计入行程组 (trips 后)
                                                          # + 电池健康入充电组 (统计后)
                                                          # + 菜单圆键退役 (bootDrawer 只剩蒙版点击)
-                   ("js/tesla-gesture.js", 8),          # v8: ptrMove 透传 (下拉位移挂载); v7: 被吞收尾自愈
+                   ("js/tesla-gesture.js", 9),          # v9: drawer 支线让出左缘带
+                                                         #   (≤40px 归壳级, 边条例外);
+                                                         #   v8: ptrMove 透传 (下拉位移挂载); v7: 被吞收尾自愈
                                                          # + ptr 判定收紧 (明确向下 dy > 2|dx|,
                                                          #   45° 斜角不再算下拉)
                                                          # + range 起手不仲裁 (月度时间窗滑块)

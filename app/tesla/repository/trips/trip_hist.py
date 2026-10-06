@@ -49,7 +49,10 @@ FROM (
 GROUP BY drive_id, terrain, speed_bin
 """
 _DT_PG = "EXTRACT(EPOCH FROM (p.date - LAG(p.date) OVER w))"
-_DT_LITE = "(unixepoch(p.date) - unixepoch(LAG(p.date) OVER w)) * 1.0"
+# strftime 而非 unixepoch: unixepoch 要 SQLite 3.38+ (2022), CI 矩阵里的
+# ubuntu-22.04 系统 SQLite 是 3.37 —— strftime('%s') 同语义 (秒值文本,
+# 算术里自动转数, * 1.0 照样落 REAL), 老库通吃
+_DT_LITE = "(strftime('%s', p.date) - strftime('%s', LAG(p.date) OVER w)) * 1.0"
 # 档沿: 自然十进整除 (0-9→0, 10-19→10 …, 2026-09-24 用户点名; PG smallint
 # 整除即 floor, SQLite 速度非负同款)
 _BIN_PG = "speed / 10 * 10"

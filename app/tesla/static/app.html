@@ -732,15 +732,14 @@
         <!-- 账号卡 2026-09-27 拆去账号设置独立页 (设置组首位) -->
         <section class="card">
           <h2>TeslaMate 数据库</h2>
-          <label><span>主机地址</span><input type="text" id="tm-host" autocomplete="off" spellcheck="false"></label>
+          <!-- 布局 2026-10-07 用户点名: ip 和端口一行, 数据库名/账号/密码各占一行 -->
           <div class="row2">
+            <label><span>主机地址</span><input type="text" id="tm-host" autocomplete="off" spellcheck="false"></label>
             <label><span>端口</span><input type="text" id="tm-port" inputmode="numeric" autocomplete="off"></label>
-            <label><span>数据库名</span><input type="text" id="tm-name" autocomplete="off" spellcheck="false"></label>
           </div>
-          <div class="row2">
-            <label><span>用户</span><input type="text" id="tm-user" autocomplete="off" spellcheck="false"></label>
-            <label><span>密码</span><input id="tm-pass" type="password" autocomplete="new-password" placeholder=""></label>
-          </div>
+          <label><span>数据库名</span><input type="text" id="tm-name" autocomplete="off" spellcheck="false"></label>
+          <label><span>用户</span><input type="text" id="tm-user" autocomplete="off" spellcheck="false"></label>
+          <label><span>密码</span><input id="tm-pass" type="password" autocomplete="new-password" placeholder=""></label>
           <button type="button" class="primary" id="tm-save">保存并连接</button>
         </section>
       </div>
@@ -1079,8 +1078,8 @@
 <script src="/tesla/static/js/tesla-navigation.js?v=4"></script>
 <script src="/tesla/static/js/tesla-viewport.js?v=4"></script>
 <script src="/tesla/static/js/tesla-pull-refresh.js?v=3"></script>
-<script src="/tesla/static/js/tesla-gesture.js?v=8"></script>
-<script src="/tesla/static/js/tesla-drawer.js?v=10"></script>
+<script src="/tesla/static/js/tesla-gesture.js?v=9"></script>
+<script src="/tesla/static/js/tesla-drawer.js?v=11"></script>
 <script src="/tesla/static/js/tesla-car-switcher.js?v=6"></script>
 <script src="/tesla/static/js/tesla-filter-bar.js?v=7"></script>
 <script src="/tesla/static/js/tesla-paged-list.js?v=1"></script>

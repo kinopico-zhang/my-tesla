@@ -211,6 +211,16 @@ def test_settings_views_and_entries(auth):
                  'class="drv-input"', "window.confirm(`删除驾驶员",
                  'bindSwipeDelete($("#drv-list")']:
         assert frag in html, f"设置视图缺少片段 {frag}"
+    # TeslaMate 卡布局 (2026-10-07 用户点名「端口和ip放在一行, 数据库名,
+    # 账号密码分别占一行」): 主机+端口同住唯一一行 .row2, 数据库名/用户/
+    # 密码三框各整行 (不在 row2 里)
+    db_card = html[html.index('id="view-settings-db"'):html.index('id="tm-save"')]
+    assert db_card.count('class="row2"') == 1
+    r0 = db_card.index('<div class="row2">')
+    row2 = db_card[r0:db_card.index("</div>", r0)]   # 从 row2 开标签起找它的闭合
+    assert 'id="tm-host"' in row2 and 'id="tm-port"' in row2, "主机和端口该在同一行"
+    for alone in ('id="tm-name"', 'id="tm-user"', 'id="tm-pass"'):
+        assert alone not in row2, f"{alone} 该自己占一行"
     # 测试钮 (2026-10-06 用户点名「添加两个测试按钮」+ 同日追点「测试正常
     # 只显示正常就行了, 只有测试正常才能保存」): 两张 Key 卡各一枚, 与保存
     # 主钮 .btn-row 并排 (次钮 .plain 描边蓝字)

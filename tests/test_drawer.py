@@ -144,6 +144,31 @@ def test_footprint_map_gate(auth):
         "闸灰行样式缺"
 
 
+def test_drawer_edge_unified(auth):
+    """左缘右划统一呼出 (2026-10-07 用户点名「所有页面都要有统一的呼出设
+    置菜单的逻辑: 左边缘任意位置右划」): 壳级 bindDrawerEdge 在 document
+    捕获段挂一遍 —— 任何视图的任何表面 (页头/筛选条/没绑手势的角落) 起手
+    ≤40px 右拖 → 抽屉, 不再靠每个视图自己记得绑。三处让位: .drawer-edge
+    (地图页边条/缝条自己的 bindGestures 认, 双喂会掐死甩动测速) / 弹层
+    (.sheet/#placed-sheet 有自己的层级) / 抽屉已开。手势仲裁同步让出
+    左缘带: 滚动器 drawer 支线只认起手 >40px 的。"""
+    js = _js(auth, DRAWER_JS)
+    for frag in ("const DRAWER_EDGE = 40;", "function bindDrawerEdge()",
+                 "t.clientX > DRAWER_EDGE",       # 只管左缘带
+                 'input[type="range"], .drawer-edge, ',   # 滑块/边条/弹层让位
+                 '"#drawer, #drawer-mask, .sheet, #placed-sheet"',
+                 "e.preventDefault();",            # 认下后掐原生滚动
+                 "drawerDragMove(dx);", "{ capture: true, passive: false }",
+                 "bindDrawerEdge();"):             # bootDrawer 挂上
+        assert frag in js, f"左缘统一呼出缺 {frag}"
+    ges = _js(auth, "js/tesla-gesture.js")
+    # 滚动器 drawer 支线让出左缘带; .drawer-edge 例外 (边条/缝条自己认)
+    assert '(sx > DRAWER_EDGE || el.classList.contains("drawer-edge"))' in ges, \
+        "手势仲裁没让出左缘带"
+    assert "DRAWER_EDGE" in ges.split("/* global")[1].split("*/")[0], \
+        "DRAWER_EDGE 没进手势仲裁的全局声明"
+
+
 # ---------------------------------------------------------------- 导航通路
 def test_navigation_plain_hidden(auth):
     """navigate 唯一通路: 页面各自 hidden 切换 (3.3.0 草稿的 tab-group 组

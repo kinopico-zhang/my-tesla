@@ -8,11 +8,15 @@
 // (iconfont 同款风格, ISC 许可), path 数据原样内联。车辆选择住抽屉顶
 // (drw-cars, 3.3.0 全局生效), 时间筛选已下线 (所有视图全时段), 账号卡住
 // 账号设置独立页 (2026-09-27 拆页, 设置组首位) —— 抽屉本体只管导航。
+// 2026-10-07 用户点名「所有页面都要有统一的呼出设置菜单的逻辑: 左边缘
+// 任意位置右划」: bindDrawerEdge 壳级统一入口 (document 捕获段挂一遍,
+// 任何表面左缘 40px 内右拖都开抽屉; 视图滚动器的 drawer 支线让出左缘带,
+// 地图页左缘条/缝条照旧自己认, 详见 bindDrawerEdge 头注)。
 "use strict";
 /* global $, layerMotion, VIEWS, navigate, closeFbPop, bindSheetSettle,
           GESTURE_SLOP, getJSON */
 /* exported openDrawer, closeDrawer, drawerDragMove, drawerDragEnd,
-            syncDrawerNav, bootDrawer, setMapGate, mapGateOpen */
+            syncDrawerNav, bootDrawer, setMapGate, mapGateOpen, DRAWER_EDGE */
 
 /* ---------- 导航分组 (顺序按用户原话: 状态/行程/充电/设置) ----------
    ic = 分组行图标; 单页组 (状态) 不需要 —— 直接渲染成叶行 */
@@ -219,6 +223,56 @@ async function initMapGate() {
   } catch { /* 拉不到设置: 保持放行, 别把菜单误锁死 */ }
 }
 
+/* ---------- 左缘右划统一呼出 (2026-10-07 用户点名「所有页面都要有统一
+   的呼出设置菜单的逻辑: 左边缘任意位置右划」): 壳级 document 捕获段挂
+   一遍, 任何视图的任何表面 (页头/筛选条/没绑手势的角落) 起手在左缘
+   40px 内、明确向右拖 → 抽屉跟手 —— 不再靠每个视图自己记得绑。三处
+   让位: ① .drawer-edge (地图页左缘条/缝条, 自己的 bindGestures 接管
+   —— 画布手势全给引擎, 只有压在上面的条能物理截住; 双喂 drawerDragMove
+   会把甩动测速清零); ② 弹层/全屏页 (class="sheet" / #placed-sheet,
+   有自己的手势与层级, 抽屉不该从底下溜出来); ③ 抽屉已开 (蒙版全屏,
+   抽屉自己的拖拽收)。滚动器那路同步让位: 手势仲裁的 drawer 支线只认
+   起手 >40px 的 (≤40px 归这里), 见 tesla-gesture。 */
+const DRAWER_EDGE = 40;
+function bindDrawerEdge() {
+  let tid = -1, sx = 0, sy = 0, mode = "";
+  document.addEventListener("touchstart", e => {
+    if (tid !== -1 || drawerShown) return;         // 一次只跟一根, 开着不抢
+    const t = e.changedTouches[0];
+    if (t.clientX > DRAWER_EDGE) return;           // 只管左缘带
+    if (e.target.closest('input[type="range"], .drawer-edge, ' +
+                         "#drawer, #drawer-mask, .sheet, #placed-sheet")) return;
+    tid = t.identifier; sx = t.clientX; sy = t.clientY; mode = "";
+  }, { capture: true, passive: true });
+  document.addEventListener("touchmove", e => {
+    if (tid === -1 || mode === "done") return;
+    let t = null;
+    for (let i = 0; i < e.changedTouches.length; i++)
+      if (e.changedTouches.item(i).identifier === tid) { t = e.changedTouches.item(i); break; }
+    if (!t) return;
+    const dx = t.clientX - sx, dy = t.clientY - sy;
+    if (!mode) {                                   // slop 内不定轴 (同仲裁)
+      if (Math.abs(dx) < GESTURE_SLOP && Math.abs(dy) < GESTURE_SLOP) return;
+      if (dx > 0 && Math.abs(dx) > Math.abs(dy)) mode = "drawer";
+      else mode = "done";                          // 竖滚/左划: 交还系统
+    }
+    if (mode !== "drawer") return;
+    e.preventDefault();                            // 认下后掐原生滚动, 抽屉独占
+    drawerDragMove(dx);
+  }, { capture: true, passive: false });
+  const end = e => {
+    if (tid === -1) return;
+    for (let i = 0; i < e.changedTouches.length; i++)
+      if (e.changedTouches.item(i).identifier === tid) {
+        if (mode === "drawer") drawerDragEnd();
+        tid = -1; mode = "";
+        break;
+      }
+  };
+  document.addEventListener("touchend", end, { capture: true });
+  document.addEventListener("touchcancel", end, { capture: true });
+}
+
 /* ---------- 接线 (app-boot 调; 那时视图都已注册) ---------- */
 function bootDrawer() {
   /* 开合入口只剩蒙版点击 + 右划/左划拖拽 —— 菜单圆键退役 (2026-09-27
@@ -234,6 +288,7 @@ function bootDrawer() {
   buildNav();
   initMapGate();            // 足迹地图闸: 按设置里的 Web 服务 Key 有无开/灰
   bindDrawerDrag();
+  bindDrawerEdge();         // 左缘右划统一呼出: 壳级挂一遍, 所有页面通用
   /* 抽屉也是 fixed + 磨砂 + transform 的层: 视口折腾 (键盘/回前台) 后旧栅格
      保险同五张弹层 (7556 第五道保险), 复用 bindSheetSettle 的微变换收净 */
   bindSheetSettle($("#drawer"), "on");
