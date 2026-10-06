@@ -8,7 +8,8 @@
 // 上方, 不放进横滚条 (防裁剪)。
 "use strict";
 /* global $, esc */
-/* exported registerChips, setBarView, refreshBarChips, closeFbPop, bindFilterBar */
+/* exported registerChips, setBarView, refreshBarChips, closeFbPop, bindFilterBar,
+            anchorPop */   // anchorPop: 足迹播放条行的驾驶员筛选 (#fp-drv) 借弹层借锚定
 
 const BAR_CHIPS = {};   // 视图键 → chip 定义数组
 let barViewKey = "";
@@ -75,14 +76,25 @@ function bindFilterBar() {
     pop.classList.add("on");
     anchorPop(pop, btn);
   });
-  /* 点弹层/chips 以外任意处 → 收弹层 (chips 自己走上面的 toggle) */
-  document.addEventListener("click", e => {
+  /* 点弹层/chips 以外任意处 → 收弹层 (chips 自己走上面的 toggle)。
+     #fp-bar 也豁免: 足迹的驾驶员筛选住在播放条行里 (2026-10-02 并行),
+     它自己的开/收在 map-filters 里 toggle, 这里的收会抢先一步把再点
+     chip 变成「收了又开」。
+     pointerdown 不是 click (2026-10-02 用户点名「从哪来回哪去」全弹窗
+     审计): 充电/足迹视图里弹层底下是高德画布, 画布 preventDefault 触摸
+     后不合成 click —— 靠 click 收, 点地图永远收不起; pointerdown 在触摸
+     被吞之前就已派发, 点哪都灵 */
+  document.addEventListener("pointerdown", e => {
     const pop = $("#fb-pop");
     if (!pop || !pop.classList.contains("on")) return;
-    if (pop.contains(e.target) || e.target.closest("#filter-bar")) return;
+    if (pop.contains(e.target) || e.target.closest("#filter-bar") ||
+        e.target.closest("#fp-bar")) return;
     closeFbPop();
   }, true);
-  document.addEventListener("keydown", e => {   // Esc: 收弹层 (行程详情那条 Esc 链的头一环)
-    if (e.key === "Escape") closeFbPop();
+  document.addEventListener("keydown", e => {   // Esc: 收弹层 (行程详情那条 Esc 链的一环)
+    if (e.key !== "Escape" || !$("#fb-pop").classList.contains("on")) return;
+    closeFbPop();
+    e.stopImmediatePropagation();   // 一层一关 (2026-10-02 全弹窗「从哪来回哪
+                                    // 去」): 别再串关后注册的抽屉
   });
 }

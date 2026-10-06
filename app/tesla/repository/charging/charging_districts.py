@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ...models import Address
 from ...schemas import DistrictStat
 from ..common import _fnum
-from .charge_samples import _charge_rows
+from .charge_samples import CityAgg, _charge_rows
 from .charging_stats import _city_name
 
 _TOWN_SUFFIX = ("区", "县", "旗", "镇", "街道")
@@ -31,15 +31,14 @@ def district_stats(session: Session, car_id: int | None,
     """某市的区/县/镇充电分布 (次数降序, 最多 12 档); 没充电的城市给空表。"""
     rows = [r for r in _charge_rows(session, None, None, car_id)
             if _city_name(r.address) == city]
-    grouped: dict[str, dict[str, float]] = {}
+    grouped: dict[str, CityAgg] = {}
     for row in rows:
         cp = row.process
-        d = grouped.setdefault(_district_of(row.address, city) or city,
-                               {"sessions": 0, "energy": 0.0, "cost": 0.0})
-        d["sessions"] += 1
-        d["energy"] += _fnum(cp.charge_energy_used) or _fnum(cp.charge_energy_added) or 0.0
-        d["cost"] += _fnum(cp.cost) or 0.0
-    top = sorted(grouped.items(), key=lambda kv: -kv[1]["sessions"])[:12]
-    return [DistrictStat(district=k, sessions=int(v["sessions"]),
-                         energy=round(v["energy"], 1), cost=round(v["cost"], 2))
+        d = grouped.setdefault(_district_of(row.address, city) or city, CityAgg())
+        d.sessions += 1
+        d.energy += _fnum(cp.charge_energy_used) or _fnum(cp.charge_energy_added) or 0.0
+        d.cost += _fnum(cp.cost) or 0.0
+    top = sorted(grouped.items(), key=lambda kv: -kv[1].sessions)[:12]
+    return [DistrictStat(district=k, sessions=int(v.sessions),
+                         energy=round(v.energy, 1), cost=round(v.cost, 2))
             for k, v in top]

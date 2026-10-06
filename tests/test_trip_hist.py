@@ -58,19 +58,19 @@ def test_track_hist_official_formula_and_terrain(db, owndb):
     _seed_hist_drive(db, 51)
     h = track_hist(db, owndb, [51])
     assert h is not None
-    assert h["step"] == 10
-    assert len(h["t"]) == 9                      # 档 0..80 (最快 84 → 档 80)
-    assert h["t"][8] == 0.17                     # 档 80 两根 (82/84) 只有第二根
-    assert h["km"][8] == 0.05                    # 带时长/里程差 (首根 lag 空)
-    assert h["pk"][8] == 200.6 and h["pw"][8] == 20.0   # 官方公式/采样均值
-    assert h["t"][7] == 0.17 and h["km"][7] == 0.21    # 78 整除归档 70, 带自己的差
-    assert h["pk"][7] is None and h["pw"][7] is None   # 下坡: 不进平地电耗
-    assert h["t"][4] == 0.17 and h["km"][4] == 0.11    # 上坡档: 时间里程照入
-    assert h["pk"][4] is None and h["pw"][4] is None
-    assert h["t"][0] == 0.17 and h["km"][0] == 0.01    # 4km/h 平地 → 档 0
-    assert h["pk"][0] == 20.0 and h["pw"][0] == 2.0    # 0 档照画 (2kW·4km/h)
+    assert h.step == 10
+    assert len(h.t) == 9                      # 档 0..80 (最快 84 → 档 80)
+    assert h.t[8] == 0.17                     # 档 80 两根 (82/84) 只有第二根
+    assert h.km[8] == 0.05                    # 带时长/里程差 (首根 lag 空)
+    assert h.pk[8] == 200.6 and h.pw[8] == 20.0   # 官方公式/采样均值
+    assert h.t[7] == 0.17 and h.km[7] == 0.21    # 78 整除归档 70, 带自己的差
+    assert h.pk[7] is None and h.pw[7] is None   # 下坡: 不进平地电耗
+    assert h.t[4] == 0.17 and h.km[4] == 0.11    # 上坡档: 时间里程照入
+    assert h.pk[4] is None and h.pw[4] is None
+    assert h.t[0] == 0.17 and h.km[0] == 0.01    # 4km/h 平地 → 档 0
+    assert h.pk[0] == 20.0 and h.pw[0] == 2.0    # 0 档照画 (2kW·4km/h)
     # 没沾过的档全零占位 (轴上留空档), 电耗 None
-    assert h["t"][1] == 0 and h["km"][2] == 0 and h["pk"][6] is None
+    assert h.t[1] == 0 and h.km[2] == 0 and h.pk[6] is None
 
 
 def test_track_hist_cache_reuse(db, owndb):
@@ -106,11 +106,11 @@ def test_track_hist_stale_cache_recompute(db, owndb):
     h2 = track_hist(db, owndb, [61])          # v2 同款自然档: 直接用
     h3 = track_hist(db, owndb, [62])          # v3 四舍五入档: 作废重算
     assert h1 is not None and h2 is not None and h3 is not None
-    assert h1["pk"][8] == 200.6               # 重算, 不是 v1 的数
-    assert h2["t"][7] == 0.17 and h2["km"][7] == 0.21
-    assert h2["pk"][7] == 10.0 and h2["pw"][7] == 10.0     # 78/78×10: 缓存口径
-    assert len(h2["t"]) == 8                  # 只有档 70: 不再重算出 9 档
-    assert h3["t"][8] == 0.17 and h3["t"][7] == 0.17      # 自然档: 78 归档 70
+    assert h1.pk[8] == 200.6               # 重算, 不是 v1 的数
+    assert h2.t[7] == 0.17 and h2.km[7] == 0.21
+    assert h2.pk[7] == 10.0 and h2.pw[7] == 10.0     # 78/78×10: 缓存口径
+    assert len(h2.t) == 8                  # 只有档 70: 不再重算出 9 档
+    assert h3.t[8] == 0.17 and h3.t[7] == 0.17      # 自然档: 78 归档 70
     for did, v in ((60, 4), (62, 4)):
         assert json.loads(owndb.query(DriveHistCache).filter_by(
             drive_id=did).one().payload)["v"] == v         # 覆写成 v4
@@ -125,9 +125,9 @@ def test_track_hist_merged_additive(db, owndb):
     _seed_hist_drive(db, 54)
     h = track_hist(db, owndb, [54, 53])          # 乱序进, 升序算
     assert h is not None
-    assert h["t"][8] == 0.33 and h["km"][8] == 0.1
-    assert h["pk"][8] == 200.6 and h["pw"][8] == 20.0   # 同构翻倍: 公式不变
-    assert h["t"][7] == 0.33 and h["pk"][4] is None
+    assert h.t[8] == 0.33 and h.km[8] == 0.1
+    assert h.pk[8] == 200.6 and h.pw[8] == 20.0   # 同构翻倍: 公式不变
+    assert h.t[7] == 0.33 and h.pk[4] is None
 
 
 def test_track_hist_short_drive_no_consumption(db, owndb):
@@ -136,9 +136,9 @@ def test_track_hist_short_drive_no_consumption(db, owndb):
     _seed_hist_drive(db, 59, distance=0.4)
     h = track_hist(db, owndb, [59])
     assert h is not None
-    assert h["t"][8] == 0.17 and h["km"][8] == 0.05
-    assert all(v is None for v in h["pk"])
-    assert all(v is None for v in h["pw"])
+    assert h.t[8] == 0.17 and h.km[8] == 0.05
+    assert all(v is None for v in h.pk)
+    assert all(v is None for v in h.pw)
 
 
 def test_track_hist_power_null_leaves_time_km(db, owndb):
@@ -152,9 +152,9 @@ def test_track_hist_power_null_leaves_time_km(db, owndb):
     db.commit()
     h = track_hist(db, owndb, [55])
     assert h is not None
-    assert h["t"][8] == 0.17 and h["km"][8] == 0.05
-    assert all(v is None for v in h["pk"])
-    assert all(v is None for v in h["pw"])
+    assert h.t[8] == 0.17 and h.km[8] == 0.05
+    assert all(v is None for v in h.pk)
+    assert all(v is None for v in h.pw)
 
 
 def test_track_hist_open_drive_and_endpoint(auth, db, owndb):

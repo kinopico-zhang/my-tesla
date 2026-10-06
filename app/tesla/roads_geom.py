@@ -6,7 +6,8 @@
 段长 ×10, 下限 160m) —— 抽稀后的输入上算, 对纠偏输出的内部跳档判定。"""
 import math
 from collections.abc import Sequence
-from typing import NamedTuple
+
+from pydantic import BaseModel
 
 EARTH_RADIUS_KM = 6371.0
 DECIMATE_S = 5.0        # 抽稀目标间距 (秒): 高德纠偏最优密度 5-10s/点
@@ -14,7 +15,7 @@ DP_EPS = 5e-5           # Douglas-Peucker 阈值 (度, ≈5m): 拟合结果压�
 GAP_FLOOR_KM = 0.16     # 断档下限, 与 track_gaps.MIN_GAP_KM 同值
 
 
-class RoadPoint(NamedTuple):
+class RoadPoint(BaseModel):
     """拟合管线的工作点: worker 从 Position 行转换, 测试直接构造。"""
 
     lng: float

@@ -10,6 +10,8 @@ import hmac
 import secrets
 import time
 
+from pydantic import BaseModel
+
 from . import config
 
 
@@ -59,8 +61,15 @@ _legacy_secret = _SecretHolder(_compute_legacy_secret(_raw_secret))
 # 旧版 (单用户时代) cookie 认出的"虚拟身份": 解析到管理员账号
 LEGACY_ADMIN = "legacy-admin"
 
-# 单 IP 失败记录: ip -> (连续失败次数, 锁定截止时间戳, 0=未锁)
-_login_fails: dict[str, tuple[int, float]] = {}
+class LoginFailRecord(BaseModel):
+    """单 IP 的登录失败记录: 连续失败次数 + 锁定截止时间戳 (0 = 未锁)。"""
+
+    fails: int = 0
+    locked_until: float = 0.0
+
+
+# 单 IP 失败记录 (键 = IP; 连续失败到上限转锁定, 登录成功即清)
+_login_fails: dict[str, LoginFailRecord] = {}
 
 
 def make_token(user_uuid: str) -> str:
@@ -95,18 +104,19 @@ def check_token(token: str) -> str | None:
 def ip_locked(ip: str) -> bool:
     """该 IP 是否处于登录锁定期。"""
     rec = _login_fails.get(ip)
-    return bool(rec and rec[1] > time.time())
+    return bool(rec and rec.locked_until > time.time())
 
 
 def record_fail(ip: str) -> None:
     """记一次登录失败; 连续失败达到上限则锁定该 IP 一段时间。"""
     if len(_login_fails) > 10000:  # 防扫描器撑爆内存
         _login_fails.clear()
-    fails, _ = _login_fails.get(ip, (0, 0))
+    fails = _login_fails.get(ip, LoginFailRecord()).fails
     if fails + 1 >= config.LOGIN_MAX_FAILS:
-        _login_fails[ip] = (0, time.time() + config.LOGIN_LOCK_S)
+        _login_fails[ip] = LoginFailRecord(
+            locked_until=time.time() + config.LOGIN_LOCK_S)
     else:
-        _login_fails[ip] = (fails + 1, 0)
+        _login_fails[ip] = LoginFailRecord(fails=fails + 1)
 
 
 def clear_fails(ip: str) -> None:

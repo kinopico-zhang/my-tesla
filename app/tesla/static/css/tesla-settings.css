@@ -119,6 +119,18 @@ input::placeholder { color: var(--ink-3); }
 }
 .primary:active { transform: scale(.97); }
 .primary:disabled { opacity: .4; }
+/* 「测试」次钮 (v22, 2026-10-06 用户点名「地图设置界面, 添加两个测试
+   按钮」): 两把 Key 的保存钮旁各并一枚 —— 主钮实心, 次钮描边蓝字胶囊
+   (驾驶员添加钮同语言), 同行同高 */
+.btn-row { display: flex; gap: 10px; margin-top: 4px; }
+.btn-row button { margin-top: 0; }
+.plain {
+  color: #7db3f0; font-size: 14px; font-weight: 600;
+  padding: 10px 18px; border-radius: 999px;
+  border: 1px solid rgba(57,135,229,.35);
+}
+.plain:active { transform: scale(.97); }
+.plain:disabled { opacity: .4; }
 
 /* ---------- 驾驶员列表 ---------- */
 .drv-add { display: flex; gap: 8px; margin-bottom: 12px; }
@@ -128,11 +140,13 @@ input::placeholder { color: var(--ink-3); }
   padding: 0 14px; border-radius: 999px;
   border: 1px solid rgba(57,135,229,.35);
 }
-.drv-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 11px 0; border-bottom: 1px solid var(--hairline);
-}
-.drv-row:last-child { border-bottom: 0; }
+/* 2026-10-04 用户点名「驾驶员页面去掉按钮, 改成左滑显示: 设为默认, 改名
+   和删除」: 行上常显钮退役, 操作全进左滑面板 (.swipe-list 家族, 见常用地
+   点段)。行间横线照 .plc-item 钉条目层 —— 行体 (.drv-row) 住 .swipe-wrap
+   里永远不是末孩, 挂行体上结构一换就瞎 */
+.drv-row { display: flex; align-items: center; gap: 8px; padding: 11px 0; }
+.drv-item { border-bottom: 1px solid var(--hairline); }
+.drv-item:last-child { border-bottom: 0; }
 .drv-name { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; }
 .drv-badge {
   font-size: 10.5px; color: #7db3f0; border: 1px solid rgba(57,135,229,.4);
@@ -142,9 +156,294 @@ input::placeholder { color: var(--ink-3); }
   flex: none; font-size: 12.5px; color: var(--ink-2);
   padding: 6px 10px; border-radius: 999px; border: 1px solid var(--hairline);
 }
-.drv-act.set-def { color: #7db3f0; }
-.drv-act.del { color: #e5695f; }
+/* 行内改名输入框 (面板「改名」开, groups 页 .gp-input 同款): 钉蓝框 + 聚
+   焦面, 确定在 .drv-ok (蓝字)/取消在 .drv-no 用 .drv-act 胶囊 */
+.drv-input {
+  flex: 1; min-width: 0; font-size: 15px; color: var(--ink-1);
+  padding: 7px 10px; border-radius: 10px;
+  border: 1px solid #3987e5; background: rgba(255,255,255,.06); outline: none;
+}
+.drv-act.drv-ok { color: #7db3f0; border-color: rgba(57,135,229,.35); font-weight: 600; }
 .drv-empty { padding: 18px 0 6px; font-size: 13px; color: var(--ink-3); text-align: center; }
+
+/* ---------- 常用地点 (2026-09-30 用户点名「设置页面上也加一个常用地点管理」) ----------
+   管理列表行: 显示名 (+改过名的原址小字) + 次数 + 改名钮, 行底座沿用
+   驾驶员列表的 .drv-act 钮。改名弹层基座漏写事故 (2026-09-30 首版上线
+   实测): 壳里每张弹层的固定定位/105% 藏/show 滑入都是各弹层自己的 scoped
+   规则 (#cm-sheet/#acct-sheet/#sheet...), 没有裸 .sheet 家族规则 —— 首版
+   只写了 #place-map 一条, 弹层成了页面底部的裸内容 (不弹/没把手/拉不
+   关), 当晚补齐与账号弹层同款的整组基座。输入行是 .drv-add, 底下带一
+   块位置小地图 (位置标 .place-pin 圆点)。 */
+#place-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 91;
+  margin: 0 auto; max-width: 640px;
+  max-height: 92vh; max-height: calc(var(--shell-h, 100dvh) * .92);
+  display: flex; flex-direction: column;
+  background: var(--surface-2); border-radius: 20px 20px 0 0;
+  border: 1px solid var(--hairline); border-bottom: 0;
+  box-shadow: 0 -12px 48px rgba(0,0,0,.5);
+  padding: 10px 20px calc(env(safe-area-inset-bottom) + 22px);
+  transform: translateY(105%); transition: transform .28s cubic-bezier(.32,.72,.33,1);
+}
+#place-sheet.show { transform: none; }   /* 开态 none: 闲置不顶变换层 (见 trips-sheet 同注) */
+#place-sheet .grab {
+  padding: 7px 0 3px; margin: 0 auto 10px;
+  cursor: pointer; touch-action: none;   /* 拖拽归 bindSheetDrag 自管指针 */
+}
+#place-sheet .grab::before {
+  content: ""; display: block; width: 36px; height: 5px;
+  border-radius: 3px; background: #48484a;
+}
+.plc-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 0;
+}
+/* 行间分隔线钉在条目层 (2026-10-04 用户点名「每个item之间都要有横线隔开」):
+   原来挂在 .plc-row 上, 而 .plc-row 住在 .swipe-wrap 里永远不是末孩 ——
+   规则一换结构就瞎 (v5 裸行那版整片行丢了线); 钉在 .plc-item 上不管行内
+   结构怎么换都稳 */
+.plc-item { border-bottom: 1px solid var(--hairline); }
+.plc-item:last-child { border-bottom: 0; }
+.plc-name { flex: 1; min-width: 0; font-size: 14.5px; font-weight: 600; }
+/* 组是几处的汇总 (v18, 2026-10-05 用户点名「不显示原名, 显示是几个地点
+   的汇总」): 并进多处的组名字下报一行小字, 原名行退役 —— 改名前叫什么
+   对用的人没意义; 单点组不带小字, 跟没改过名的组一个长相 */
+.plc-sum {
+  display: block; margin-top: 2px; font-size: 11px; font-weight: 400;
+  color: var(--ink-3); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+/* 次数统一另起一行 (2026-10-04 用户点名): .plc-n 是块行, 挂在名字块里 —
+   管理页没原名的组原先跟名字挤同一行 (有原名的组又自然落行, 长相不一),
+   详情层原先右对齐同行; 现在两处都是名字下面一行小字 */
+.plc-n { display: block; margin-top: 2px; font-size: 12px; color: var(--ink-3); }
+/* ---------- 管理页 3.4.0 (用户点名「点行展开真实地点, 左滑删除, 组也能删」;
+   3.4.1 展开改成开组详情层 #placed-sheet, 组行只剩组自己): 组行 = .plc-g
+   (.plc-row 行体), › 是开层指引 (.plc-go)。v18 (2026-10-05 晚用户点名
+   「常用地点左滑删除去掉」): 管理页行上左滑整链退役, #plc-list 不再挂
+   .swipe-list —— 左滑家族只剩驾驶员页 #drv-list 消费 (解除编组的删除搬
+   进详情层底部红钮 .placed-del, 见下):
+   行原地不动, 操作面板 (z3, .swipe-actions) 从右缘滑上来盖行尾, 面板左
+   一片与卡片同色的半透纱 (wrap::after, z2, 浓度 --veil 由 JS 每帧喂 0→1)
+   罩着被盖的名字尾/次数。纱必须 pointer-events: none —— 伪元素命中算
+   wrap 头上, 不放行的话纱底下成点击死区 (music 1.8.27 实踩)。行
+   touch-action: pan-y 把竖向让给滚动; 删除 #e5484d / 按住 #cf3942。
+   编辑/双钮档 (.w2, 144) 2026-10-05 随地点行编辑钮退役。 */
+.plc-go { flex: none; color: var(--ink-3); font-size: 17px; line-height: 1; }
+.swipe-list .swipe-wrap { position: relative; overflow: hidden; }
+.swipe-list .swipe-wrap > :first-child {
+  position: relative; z-index: 1; background: var(--surface); touch-action: pan-y;
+}
+.swipe-list .swipe-actions {
+  position: absolute; top: 0; right: 0; bottom: 0; z-index: 3;
+  display: flex; transform: translateX(100%);
+  transition: transform .25s cubic-bezier(.25,.1,.25,1);
+}
+.swipe-list .swipe-actions button {
+  width: 72px; padding: 0; border: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 13.5px; font-weight: 600;
+}
+.swipe-list .swipe-edit { background: var(--surface-3); }
+.swipe-list .swipe-edit:active { background: #48484a; }
+.swipe-list .swipe-del { background: #e5484d; }
+.swipe-list .swipe-del:active { background: #cf3942; }
+.swipe-list .swipe-wrap.swiping .swipe-actions,
+.swipe-list .swipe-wrap.swiping::after { transition: none; }
+.swipe-list .swipe-wrap::after {
+  content: ""; position: absolute; top: 0; bottom: 0; right: 72px;
+  width: 84px; z-index: 2; opacity: var(--veil, 0);
+  pointer-events: none;
+  background: linear-gradient(to left,
+    color-mix(in srgb, var(--surface) 50%, transparent), transparent);
+  transition: opacity .25s cubic-bezier(.25,.1,.25,1);
+}
+.swipe-list .swipe-wrap.w3::after { right: 216px; }   /* 三钮行 (驾驶员: 设默认+改名+删除) */
+.plc-loading {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 40px 0; color: var(--ink-2); font-size: 14px;
+}
+.plc-hid-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 0; border-bottom: 1px solid var(--hairline);
+}
+.plc-hid-row:last-child { border-bottom: 0; }
+/* ---------- 组详情页 3.4.1 (用户点名「点名称弹出页面: 上面地图, 下面真实
+   地点列表, 点列表 item 地图切到这个位置」)。2026-10-06 (用户点名「不从
+   底下弹窗, 而是从右侧滑入窗口, 全屏, 弹出后在屏幕左侧滑动推出。弹入弹出
+   要有动画效果, 要跟手」): 底部弹窗改全屏右滑页 —— translateX(100%) 藏 /
+   show 滑入 (抽屉同曲线同 340ms), 四边钉死不吃 dvh (7556 那类压扁与它
+   无关), 蒙版/圆角/投影退役, 内容立 .placed-in 窄柱 (居中限宽 640)。
+   上 #placed-map 定高约半屏, 下 #placed-list 吃余高自滚。列表行 (v20,
+   2026-10-06 用户点名「地图下面的地点列表太丑了」): 平铺横线行改一张张
+   圆角小卡, 与地图/底部红钮同一个块节奏。左滑家族同 #plc-list, 纱色跟
+   行卡的 surface 走。选中行文字变蓝 + 卡描蓝边, 对应圆点 .place-pin.sel
+   反色 (白心蓝圈)。v21 (同日 v20 自伤回修): flex 容器里 wrap 默认
+   shrink, 11 张卡硬塞列表高每张压成 21px 半截卡 —— flex: none 叫停,
+   超出交 overflow-y 滚 (v20 当场部署的行卡全是半截, 这笔必修)。 */
+#placed-sheet {
+  position: fixed; left: 0; top: 0; right: 0; bottom: 0;
+  z-index: var(--z-sheet); background: var(--bg);
+  display: flex; flex-direction: column;
+  transform: translateX(100%);
+  transition: transform .34s cubic-bezier(.32,.72,.35,1);
+}
+#placed-sheet.show { transform: none; }   /* 开态 none: 闲置不顶变换层 (同 #place-sheet) */
+#placed-sheet.dragging { transition: none; }   /* 左缘拖拽跟手: 动画让位, 松手再交还 */
+/* 左缘推出条 (iOS 返回手势位): 竖条吃满左缘 40px (抽屉 .drawer-edge 同宽
+   —— 24 太窄, 手指心常落在条外), 右拖跟手把页面推出去; 覆在内容上, 条
+   上的点按穿不到下面的行/地图。返回钮自己抬到条之上 (z 41), 整颗可点 */
+#placed-sheet .placed-edge {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 40px;
+  z-index: 40; touch-action: none;
+}
+/* 内容窄柱: 全屏页里居中限宽, 头一行与各视图标题同一水平线 (--content-top) */
+#placed-sheet .placed-in {
+  flex: 1; min-height: 0; display: flex; flex-direction: column;
+  width: 100%; max-width: 640px; margin: 0 auto;
+  padding: var(--content-top) 20px calc(env(safe-area-inset-bottom) + 16px);
+}
+/* 标题行 (v14, 2026-10-05 用户点名「编辑按钮去掉, 单击打开的界面就可以
+   编辑名称」): 返回钮 + 名字 + 「改名」胶囊 (.drv-act) 一行。v15 (同日
+   晚用户点名「改名没必要再弹一个框, 直接把 textbox 改成 inputbox」):
+   改名就地内联 —— 标题翻 .drv-input (驾驶员行内改名同款蓝框), 「改名」
+   钮翻「保存」(.drv-ok) 旁添「取消」(.drv-act), 样式全复用驾驶员段,
+   这里零新规则。v19 (2026-10-06): 行首添返回钮 (左缘推出条也能拖, 钮
+   抬到条之上保整颗可点) */
+#placed-sheet .placed-head { display: flex; align-items: center; gap: 8px; }
+#placed-sheet .placed-back {
+  position: relative; z-index: 41; flex: none;
+  width: 34px; height: 34px; margin-left: -8px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-2); border-radius: 9px;
+}
+#placed-sheet .placed-back:active { opacity: .6; }
+#placed-sheet .placed-head .sh-title { flex: 1; min-width: 0; margin: 0; }
+#placed-map {
+  flex: none; height: min(46vh, 380px); min-height: 240px; margin-top: 2px;
+  border-radius: 12px; overflow: hidden; background: var(--surface-2);
+}
+#placed-list {
+  flex: 1; min-height: 120px; margin-top: 10px;
+  display: flex; flex-direction: column; gap: 8px;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+}
+/* 行卡 (v20, 2026-10-06 用户点名「地图下面的地点列表太丑了」): surface
+   面 + 12px 圆角 + 8px 间隔, 名字左/次数右单行 (次数原先堆名字下面第
+   二行, 管理页 .plc-n 的块行样式这里翻单行)。点行 = 地图跳那点: 按下
+   换深一档面, 选中卡描蓝边 + 名字变蓝 */
+.placed-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 14px; border-radius: 12px; background: var(--surface);
+}
+.placed-row:active { background: var(--surface-2); }
+.placed-row.on { box-shadow: inset 0 0 0 1.5px rgba(57,135,229,.5); }
+.placed-name {
+  flex: 1; min-width: 0; font-size: 14.5px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.placed-row.on .placed-name { color: #7db3f0; }
+#placed-list .plc-n { flex: none; margin: 0; }
+/* 左滑删除的基座: 行卡就是滑件 (结构/层级/触控归这, 面色住 .placed-row),
+   wrap 圆角 + overflow 剪掉红钮露在卡外的角。flex: none (v21): 列表是
+   纵向 flex 容器, 子项默认 shrink 会把卡压成一条 (11 张 575px 硬塞
+   315px, 每张剩 21px 还被 overflow 剪半截 —— 行只顶上 21px 可命中, 左滑
+   起手落在容器上永远 engage 不了, 浏览器验证当场抓到); 不收缩, 超出交
+   overflow-y 滚 */
+#placed-list .swipe-wrap { position: relative; overflow: hidden; border-radius: 12px; flex: none; }
+#placed-list .swipe-wrap > :first-child {
+  position: relative; z-index: 1; touch-action: pan-y;
+}
+#placed-list .swipe-del {
+  position: absolute; top: 0; right: 0; bottom: 0; z-index: 3;
+  width: 72px; display: flex; align-items: center; justify-content: center;
+  background: #e5484d; color: #fff; font-size: 13.5px; font-weight: 600;
+  transform: translateX(100%);
+  transition: transform .25s cubic-bezier(.25,.1,.25,1);
+}
+#placed-list .swipe-del:active { background: #cf3942; }
+#placed-list .swipe-wrap.swiping .swipe-del,
+#placed-list .swipe-wrap.swiping::after { transition: none; }
+#placed-list .swipe-wrap::after {
+  content: ""; position: absolute; top: 0; bottom: 0; right: 72px;
+  width: 84px; z-index: 2; opacity: var(--veil, 0);
+  pointer-events: none;
+  background: linear-gradient(to left,
+    color-mix(in srgb, var(--surface) 50%, transparent), transparent);
+  transition: opacity .25s cubic-bezier(.25,.1,.25,1);
+}
+/* 底部删除钮 (v18, 2026-10-05 晚用户点名「左滑删除去掉, 重命名的点开后
+   最下面加红色删除钮」): 解除编组从管理页左滑搬进这 —— 只给改过名的组
+   显 (JS 控 #placed-foot), 红字通栏 (账号页登出同款语言), 按住实心红;
+   钉在 #placed-list 之后, 列表再长它也钉在页底 (窄柱是纵向 flex) */
+#placed-sheet .placed-foot { flex: none; margin-top: 8px; }
+#placed-sheet .placed-del {
+  width: 100%; padding: 11px 8px; border-radius: 12px;
+  background: var(--surface); color: #e5484d;
+  font-size: 14.5px; font-weight: 600;
+}
+#placed-sheet .placed-del:active { background: #e5484d; color: #fff; }
+/* 输入+下拉合一 (2026-10-02 用户点名「用 inputbox 和下拉菜单合一的控件,
+   可以选择已经存在的名字」): ▾ 钉输入框右缘, 名单浮在输入行下方盖住地图
+   (不推布局), 视觉与 #fb-pop 同语言 (毛玻璃深面)。选已有名 = 别名同名,
+   两组并成同一个地点。钮样式显式重置 padding/border/background —— 裸
+   规则 .drv-add button 只盖同名属性, 不重置会漏蓝胶囊那一身 */
+.place-field { position: relative; flex: 1; min-width: 0; display: flex; }
+#place-input { padding-right: 36px; }
+#place-down {
+  position: absolute; right: 4px; top: 50%;
+  transform: translateY(-50%);
+  display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; padding: 0; border: 0; background: none;
+  border-radius: 999px; color: var(--ink-3);
+  transition: color .15s, transform .18s;
+}
+#place-down:active { color: var(--ink-1); }
+#place-down.open { color: #7db3f0; transform: translateY(-50%) rotate(180deg); }
+#place-pops {
+  position: absolute; top: calc(100% + 8px); left: 0; right: 0; z-index: 3;
+  max-height: min(300px, 42vh);
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 5px; background: rgba(44,44,46,.92);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--hairline); border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.5);
+}
+#place-pops .pp-item {
+  display: block; width: 100%; font-size: 14px; color: var(--ink-1);
+  text-align: left; padding: 9px 12px; border: 0; background: none;
+  font-weight: 400; border-radius: 10px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#place-pops .pp-item:active { background: var(--surface-3); }
+#place-pops .pp-note {
+  font-size: 11px; color: var(--ink-3); padding: 6px 12px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* 地图放大 (2026-10-02 用户报「弹出的地图太小了」): 定高约半屏 —— 弹层
+   高度是内容撑的, flex-grow 分不到空间; --shell-h 不跟键盘动, 定高无
+   resize 抖动 */
+#place-map {
+  height: min(52vh, 430px); min-height: 280px; margin-top: 2px;
+  border-radius: 12px; overflow: hidden; background: var(--surface-2);
+}
+/* 位置圆点 (弹层小地图标位置, 2026-09-30 用户点名「把这个位置在地图上
+   标出来」): 蓝心白圈 + 外晕, 配方同驾驶页车辆圆点 (默认高德针依赖 SDK
+   自带图标资源, 换自绘 DOM 点与全站标记语言一致) */
+.place-pin { position: relative; width: 18px; height: 18px; }
+.place-pin::before {
+  content: ""; position: absolute; inset: -11px; border-radius: 50%;
+  background: rgba(57,135,229,.28);
+}
+.place-pin::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: #3987e5; border: 2.5px solid #fff;
+  box-shadow: 0 1px 5px rgba(0,0,0,.55);
+}
+/* 选中态 (组详情层点行跳地图): 白心蓝圈反色, 晕加浓 —— 与默认点一眼可分 */
+.place-pin.sel::before { background: rgba(57,135,229,.42); }
+.place-pin.sel::after { background: #fff; border-color: #3987e5; }
 
 /* ---------- 轻提示 ---------- */
 #toast {
@@ -163,37 +462,16 @@ input::placeholder { color: var(--ink-3); }
 .about-link:active { opacity: .6; }
 .about-link .chev { color: var(--ink-3); font-size: 17px; line-height: 1; }
 
-/* ---------- 账号卡 (3.3.0 从抽屉底部搬来, 住数据来源页顶部) ----------
-   当前登录 (名字/管理员徽章) + 两钮: 改名称/改密码开底部弹层 #acct-sheet,
-   登出走 /api/logout; 标记都是抽屉时代的 id (acct-name/acct-badge/acct-row/
-   logout), JS 在 view/settings-account.js。 */
-#acct-card .acct-acts { display: flex; gap: 10px; margin-top: 4px; }
-#acct-card .acct-acts button {
+/* ---------- 账号三卡 (3.3.0 从抽屉底部搬来, 2026-09-27 拆独立页) ----------
+   2026-10-05 二改 (用户点名「账号名改成 inline edit box / 改名·改密·退出
+   分三个 panel / 说明行去掉」): 账号名卡的名字行/编辑态全复用驾驶员列表的
+   .drv-* 家族 (改名钮就地翻输入框, 徽章走 .drv-badge), 修改密码卡吃上面
+   设置卡片的通用 label/.primary 规则, 登出卡单枚红字钮满行; 标记沿用
+   抽屉时代 id (acct-name/acct-badge/logout), JS 在 view/settings-account.js。 */
+.acct-acts { display: flex; }
+.acct-acts button {
   flex: 1; padding: 10px 8px; border-radius: 12px;
   background: var(--surface-2);
 }
-#acct-card .acct-acts button:active { background: var(--surface-3); }
-#acct-card .acct-out { color: #e5484d; }
-#acct-card em { font-style: normal; font-size: 11px; color: #7db3f0; }
-
-/* ---------- 账号弹层 (第五张, 抽屉账号行点开) ----------
-   3.0 并页时裸了两天: 没定位没隐藏, 平时被 body 裁在屏外没人发现;
-   键盘解锁期 (body 高 auto) main 被它挤矮, 表单顶到最前面盖住所有视图
-   (2026-09-21 用户实报)。补齐与其他弹层同款基座: 固定底板 / 105% 藏 /
-   开态不顶变换层 / 封顶吃 --shell-h; 表单内容 (hint/label/row2/drv-add)
-   上面设置卡片的通用规则已在画。 */
-#acct-sheet {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 91;
-  margin: 0 auto; max-width: 640px;
-  max-height: 92vh; max-height: calc(var(--shell-h, 100dvh) * .92);
-  display: flex; flex-direction: column;
-  background: var(--surface-2); border-radius: 20px 20px 0 0;
-  border: 1px solid var(--hairline); border-bottom: 0;
-  box-shadow: 0 -12px 48px rgba(0,0,0,.5);
-  padding: 10px 20px calc(env(safe-area-inset-bottom) + 22px);
-  transform: translateY(105%); transition: transform .28s cubic-bezier(.32,.72,.33,1);
-}
-#acct-sheet.show { transform: none; }   /* 开态 none: 闲置不顶变换层 (见 trips-sheet 同注) */
-/* 句柄 (3.0 四弹层共用 .grab 类名, 此前一直靠别家规则漏过来画 —— 两套互串
-   画出重影, 2026-09-21 用户在轨迹弹层实报后各弹层各归各): 实色胶囊同款 */
-#acct-sheet .grab { width: 36px; height: 5px; border-radius: 3px; background: #48484a; margin: 0 auto 14px; }
+.acct-acts button:active { background: var(--surface-3); }
+.acct-out { color: #e5484d; }

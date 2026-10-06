@@ -20,8 +20,21 @@
 //      浮动, ②的满高基准立不住, 改立"探针对账": 一枚 fixed 探针量活的
 //      100dvh (不吃 --shell-h), 比文档根矮超 120px (工具栏浮动 ≤90 不
 //      误伤) 且定住 0.7s → 实锤, 壳高钉布局视口真值, 探针回平自动撤。
+//   ⑤ 页面缩放全禁 (2026-09-30 用户点名「任何操作都不要放大页面」):
+//      gesture 事件全局拦 (Safari 的 pinch 不吃 touch-action, 四张地图
+//      原先各自在地图元素上拦, 非地图页漏着); 输入聚焦自动放大由壳
+//      meta 的 maximum-scale=1 掐, 双击放大 meta + body touch-action。
 "use strict";
 /* exported ViewportDoctor */
+
+/* 全局禁双指整页缩放 (2026-09-30 用户点名「双指也不要放大, 任何操作都不
+   要放大页面」): Safari 的页面 pinch 不吃 touch-action, 只能拦 gesture 事
+   件 —— 四张地图原先各自在地图元素上拦 (非地图页漏着, 统计页双指就把
+   整页放大了), 收口成全局一份; 地图自己的两指缩放走 touch 事件, 不受
+   影响。输入聚焦的自动放大由壳 meta 的 maximum-scale=1 掐, 双击放大由
+   meta + body touch-action 双保险。 */
+for (const ev of ["gesturestart", "gesturechange"])
+  document.addEventListener(ev, e => e.preventDefault());
 
 const ViewportDoctor = (() => {
   const vv = window.visualViewport;

@@ -59,9 +59,10 @@ def test_trips_page_streams_speed_zoom_and_gap_fill_post(auth):
                  # 速度色分段线/断档虚线圆头端帽: 换色处两段共享端点, butt 端帽
                  # 在转角各留楔形缺口 (定格后一节节断开), 圆头补上段间无缝
                  'lineJoin: "round", lineCap: "round", zIndex: 50,',
-                 # 地图引擎经适配层 (服务商可切), 样式兜底幻影黑 (配深色 App)
+                 # 地图引擎经适配层 (高德单服务商), 样式固定幻影黑 (2026-10-05
+                 # 样式选择退役, 常量住适配层, 不再从配置端点拿)
                  'mapLib.createMap("trip-map"',
-                 'let styleV = "amap://styles/dark";',
+                 'const styleV = "amap://styles/dark";',
                  # 地名首帧竞态: 矢量样式数据异步加载, 首帧不画地名 (同一轨迹
                  # 第二次进入才有地名的原因); 开弹层后延时补重渲染
                  # (getFeatures 是高德方言 → 有这方法才补画)

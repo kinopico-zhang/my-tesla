@@ -14,6 +14,7 @@ from .own_engine import (
 from .teslamate_engine import (
     DB_CONTAINER,
     DOCKER_BIN_CANDIDATES,
+    DbConnectValues,
     build_db_url,
     dispose_engine,
     engine,
@@ -35,6 +36,7 @@ from .users_engine import (
 __all__ = [
     "DB_CONTAINER",
     "DOCKER_BIN_CANDIDATES",
+    "DbConnectValues",
     # 私有持有者类也走门面 (测试隔离直接拨它的属性; 名单见 tests/test_defensive_paths.py)
     "_EngineState",
     "_OwnEngineState",

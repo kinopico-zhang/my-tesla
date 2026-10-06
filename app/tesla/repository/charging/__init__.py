@@ -11,6 +11,8 @@ from .battery_health import battery_health
 from .charge_samples import (
     ChargeAgg,
     ChargeRow,
+    CityAgg,
+    MapPointAgg,
     _range_conditions,
     charge_efficiency,
     list_cars,
@@ -29,7 +31,8 @@ from .charging_stats import (
 )
 
 __all__ = [
-    "ChargeAgg", "ChargeRow", "SORT_OPTIONS", "SessionFilter",
+    "ChargeAgg", "ChargeRow", "CityAgg", "MapPointAgg", "SORT_OPTIONS",
+    "SessionFilter",
     "_bump", "_range_conditions", "battery_health", "charge_efficiency",
     "charging_dimensions", "charging_map_locations", "charging_region_tree",
     "charging_session_detail", "district_stats", "list_cars",

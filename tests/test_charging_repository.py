@@ -13,7 +13,8 @@ def test_session_fields_and_price(db):
     seed_charge(db, 1)
     seed_charging(db)          # 默认: 45/48kWh, 25.5 元, 无 geofence
     row = repository.list_charging_sessions(db, repository.SessionFilter(
-        None, "all", None, "date_desc", 0, 50))[1][0]
+        date_range=None, charge_type="all", query=None,
+        sort="date_desc", offset=0, limit=50))[1][0]
     assert row.id == 1
     assert row.start == "2026-09-07 23:50"      # UTC 15:50 → 北京时间
     assert row.date == "2026-09-07"
@@ -32,7 +33,8 @@ def test_session_geofence_preferred(db):
     seed_charging(db, geofence_id=7)
     seed_charge(db, 1)
     item = repository.list_charging_sessions(db, repository.SessionFilter(
-        None, "all", None, "date_desc", 0, 50))[1][0]
+        date_range=None, charge_type="all", query=None,
+        sort="date_desc", offset=0, limit=50))[1][0]
     assert item.location == "公司"
 
 
@@ -40,7 +42,8 @@ def test_session_without_cost(db):
     seed_addresses(db)
     seed_charging(db, cost=None)
     item = repository.list_charging_sessions(db, repository.SessionFilter(
-        None, "all", None, "date_desc", 0, 50))[1][0]
+        date_range=None, charge_type="all", query=None,
+        sort="date_desc", offset=0, limit=50))[1][0]
     assert item.cost is None
     assert item.price_per_kwh is None
 

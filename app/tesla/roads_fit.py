@@ -11,7 +11,7 @@ v2 教训 (2026-09-29 用户反馈「广西/云南大量虚线, 跟行程分组�
 fit_drive 纯编排 (client 注入, 不碰数据库; 重试/节流/配额在 worker)。
 pts 平铺 WGS-84 [lng, lat, ...]; gaps 记推断层顶点闭区间 (前端虚线渲染
 「可能走过」且计数剔除)。"""
-from typing import NamedTuple
+from pydantic import BaseModel, Field
 
 from . import roads_gcj
 from .roads_amap import AmapClient
@@ -32,18 +32,18 @@ GRASP_LO = 0.6     # 批输出里程 / 原始弧长的 sane 窗口, 出窗弃批
 GRASP_HI = 1.5
 
 
-class FitResult(NamedTuple):
+class FitResult(BaseModel):
     """一段行程的拟合结果: status = ok / guess / failed / skip。
 
     ok=证实到路 (实线进计数); guess=可能走过 (几何保留, gaps 覆盖全程,
     虚线不进计数); failed=一点几何都没有; skip=境外或点太少 (本就没路)。"""
 
     status: str
-    pts: list[float]          # 平铺 [lng, lat, ...] (ok/guess 有内容)
+    pts: list[float]         # 平铺 [lng, lat, ...] (ok/guess 有内容)
     n: int
     km: float
     err: str
-    gaps: list[list[int]] = []   # 推断层顶点闭区间 (渲染虚线/计数剔除)
+    gaps: list[list[int]] = Field(default_factory=list)   # 推断层顶点闭区间
 
 
 def _grasp_input(span: list[RoadPoint]) -> list[tuple[float, float, float, float, float]]:
@@ -150,7 +150,8 @@ def _reconcile(km: float, km_expected: float) -> bool:
 def _pack(status: str, final: list[tuple[float, float]], err: str,
           gaps: list[list[int]], km: float) -> FitResult:
     flat = [round(v, 5) for p in final for v in p]
-    return FitResult(status, flat, len(final), round(km, 2), err, gaps)
+    return FitResult(status=status, pts=flat, n=len(final), km=round(km, 2),
+                     err=err, gaps=gaps)
 
 
 def fit_drive(points: list[RoadPoint], km_expected: float,
@@ -158,11 +159,11 @@ def fit_drive(points: list[RoadPoint], km_expected: float,
     """一段行程 → 拟合到实际道路的折线 (全管线, 见模块 docstring)。"""
     dec = decimate_by_time(points)
     if len(points) < 2 or len(dec) < 2:   # 原始不足两点 / 抽稀后只剩首尾一点
-        return FitResult("skip", [], 0, 0.0, "few_points")
+        return FitResult(status="skip", pts=[], n=0, km=0.0, err="few_points")
     if roads_gcj.out_of_china(points[0].lng, points[0].lat) or \
             roads_gcj.out_of_china(points[-1].lng, points[-1].lat):
-        return FitResult("skip", [], 0, 0.0, "abroad")
-    threshold = gap_threshold_km(dec)
+        return FitResult(status="skip", pts=[], n=0, km=0.0, err="abroad")
+    threshold = gap_threshold_km([(p.lng, p.lat) for p in dec])
     fitted: list[tuple[float, float]] = []
     inferred: list[list[int]] = []
     fills = 0
@@ -183,7 +184,7 @@ def fit_drive(points: list[RoadPoint], km_expected: float,
         got = _fit_segment(seg, threshold, client)
         fitted.extend(got[1:] if fitted else got)
     if len(fitted) < 2:
-        return FitResult("failed", [], 0, 0.0, "grab_fail")
+        return FitResult(status="failed", pts=[], n=0, km=0.0, err="grab_fail")
     final, franges = dp_ranges(fitted, inferred)
     km = polyline_km(final)
     if _reconcile(km, km_expected):

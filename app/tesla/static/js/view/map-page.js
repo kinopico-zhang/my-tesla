@@ -3,7 +3,8 @@
 // shellState.filters.map) + 道路层状态族 (清单 / 拟合行 / 格计数 /
 // 本地 IndexedDB 句柄) + 本地筛选 (清单行 c/d × 车/驾驶员, 不再按筛选
 // 请求服务端; 时间筛选 3.3.0 下线, 全时段) + 取数参数拼装 (汇总用) +
-// 加载/错误/下载进度占位 + 汇总行。
+// 错误占位 + 汇总行 (加载/下载进度条 2026-09-29 拆: 与图例重叠, 边下边
+// 画本就增量展示, 不需要进度反馈)。
 // 2026-09-29 起只画「走过的路」: 原始轨迹层退役 (全精度内存库/本地轨迹
 // 仓/抽稀细化档整链拆净), 清单里没拟合到的程等 worker 拟合好再出现。
 // 旧版 (js/map-page.js) 的菜单收起/$/getJSON/esc/pad/TIME_RANGES/日历/
@@ -15,11 +16,11 @@
            mapReady, manifest, manifestIdx, localDb,
            tracks, tracksById, linesById, renderGen,
            roadsById, roadCellsById, roadCells, roadMax,
-           fpRowVisible, fpVisibleTracks,
-           trackParams, showLoading, showError, showProgress, renderStats,
+           fpRowVisible, fpVisibleTracks, fpPlaying, fpViewOn,
+           trackParams, showError, renderStats, writeStats, fpRestoreStats,
            fpSaveFilters */
 "use strict";
-const PAGE_V = "v17";     // 页面版本: 诊断时确认浏览器是否在跑最新代码
+const PAGE_V = "v19";     // 页面版本: 诊断时确认浏览器是否在跑最新代码
 const ROAD_FMT_V = 3;     // 道路算法版本 (= 服务端 ROAD_FIT_V; v3=原始轨迹桥接, 不符清 fp_roads 重下)
 
 /* ---------- 诊断探针: 浏览器端异常/高德请求失败自动回传服务端日志 ---------- */
@@ -93,6 +94,15 @@ let tracks = [];              // 当前筛选后的道路对象 (渲染集)
 let tracksById = new Map();   // id → 道路对象 (点击信息/换画遍历用)
 let linesById = new Map();    // id → 当前的折线组 (跨 15 级换画时逐程替换)
 let renderGen = 0;            // 渲染代号: 切换筛选时作废进行中的批次
+let fpPlaying = false;        // 时间回放中 (2026-10-01 播放钮, map-roads-playback):
+                              // 正常渲染整链让路 (renderTracks 出口钩否决回放 /
+                              // appendIfVisible 照画但藏起 / redrawRoads /
+                              // roadsViewportSync 跳过), 收场由回放层 show()
+                              // 瞬时亮回正常层 (整版重建只在进场时渲染在途)
+let fpViewOn = false;         // 足迹地图视图当前在前台 (map-filters 的 show/hide
+                              // 维护): 首次同步收尾的自动开播只趁人在看时起 —
+                              // 回放兼作加载动画 (2026-10-02 用户点名「打开行程
+                              // 地图…自动播放的时候可以用来加载数据」)
 
 /* 格计数 (渲染上热力色阶的底): roadsById 本地就绪的拟合行 (补上 date/min
    后即渲染层对象); roadCellsById 每程的格键序列 (下载一条建一条); roadCells
@@ -127,26 +137,27 @@ function trackParams() {   // 车 + 驾驶员 (汇总端点同口径; 时间不�
   return "?" + p;
 }
 
-function showLoading(on, text) {
-  $("#fp-loading").hidden = !on;
-  if (on) $("#fp-prog").style.width = "0%";   // 进度条每轮从零起
-  if (text) $("#fp-loading-text").textContent = text;
-}
-function showProgress(done, total) {   // 下载进度条 (加载层内, 确定值)
-  $("#fp-prog").style.width = (total ? Math.round(done * 100 / total) : 100) + "%";
-  $("#fp-loading-text").textContent = "正在下载走过的路 " + done + " / " + total + "…";
-}
 function showError(msg) {
   $("#fp-error").hidden = false;
   $("#fp-error-text").textContent = msg || "加载失败";
 }
 
+let fpStatsLast = null;   // 最近一次服务端汇总 (回放收场还原两格用)
+function writeStats(s) {  // 两格写数 (renderStats 与回放联动共用同一排版)
+  $("#st-km").innerHTML = Number(s.distance_km).toLocaleString() + "<small>km</small>";
+  $("#st-hours").innerHTML = (s.duration_min / 60).toFixed(1) + "<small>小时</small>";
+}
+
 function renderStats(s) {
   /* 两格 (2026-09-29 用户点名「不需要显示行程数量, 就显示里程和时长就行
      了」—— 原三格并排太挤, 里程/时长的数字溢出格子) */
+  fpStatsLast = s;             // 存档: 回放联动改写两格, 收场从这里还原
   $("#fp-stats").hidden = false;
-  $("#st-km").innerHTML = Number(s.distance_km).toLocaleString() + "<small>km</small>";
-  $("#st-hours").innerHTML = (s.duration_min / 60).toFixed(1) + "<small>小时</small>";
+  writeStats(s);
+}
+
+function fpRestoreStats() {   // 回放收场: 两格还原服务端汇总口径 (联动只借不改)
+  if (fpStatsLast) writeStats(fpStatsLast);
 }
 
 /* 汇总两数走 summary 端点的筛选口径 (fpSync 每轮现拉): 平移/缩放不动

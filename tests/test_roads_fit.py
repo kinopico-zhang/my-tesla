@@ -89,8 +89,8 @@ def test_fit_sane_window_rejects_wild_batch():
 def test_fit_output_jump_bridges_with_raw_track():
     """纠偏输出跳档 (中段没回): 两端最近原始点之间用原始轨迹补 —— 实线
     证实不调导航 (v2 在这调 route 补路, 绕路虚增里程即虚线事故根因)。"""
-    pts = [RoadPoint(114.0 + i * 0.0002, 22.5 + (0.0005 if i == 10 else 0),
-                     40.0, 1000.0 + i * 6.0) for i in range(20)]
+    pts = [RoadPoint(lng=114.0 + i * 0.0002, lat=22.5 + (0.0005 if i == 10 else 0),
+                     sp=40.0, ts=1000.0 + i * 6.0) for i in range(20)]
     def grasp(body):
         return {"errcode": 0, "data": {"points": body[:2] + body[-2:]}}
     calls: list[Any] = []
@@ -102,9 +102,9 @@ def test_fit_output_jump_bridges_with_raw_track():
 
 def test_fit_static_jitter_collapsed_on_fallback():
     """直落前合并静止点: 停车 GPS 抖动 (±10m 框内 30 点) 不虚增里程。"""
-    pts = [RoadPoint(114.0 + (5e-5 if i % 2 else -5e-5),
-                     22.5 + (4e-5 if i % 3 else -4e-5),
-                     0.0, 1000.0 + i * 6.0) for i in range(30)]
+    pts = [RoadPoint(lng=114.0 + (5e-5 if i % 2 else -5e-5),
+                     lat=22.5 + (4e-5 if i % 3 else -4e-5),
+                     sp=0.0, ts=1000.0 + i * 6.0) for i in range(30)]
     res = fit_drive(pts, 0.02, make_client(grasp=lambda b: GRASP_FAIL))
     assert res.status == "ok" and res.n == 2         # 只剩首尾
     assert res.km < 0.05
@@ -167,9 +167,10 @@ def test_fit_grab_quota_raises():
 
 
 def test_fit_skip_abroad_and_few_points():
-    abroad = [RoadPoint(139.69 + i * 1e-4, 35.69, 30.0, 1000.0 + i * 6.0)
-              for i in range(5)]
+    abroad = [RoadPoint(lng=139.69 + i * 1e-4, lat=35.69, sp=30.0,
+                        ts=1000.0 + i * 6.0) for i in range(5)]
     assert fit_drive(abroad, 1.0, make_client()).status == "skip"
     assert fit_drive(abroad, 1.0, make_client()).err == "abroad"
-    assert fit_drive(zigzag(1), 1.0, make_client()) == (
-        "skip", [], 0, 0.0, "few_points", [])        # NamedTuple 按位比较
+    few = fit_drive(zigzag(1), 1.0, make_client())
+    assert (few.status, few.pts, few.n, few.km, few.err,
+            few.gaps) == ("skip", [], 0, 0.0, "few_points", [])

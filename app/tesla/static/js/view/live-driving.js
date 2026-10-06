@@ -11,12 +11,16 @@
 // v10 (2026-09-27): 地图顶中的最后一段行程直达钮退役 (用户点名「状态页面上
 // 最后一段行程按钮，去掉」) —— 两态文案/内存跳转整链拆净, 面板定格与驻车
 // 轨迹照旧。
+// v13 (2026-10-04) 两笔: ① 用户报「右划要划好多次才打开菜单」—— 舞台两侧
+// 14px 出血缝里的触摸谁也接不到 (卡内左缘条从 14px 才起), 补 #lv-gutter 视
+// 图层缝条接力到物理屏缘 (足迹页 #fp-gutter 同款); ② 用户报「下拉时图标数
+// 字陷到地图后面」—— ptrMove 把下拉位移挂到整舞台, 面板+画布一体跟手。
 /* global $, getJSON, mapLib, TrackUtil, POLL_MS, TRACK_MS, shellState,
           cur: writable, driveId: writable, trackTimer: writable,
           lvMap: writable, carMarker: writable, routeLine: writable,
           trackEnd: writable, tailLine: writable, serverSkew: writable,
           lvRender, lvRenderParked, renderElapsed, showState, registerView,
-          bindGestures */
+          bindGestures, diag */
 /* exported lvSetCar, poll, serverSkew */
 "use strict";
 
@@ -164,7 +168,7 @@ async function initMap() {
     if (gen !== lvGen) return;
     lvMap = mapLib.createMap("lv-map", { zoom: 16, center: [114.05, 22.55] });
     lvMap.on("complete", () => {   // 矢量样式数据异步加载: 首帧不画地名, 到货后补几拍重渲染
-      const nudge = () => { if (lvMap.getFeatures) lvMap.setFeatures(lvMap.getFeatures()); };
+      const nudge = () => { if (lvMap && lvMap.getFeatures) lvMap.setFeatures(lvMap.getFeatures()); };
       setTimeout(nudge, 1500); setTimeout(nudge, 5000); setTimeout(nudge, 12000);
     });
     // iOS Safari 双指缩放劫持成整页缩放: 手势只给地图
@@ -188,13 +192,47 @@ document.addEventListener("visibilitychange", () => {   // 从后台切回立即
 });
 
 /* 手势面: 面板区 (仪表/电池/格子) 右划开抽屉/下拉刷新; 首帧等待也整面;
-   画布本体 touch-action:none 全给地图引擎, 左缘 24px 条供右划 */
-bindGestures($("#lv-panels"), { drawer: true, ptr: true, onRefresh: poll });
-bindGestures($("#booting"), { drawer: true, ptr: true, onRefresh: poll });
+   画布本体 touch-action:none 全给地图引擎, 卡内 40px 左缘条 (#lv-edge) +
+   视图层缝条 (#lv-gutter, 2026-10-04 补: 舞台两侧 14px 出血缝里的右划
+   谁也接不到 —— 用户报「划了好多次才打开」, 足迹页 #fp-gutter 同款接力)
+   一起覆盖到物理屏缘。ptrMove 挂整舞台: 下拉时标题/面板/画布一体跟手,
+   不再面板单独沉进画布后面 (2026-10-04 用户点名「要一个整体」)。 */
+const lvStage = $(".live-stage");
+bindGestures($("#lv-panels"), { drawer: true, ptr: true, onRefresh: poll, ptrMove: lvStage });
+bindGestures($("#booting"), { drawer: true, ptr: true, onRefresh: poll, ptrMove: lvStage });
 bindGestures($("#lv-edge"), { drawer: true });
+bindGestures($("#lv-gutter"), { drawer: true, ptr: true, onRefresh: poll, ptrMove: lvStage });
+
+/* 缝条取证 (2026-10-04, 足迹页 fp 探针同款): 起手/收手/被抢 (cancel —— 抢
+   走的触摸没有 end, 正是 tesla-gesture 自愈要医的病) 三笔 + 首启信标,
+   再犯翻服务日志就能定罪到具体哪一环 (抽屉开张信标在足迹页脚本里全局
+   包了 openDrawer, 状态页也吃得到)。 */
+const lvGutProbe = new Map();
+let lvGutN = 0, lvBootedDiag = false;
+$("#lv-gutter").addEventListener("touchstart", e => {
+  const t = e.changedTouches[0];
+  lvGutProbe.set(t.identifier, [t.clientX, t.clientY]);
+  if (lvGutN++ < 10)
+    diag("lv_gutter_touch", { x: Math.round(t.clientX), y: Math.round(t.clientY) });
+}, { passive: true });
+$("#lv-gutter").addEventListener("touchend", e => {
+  for (const t of e.changedTouches) {
+    const s = lvGutProbe.get(t.identifier);
+    lvGutProbe.delete(t.identifier);
+    if (s && lvGutN++ < 10)
+      diag("lv_gutter_end", { dx: Math.round(t.clientX - s[0]), dy: Math.round(t.clientY - s[1]) });
+  }
+}, { passive: true });
+$("#lv-gutter").addEventListener("touchcancel", e => {
+  for (const t of e.changedTouches) {
+    if (lvGutProbe.delete(t.identifier) && lvGutN++ < 10)
+      diag("lv_gutter_cancel", { x: Math.round(t.clientX), y: Math.round(t.clientY) });
+  }
+}, { passive: true });
 
 function lvShow() {
   lvGen++;
+  if (!lvBootedDiag) { lvBootedDiag = true; diag("lv_boot", {}); }   // 首启信标: 确认手机真跑上 v13 (排查旧缓存混跑)
   $("#map-fallback").hidden = true;   // 上次失败的占位先收起, 这轮重试
   poll();                             // 建图在驾驶态 (enterDriving), 这里只探状态
   lvPollTimer = setInterval(poll, POLL_MS);

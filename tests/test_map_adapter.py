@@ -26,18 +26,26 @@ def test_adapter_loaded_before_view_scripts(auth):
 
 def test_adapter_dialect_surface():
     """适配层方言面: 高德单服务商 (引擎按需注入 + 缺 Key 自报) + 坐标口径
-    (高德要 GCJ-02, 视图统一喂 WGS-84) + 规划降级 (不可用/失败 → null)。"""
+    (高德要 GCJ-02, 视图统一喂 WGS-84) + 规划降级 (不可用/失败 → null)
+    + 候选 Key 探针 (设置页「测试」钮: 独立 iframe 装引擎建小图)。"""
     src = ADAPTER.read_text(encoding="utf-8")
     for frag in [
         "webapi.amap.com/maps?v=2.0",                # 高德引擎按需注入
+        "function probeKey(",                        # 候选 Key 探针 (设置页「测试」钮)
+        "win._AMapSecurityConfig",                   # 探针: 候选安全码钉 iframe 窗口
+        "10 秒内没有出图",                             # 探针: 出图判据 (complete)
+        "引擎没起来 (Key 不对?)",                      # 探针: 坏 Key 不见裸 TypeError
+        'm.on("complete"',
         'e.noKey = true',                            # 高德缺 Key: 视图各自引导
         "GCJ02.wgs84ToGcj02",                        # 坐标口径: 高德要 GCJ-02
         "drivingSearch",                             # 规划原语 (断档补路 + 高速费)
         "new AMap.Map(",                             # 工厂面: 建图
+        "opts.style || styleV",                      # 单图换样式 (足迹地图灰阶)
         "new AMap.Polyline(",                        # 工厂面: 线
         "new AMap.CircleMarker(",                    # 工厂面: 圆点
         "new AMap.Marker(",                          # 工厂面: 标注
         "new AMap.Pixel(",                           # 工厂面: 像素偏移
+        "new AMap.Bounds(",                          # 工厂面: 视野框 (回放镜头跟框)
         "new AMap.HeatMap(",                         # 工厂面: 热力 (充电地图)
     ]:
         assert frag in src, f"适配层缺少 {frag}"
@@ -51,12 +59,14 @@ def test_osm_family_stays_retired():
     """OSM 家族退役棘轮 (2026-09-25 只留高德): 瓦片压暗滤镜 (官方源/国内
     镜像只有亮色标准图, CSS 反色滤镜变夜景)、Leaflet 容器/版权角标规则、
     导出视频的 Leaflet <img> 瓦片合成路, 全部拆净; 深底色留着 (高德暗色
-    样式的瓦片空窗也统一深色, 录制底色同款)。"""
+    样式的瓦片空窗也统一深色, 录制底色同款)。足迹地图 2026-09-30 换灰阶
+    底图后空窗是浅灰 (其余三张仍深底)。"""
     css = Path("app/tesla/static/css/tesla-map-canvas.css").read_text(encoding="utf-8")
     assert ".leaflet-tile" not in css
     assert ".leaflet-container" not in css
     assert ".leaflet-control-attribution" not in css
-    assert "#fp-map, #cm-map, #lv-map, #trip-map { background: #0b0d10; }" in css
+    assert "#fp-map { background: #e4e4e2; }" in css
+    assert "#cm-map, #lv-map, #trip-map { background: #0b0d10; }" in css
     exp = (Path("app/tesla/static/js/view/trips-export-video.js")
            .read_text(encoding="utf-8"))
     assert "tileFilter" not in exp
@@ -85,10 +95,10 @@ def test_views_never_touch_amap_directly(auth):
 
 
 def test_settings_map_change_resets_adapter(auth):
-    """设置页改地图配置 (样式/Key): reset 作废缓存配置 + 预热新引擎,
-    maplib:swap 事件让三张常驻地图 (足迹/充电/轨迹弹层) 自毁, 下次进视图
-    自动重建 —— 免整页刷新 (换高德 Key 除外, Key 绑在引擎脚本上); 高德
-    引擎装过就不重装 (换样式/安全码免刷新的前提)。服务商下拉已随
+    """设置页改地图配置 (Key/安全码; 样式 2026-10-05 退役): reset 作废缓存
+    配置 + 预热新引擎, maplib:swap 事件让三张常驻地图 (足迹/充电/轨迹弹层)
+    自毁, 下次进视图自动重建 —— 免整页刷新 (换高德 Key 除外, Key 绑在引擎
+    脚本上); 高德引擎装过就不重装 (换安全码免刷新的前提)。服务商下拉已随
     「只留高德」整组退役, 不许回潮。"""
     html = _shell(auth)
     assert 'id="map-provider"' not in html
@@ -96,14 +106,18 @@ def test_settings_map_change_resets_adapter(auth):
     assert "map_provider" not in html
     assert "mapLib.reset();" in html
     assert 'dispatchEvent(new CustomEvent("maplib:swap"))' in html
-    assert "已切换地图样式" in html
+    # 样式已退役 (2026-10-05): 换 Key/安全码后的 toast 不再分样式档
+    assert "高德 Key 换了刷新一次页面才生效" in html
     assert "if (window.AMap) return;" in ADAPTER.read_text(encoding="utf-8")
-    # 三张常驻地图都挂了 swap 自毁 (实时页本来就每次进视图重建, 不用挂)
+    # 四处挂 swap 自毁: 三张常驻地图 (实时页本来就每次进视图重建, 不用挂)
+    # + 足迹回放层 (map-roads-playback: 实例作废时散场收摊, 旗不清会压住
+    # 新实例的正常渲染 —— 黑屏)
     listeners = sorted(
         p for p in page_asset_paths(auth, "/tesla")
         if p.endswith(".js") and 'addEventListener("maplib:swap"' in auth.get(p).text)
     assert listeners == [
         "/tesla/static/js/view/chargemap-time-filters.js",
         "/tesla/static/js/view/map-filters.js",
+        "/tesla/static/js/view/map-roads-playback.js",
         "/tesla/static/js/view/trips-sheet-page.js",
     ]

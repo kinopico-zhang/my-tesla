@@ -41,10 +41,14 @@ body.selecting #bar-row { display: none; }
 .map-head { padding: var(--content-top) 16px 0; }   /* 16px 对齐各页 sec-head 侧距 */
 .map-head .stats { padding: 10px 0 0; }
 .map-stage { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
-/* 画布左缘窄条: 地图手势全给引擎, 右划开抽屉的入口折到这 (手势仲裁认它) */
+/* 画布左缘窄条: 地图手势全给引擎, 右划开抽屉的入口折到这 (手势仲裁认它)。
+   2026-10-01 用户报「足迹地图不是所有左边的位置右划都可以呼出菜单」:
+   原 24px 太窄 —— 手指中心点常落在条外被地图引擎吃掉; 且 z 5 压在图例
+   (z 30) 之下, 左下角图例区整片死。加宽到 40px 并抬到图例/缩放钮之上
+   (图例是非交互的浮卡, 让位无妨; 弹层 91+ 仍在更上面)。 */
 .drawer-edge {
-  position: absolute; left: 0; top: 0; bottom: 0; width: 24px;
-  z-index: 5; touch-action: none;
+  position: absolute; left: 0; top: 0; bottom: 0; width: 40px;
+  z-index: 40; touch-action: none;
 }
 
 /* ---- 驾驶视图 (P5): 旧页 main 的布局折到舞台容器 (壳 main 满宽无内边距);
@@ -59,9 +63,19 @@ body.selecting #bar-row { display: none; }
 }
 .lv-panels { display: flex; flex-direction: column; gap: 10px; }
 
-/* ---- 设置三视图 (P6): 旧页 main 的 560 窄栏折到这里 (sec-head 自带 16
-   侧距, 卡片补同款侧距对齐) ---- */
+/* ---- 设置视图 (P6): 旧页 main 的 560 窄栏折到这里 (sec-head 自带 16
+   侧距, 卡片补同款侧距对齐)。账号设置/常用地点两视图后来才拆出
+   (09-27/09-30), 没跟上族规则 —— 卡片一直贴屏缘, 2026-10-04 补进。
+   同日用户报「地图设置两个 panel 挤在一起」: 壳化时旧页 main 的
+   flex gap:16 也没跟过来 (.view-scroll 是纯滚动容器不给距), 地图设置
+   是设置族唯一双卡页, 两卡纵向零距贴了几周 —— 相邻卡补 16px 纵距
+   (隔了标题的不算相邻, 常用地点「已删除」区不吃这条) ---- */
 #view-settings-db > .view-scroll, #view-settings-map > .view-scroll,
-#view-settings-drivers > .view-scroll { max-width: 592px; }
+#view-settings-drivers > .view-scroll, #view-settings-account > .view-scroll,
+#view-settings-places > .view-scroll { max-width: 592px; }
 #view-settings-db .card, #view-settings-map .card,
-#view-settings-drivers .card { margin: 0 16px; }
+#view-settings-drivers .card, #view-settings-account .card,
+#view-settings-places .card { margin: 0 16px; }
+#view-settings-db .card + .card, #view-settings-map .card + .card,
+#view-settings-drivers .card + .card, #view-settings-account .card + .card,
+#view-settings-places .card + .card { margin-top: 16px; }

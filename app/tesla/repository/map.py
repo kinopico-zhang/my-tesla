@@ -33,8 +33,8 @@ def map_summary(session: Session, own: Session, date_range: DateRange | None,
                func.min(Drive.start_date), func.max(Drive.start_date))
         .where(*conds)).one()
     return MapSummary(
-        drives=int(count), distance_km=round(float(distance), 1),
-        duration_min=int(duration),
+        drives=int(count), distance_km=round(float(distance or 0.0), 1),
+        duration_min=int(duration or 0),
         first_date=fdate(first) if first else None,
         last_date=fdate(last) if last else None)
 

@@ -8,12 +8,28 @@ from pydantic import BaseModel
 
 
 class AmapConfig(BaseModel):
-    """地图前端配置 (env / 设置页注入): 高德 Key/样式
-    (类名沿用 Amap 起家时的旧名; 2026-09-25 起单服务商, 无 provider 字段)。"""
+    """地图前端配置 (env / 设置页注入): 高德 Key 与安全码
+    (类名沿用 Amap 起家时的旧名; 2026-09-25 起单服务商无 provider, 地图
+    样式 2026-10-05 随「不允许用户选择」退役 —— 固定幻影黑住适配层)。"""
 
     amap_key: str | None
     security_code: str | None
-    style: str
+
+
+class AmapKeyTestIn(BaseModel):
+    """设置页「测试」钮请求 (Web 服务 Key): key = 框里待测的候选 (空 = 测
+    现值 —— 与保存口径一致, 留空保持)。"""
+
+    key: str = ""
+
+
+class AmapKeyTest(BaseModel):
+    """设置页「测试」钮应答 (Web 服务 Key, 2026-10-06): 服务端拿候选 Key 打
+    一次逆地理的真伪结论 —— ok = Key 能用/有效, detail 是整句人话 (通过就
+    是「正常」, 前端直接 toast, 不再拼词)。"""
+
+    ok: bool
+    detail: str
 
 
 class MapSummary(BaseModel):

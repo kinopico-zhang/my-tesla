@@ -31,8 +31,8 @@ def make_client(grasp=None, route=None, calls=None):
 
 def zigzag(n=12, dlng=0.0006):
     """锯齿行程 (6s/点抽稀全保, ±44m 振幅 DP 压不掉)。"""
-    return [RoadPoint(114.0 + i * dlng, 22.5 + (0.0004 if i % 2 else 0),
-                      40.0, 1000.0 + i * 6.0) for i in range(n)]
+    return [RoadPoint(lng=114.0 + i * dlng, lat=22.5 + (0.0004 if i % 2 else 0),
+                      sp=40.0, ts=1000.0 + i * 6.0) for i in range(n)]
 
 
 def km_of(points):
@@ -46,8 +46,9 @@ def outage_line(nseg=2, step=10, gap_lng=0.003):
     pts = []
     for s in range(nseg):
         t0 = 1000.0 + s * (step * 6.0 + 200.0)
-        pts += [RoadPoint(114.0 + s * (step * 0.0002 + gap_lng) + i * 0.0002,
-                          22.5, 40.0, t0 + i * 6.0) for i in range(step)]
+        pts += [RoadPoint(lng=114.0 + s * (step * 0.0002 + gap_lng)
+                          + i * 0.0002, lat=22.5, sp=40.0, ts=t0 + i * 6.0)
+                for i in range(step)]
     return pts
 
 

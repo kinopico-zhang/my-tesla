@@ -1,7 +1,7 @@
 /* roads-grid.js 走过的路栅格计数的 node --test 单元测试: 格键 / DDA 采样
    不跳格 / 有序连续去重保折返 / 热力色阶 (对数刻度 + 四锚点逐通道插值) /
    分档切段共享端点与碎段并段 / packStat 打包往返 / rowSpans 推断层切分
-   (可能走过的段不进计数)。 */
+   (可能走过的段不进计数) / thinFlat 显示抽稀 (只喂折线, 首尾必留)。 */
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
@@ -9,8 +9,9 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const RoadsGrid = require("../../app/tesla/static/js/roads-grid.js");
 
-const { cellKey, cellsForFlat, rowSpans, tOf, stepOf, colorOf, stepColor,
-        runsByStep, packStat, cellCount, cellDay, dayOrdOf, dayStrOf } = RoadsGrid;
+const { cellKey, cellsForFlat, thinFlat, rowSpans, tOf, stepOf, colorOf,
+        stepColor, runsByStep, packStat, cellCount, cellDay, dayOrdOf,
+        dayStrOf } = RoadsGrid;
 
 /* 格中心放点: 第 i 格 (避开格边界, 浮点余量 1/4 格) */
 const P = i => [114 + (i + 0.25) * 0.0002, 22.5 + 0.00005];
@@ -105,6 +106,26 @@ test("cellsForFlat: 折返路 A→B→A 两端同格各计一次 (有序连续�
   assert.ok(out.length > new Set(out).size);        // 折返重复进格被保留
   for (let i = 1; i < out.length; i++)
     assert.notEqual(out[i], out[i - 1]);            // 相邻同格已去重
+});
+
+/* ---------------- thinFlat (显示抽稀: 只喂折线 path, 格计数仍吃全量) ---------------- */
+
+test("thinFlat: n≤4 或 step=0 原样直返 (没得抽)", () => {
+  const four = [114, 22.5, 114.1, 22.5];
+  assert.equal(thinFlat(four, 0.01), four);   // 顶点≤2 直返
+  assert.equal(thinFlat(four, 0), four);
+  const six = [114, 22.5, 114.1, 22.5, 114.2, 22.5];
+  assert.equal(thinFlat(six, 0), six);
+});
+
+test("thinFlat: 距上一留点不足 step 的顶点抽掉, 够 step 的留", () => {
+  const flat = [0, 0, 0.5, 0, 1.0, 0, 1.7, 0, 2.0, 0];
+  assert.deepEqual(thinFlat(flat, 1), [0, 0, 1, 0, 2, 0]);
+});
+
+test("thinFlat: 首尾必留 (尾点贴着上一留点也留 —— 段间共享端点不断线)", () => {
+  const flat = [0, 0, 0.1, 0, 0.2, 0, 0.25, 0];
+  assert.deepEqual(thinFlat(flat, 1), [0, 0, 0.25, 0]);
 });
 
 /* ---------------- runsByStep ---------------- */

@@ -13,13 +13,12 @@ class TeslaMateSettings(BaseModel):
 
 
 class AmapSettings(BaseModel):
-    """地图设置现值: 高德 Key (打码回显 + 安全码是否在用) + 地图样式现值
-    (2026-09-25 起单服务商, 不再有 provider 字段); web_key 是服务端轨迹
-    纠偏用的 Web 服务 key (与 JS 端 Key 分开, 只打码回显)。"""
+    """地图设置现值: 高德 Key (打码回显 + 安全码是否在用); web_key 是服务端
+    轨迹纠偏用的 Web 服务 key (与 JS 端 Key 分开, 只打码回显)。地图样式
+    2026-10-05 随「不允许用户选择」退役 (固定幻影黑, 住适配层)。"""
 
     key_masked: str
     security_code_set: bool
-    style: str
     web_key_masked: str
 
 
@@ -41,7 +40,6 @@ class SettingsUpdate(BaseModel):
     amap_key: str = ""
     amap_security_code: str = ""
     amap_web_key: str = ""   # Web 服务 key (服务端轨迹纠偏; 空 = 保持现值)
-    amap_style: str = ""   # 官方样式名或 amap://styles/<自定义ID> (空 = 保持现值)
 
 
 class DriverInfo(BaseModel):

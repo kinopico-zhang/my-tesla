@@ -64,20 +64,28 @@ const DUR_COLORS = ["#a9c4e9", "#93b7e4", "#7dabde", "#6aa5da", "#589cd6",
 
 /* 十档柱状公共底座: 副题文本/气泡文案各图自带 (LB 闭包在调用方)。
    2026-09-27 行程统计的分布图也走这里: 图表库有没有直接问 echarts 本尊
-   (不读充电视图的 hasEcharts 旗号 —— 两视图各自注入各自重试, 旗号独立) */
-function renderDimBins(key, subSel, bins, ax, colors, subText, tipText) {
+   (不读充电视图的 hasEcharts 旗号 —— 两视图各自注入各自重试, 旗号独立)。
+   nameX/nameY (2026-09-30 用户点名「横纵坐标都要标记是什么」): 轴名标
+   在轴末端 (x 右端 / y 顶端) 说是数轴的量 (km/分/次数...), 有名的图各
+   自传; 充电视图的既有调用不传, 样式不变 */
+function renderDimBins(key, subSel, bins, ax, colors, subText, tipText,
+                       nameX, nameY) {
   const total = bins.reduce((a, b) => a + b, 0);
   $(subSel).textContent = total ? subText : "暂无数据";
   if (typeof echarts === "undefined" || !total) return;
   mkChart(key).setOption({
     animationDuration: 250,
-    grid: { left: 6, right: 8, top: 14, bottom: 0, containLabel: true },
+    grid: { left: 6, right: nameX ? 40 : 8,
+            top: nameY ? 26 : 14, bottom: 0, containLabel: true },
     tooltip: { ...tooltipStyle, trigger: "axis", axisPointer: { type: "shadow" },
                formatter: ps => tipText(ps[0].dataIndex) },
-    xAxis: { type: "category", data: ax,
+    xAxis: { type: "category", data: ax, name: nameX, nameGap: 6,
+             nameTextStyle: { color: chartText.axis, fontSize: 10 },
              axisTick: { show: false }, axisLine: { lineStyle: { color: "#383835" } },
              axisLabel: { color: chartText.axis, fontSize: 10, interval: 0 } },
-    yAxis: { type: "value", minInterval: 1, splitLine: { lineStyle: { color: "#2c2c2a" } },
+    yAxis: { type: "value", minInterval: 1, name: nameY, nameGap: 6,
+             nameTextStyle: { color: chartText.axis, fontSize: 10 },
+             splitLine: { lineStyle: { color: "#2c2c2a" } },
              axisLabel: { color: chartText.axis, fontSize: 10 } },
     series: [{ type: "bar", data: bins.map((v, i) => ({ value: v,
                itemStyle: { color: colors[i] } })),

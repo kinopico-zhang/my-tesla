@@ -97,6 +97,27 @@
     return out;
   }
 
+  function thinFlat(pts, step) {   // 显示抽稀: 距上一留点不足 step (度) 的顶点跳过
+    // (首尾必留 —— 段间共享端点不断线)。折线的渲染/内存成本随顶点数走:
+    // 低倍一屏几公里, 拟合路径十几米一个点全窝在亚像素里; 阈值由调用方按
+    // 当前缩放给 (~1.5px 的地面跨度), 缩得越低抽得越狠, 高倍自动缩到米级
+    // 等于不抽。只喂显示路径 —— 格计数 (cellsForFlat) 仍吃全量点, 次数
+    // 口径不受抽稀影响
+    const n = pts ? pts.length : 0;
+    if (n <= 4 || !step) return pts;
+    const out = [pts[0], pts[1]];
+    const s2 = step * step;
+    let lx = pts[0], ly = pts[1];
+    for (let i = 2; i < n - 2; i += 2) {
+      const dx = pts[i] - lx, dy = pts[i + 1] - ly;
+      if (dx * dx + dy * dy < s2) continue;
+      out.push(pts[i], pts[i + 1]);
+      lx = pts[i]; ly = pts[i + 1];
+    }
+    out.push(pts[n - 2], pts[n - 1]);
+    return out;
+  }
+
   function runsByStep(pts, stat, max) {   // pts 扁平, stat: Map(格键 → packStat)
     // 按点的所在格次数把路径切段: {b, i0, i1} (i 为扁平下标, 含端点;
     // b = 色阶档 0..STEPS-1)。换档处两段共享前一个顶点 (i0 = 前段 i1) ——
@@ -148,7 +169,8 @@
   }
 
   return { CELL: CELL, GRID: GRID, STEPS: STEPS, COLORS: COLORS,
-           cellKey: cellKey, cellsForFlat: cellsForFlat, rowSpans: rowSpans,
+           cellKey: cellKey, cellsForFlat: cellsForFlat, thinFlat: thinFlat,
+           rowSpans: rowSpans,
            tOf: tOf, stepOf: stepOf, colorOf: colorOf, stepColor: stepColor,
            runsByStep: runsByStep, packStat: packStat,
            cellCount: cellCount, cellDay: cellDay,

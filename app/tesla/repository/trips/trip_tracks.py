@@ -1,8 +1,8 @@
 """行程轨迹: 单条全精度轨迹 + 多段合并 (整包/流式) + 区间展开。"""
-from dataclasses import dataclass
 from datetime import datetime
 from collections.abc import Iterator, Sequence
 
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, aliased
 
@@ -50,8 +50,7 @@ MERGED_TRACK_BUDGET = 12000   # 多段合并的总点数预算, 按各段原始�
 MERGED_TRACK_PER_MIN = 200
 
 
-@dataclass
-class MergedPlan:
+class MergedPlan(BaseModel):
     """合并轨迹的头部汇总与各段下采样预算 (流式接口: 头部先行, 逐段跟上)。"""
 
     header: MergedTrack        # pts/ts/seg_starts 为空, 其余字段齐
@@ -101,7 +100,7 @@ def merged_track_plan(session: Session, ids: Sequence[int]) -> MergedPlan:
         raise NotFound("包含不存在或未完成的行程")
     id_list = [d.id for d, _, _ in drive_rows]
     counts: dict[int, int] = {
-        int(did): int(cnt) for did, cnt in session.execute(
+        int(did or 0): int(cnt or 0) for did, cnt in session.execute(
             select(Position.drive_id, func.count())
             .where(Position.drive_id.in_(id_list))
             .group_by(Position.drive_id)).all()}
@@ -127,7 +126,7 @@ def merged_track_plan(session: Session, ids: Sequence[int]) -> MergedPlan:
                    if any(effs.values()) and total_km >= 1 else None),
         from_=_clean_addr(drive_rows[0][1].display_name if drive_rows[0][1] else None),
         to=_clean_addr(drive_rows[-1][2].display_name if drive_rows[-1][2] else None))
-    return MergedPlan(header, id_list, budgets)
+    return MergedPlan(header=header, id_list=id_list, budgets=budgets)
 
 
 def merged_track_segments(session: Session, own: Session, plan: MergedPlan

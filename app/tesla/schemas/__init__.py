@@ -26,6 +26,8 @@ from .charging_schemas import (
 from .live_schemas import LiveStatus
 from .map_schemas import (
     AmapConfig,
+    AmapKeyTest,
+    AmapKeyTestIn,
     MapManifest,
     MapManifestTrack,
     MapSummary,
@@ -59,15 +61,19 @@ from .trip_schemas import (
     TripsPage,
 )
 from .trip_stats_schemas import (
+    PlaceAliasUpdate,
+    PlaceHideUpdate,
     TripDims,
     TripDriverStat,
+    TripLocRaw,
+    TripLocSpot,
     TripLocStat,
     TripMonthlyStat,
     TripStatsSummary,
 )
 
 __all__ = [
-    "AmapConfig", "AmapSettings", "BatteryHealth", "BatteryHealthPoint",
+    "AmapConfig", "AmapKeyTest", "AmapKeyTestIn", "AmapSettings", "BatteryHealth", "BatteryHealthPoint",
     "CarInfo", "ChargeCurve", "ChargeDims",
     "ChargeMapLocation", "ChargingSession", "ChargingSessionDetail",
     "ChargingSessionsPage", "ChargingSummary", "CityStat", "CostUpdateRequest",
@@ -75,11 +81,13 @@ __all__ = [
     "DriverUpdate",
     "GapFillRequest", "GapFillResponse", "LiveStatus", "LocationStat",
     "MapManifest", "MapManifestTrack",
-    "MapSummary", "MapTrack", "MergedTrack", "MonthlyStat", "RegionNode",
-    "RoadStreamRow",
+    "MapSummary", "MapTrack", "MergedTrack", "MonthlyStat", "PlaceAliasUpdate",
+    "PlaceHideUpdate",
+    "RegionNode", "RoadStreamRow",
     "SettingsState", "SettingsUpdate", "TeslaMateSettings", "TollRoad",
     "TrackHist", "TripDims", "TripGroupIn", "TripGroupInfo", "TripGroupRename",
-    "TripItem", "TripDriverStat", "TripLocStat", "TripMonthlyStat", "TripRegions",
-    "TripStatsSummary",
+    "TripItem", "TripDriverStat", "TripLocRaw", "TripLocSpot", "TripLocStat",
+    "TripMonthlyStat",
+    "TripRegions", "TripStatsSummary",
     "TripTollIn", "TripTrack", "TripsPage",
 ]

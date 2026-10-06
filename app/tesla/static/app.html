@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -24,7 +24,7 @@
 <link rel="stylesheet" href="/tesla/static/css/tesla-charging-page.css?v=2">
 <link rel="stylesheet" href="/tesla/static/css/tesla-charging-cards.css?v=11">
 <link rel="stylesheet" href="/tesla/static/css/tesla-charging-sheet.css?v=11">
-<link rel="stylesheet" href="/tesla/static/css/tesla-stats.css?v=9">
+<link rel="stylesheet" href="/tesla/static/css/tesla-stats.css?v=11">
 <link rel="stylesheet" href="/tesla/static/css/tesla-groups.css?v=9">
 <link rel="stylesheet" href="/tesla/static/css/tesla-changelog.css?v=2">
 <link rel="stylesheet" href="/tesla/static/css/tesla-trips-page.css?v=6">
@@ -32,13 +32,13 @@
 <link rel="stylesheet" href="/tesla/static/css/tesla-trips-sheet.css?v=31">
 <link rel="stylesheet" href="/tesla/static/css/tesla-trips-playback.css?v=9">
 <link rel="stylesheet" href="/tesla/static/css/tesla-map-page.css?v=4">
-<link rel="stylesheet" href="/tesla/static/css/tesla-map-canvas.css?v=14">
+<link rel="stylesheet" href="/tesla/static/css/tesla-map-canvas.css?v=21">
 <link rel="stylesheet" href="/tesla/static/css/tesla-chargemap-page.css?v=4">
 <link rel="stylesheet" href="/tesla/static/css/tesla-chargemap-map.css?v=7">
 <link rel="stylesheet" href="/tesla/static/css/tesla-live-page.css?v=2">
 <link rel="stylesheet" href="/tesla/static/css/tesla-live-driving.css?v=20">
-<link rel="stylesheet" href="/tesla/static/css/tesla-settings.css?v=5">
-<link rel="stylesheet" href="/tesla/static/css/tesla-shell-floor.css?v=7">
+<link rel="stylesheet" href="/tesla/static/css/tesla-settings.css?v=22">
+<link rel="stylesheet" href="/tesla/static/css/tesla-shell-floor.css?v=9">
 </head>
 <body>
 
@@ -146,6 +146,12 @@
         </div>
       </section>
     </div>
+    <!-- 屏缘缝条 (2026-10-04 用户报「划了好多次才打开菜单」): 舞台两侧有
+         14px 出血边距, 手指中心落在卡外的缝里时卡内左缘条 (#lv-edge) 接不
+         到 —— 这条住视图层补上缝, 与卡内边条接力覆盖到物理屏缘 (足迹页
+         #fp-gutter 同款, 直接锚 #view-live, 不进 .live-stage: 下拉时整舞台
+         位移变换, 缝条不跟着改换 containing block) -->
+    <div class="drawer-edge" id="lv-gutter" aria-hidden="true"></div>
   </section>
 
     <!-- 行程轨迹视图 (P4, 生命周期最重): 列表 + 多选 selbar + 轨迹弹层
@@ -234,18 +240,19 @@
                 <div class="cc-sub" id="ts-loc-sub">起点终点并计</div>
               </div>
             </div>
-            <div class="chart-box chart-vlabel" id="chart-ts-loc"></div>
+            <div class="chart-box" id="chart-ts-loc"></div>
           </div>
-          <!-- 司机里程分布 (2026-09-27 用户点名「行驶统计加一个司机里程分布」):
+          <!-- 驾驶员里程分布 (2026-09-27 用户点名「行驶统计加一个司机里程分
+               布」; 2026-09-30 点名改名「驾驶员里程分布」且图改横向条形):
                按驾驶员归集里程, 口径与行程卡片同款 —— 标注 > 默认驾驶员兜底 -->
           <div class="chart-card">
             <div class="cc-head">
               <div>
-                <div class="cc-title">司机里程分布</div>
+                <div class="cc-title">驾驶员里程分布</div>
                 <div class="cc-sub" id="ts-drv-sub">按驾驶员标注归集</div>
               </div>
             </div>
-            <div class="chart-box chart-vlabel" id="chart-ts-drv"></div>
+            <div class="chart-box" id="chart-ts-drv"></div>
           </div>
           <div class="chart-card">
             <div class="cc-head">
@@ -274,11 +281,15 @@
             </div>
             <div class="chart-box" id="chart-ts-spd"></div>
           </div>
+          <!-- 速度·电耗 (2026-09-30 用户点名「电耗分布横纵坐标不对, 横坐标
+               应该是速度, 纵坐标是平均电耗」): 各速度段的平均电耗 = 行车功率
+               逐秒积分的段电量 ÷ 段里程 (含动能回收与附件负载); 旧「每次行程
+               Wh/km 落档计数」直方整链退役 -->
           <div class="chart-card">
             <div class="cc-head">
               <div>
-                <div class="cc-title">平均电耗分布</div>
-                <div class="cc-sub" id="ts-wh-sub">每次行程的 Wh/km</div>
+                <div class="cc-title">速度·电耗</div>
+                <div class="cc-sub" id="ts-wh-sub">行车功率积分 (含动能回收)</div>
               </div>
             </div>
             <div class="chart-box" id="chart-ts-wh"></div>
@@ -316,7 +327,8 @@
     <!-- 足迹地图视图 (P5): 弹层/占位 id 加 fp- 前缀 (壳里 #map/#stats/#loading/
          #error/#keyhint/#zin/#zout/#backdrop/#sheet/#sh-* 裸名已被
          行程/统计等视图占用); 时间档是屏底筛选条的全局 chip, 驾驶员是足迹自己
-         的 chip; v4 轨迹全精度流式下载, 加载层带进度条 -->
+         的 chip; 加载进度条 2026-09-29 退役 (与图例重叠, 边下边画本就增量
+         展示 —— 用户点名「异步加载, 一边加载一边展示, 这样就不用进度条了」) -->
     <section class="view" id="view-map" data-view="map" hidden>
       <!-- 页顶汇总三数走 summary 端点的筛选口径, 平移/缩放不动它
            (2026-09-29 用户点名「与充电地图逻辑不一样, 不用联动」) -->
@@ -331,10 +343,6 @@
       </div>
       <div class="map-stage">
         <div id="fp-map"></div>
-        <div class="fp-load-bar" id="fp-loading" hidden>
-          <div class="ov-text" id="fp-loading-text">正在加载走过的路…</div>
-          <div class="fp-prog-wrap"><div class="fp-prog" id="fp-prog"></div></div>
-        </div>
         <div class="overlay" id="fp-error" hidden>
           <div class="ov-text" id="fp-error-text">加载失败</div>
           <button type="button" class="retry-btn" id="fp-retry">重试</button>
@@ -356,23 +364,45 @@
             </div>
           </div>
         </div>
-        <!-- 走过之路图例 (2026-09-29, 画布内左下角, 底卡复用充电地图的全局
-             .legend 磨砂暗卡): 次数热力渐变条, 两端只标「少 / 多」(对数刻度
-             与折线同口径) —— 同日用户点名「去掉虚线, 去掉数字, 只保留多和
-             少」, 虚线样例/次数帽/拟合进度行整排退役 -->
+        <!-- 走过之路图例 (2026-09-29, 底卡复用充电地图的全局 .legend 磨砂
+             暗卡): 次数热力渐变条, 两端只标「偶尔 / 频繁」—— 2026-10-01 起
+             帽文字不换行; 播放条挪出画布后回画布左下角底沿, 回放期让位给
+             日期浮标 -->
         <div class="legend" id="fp-legend" hidden>
           <div class="lg-grad-row">
-            <span class="lg-cap">少</span>
+            <span class="lg-cap">偶尔</span>
             <span class="lg-grad"></span>
-            <span class="lg-cap">多</span>
+            <span class="lg-cap">频繁</span>
           </div>
         </div>
-        <div class="zoom-ctl">
-          <button type="button" id="fp-zin" title="放大">+</button>
-          <button type="button" id="fp-zout" title="缩小">−</button>
-        </div>
+        <div class="play-date" id="fp-play-date" hidden></div>
         <div class="drawer-edge" id="fp-edge" aria-hidden="true"></div>
       </div>
+      <!-- 播放条 (2026-10-01 用户点名重做「去掉放大缩小按钮, 地图下方改成
+           播放按钮加进度条, 可以播放暂停, 调整进度」, 同日再点名「放到地图
+           外面下方」+「按钮照行程详情页的播放控制样式」): 控件全复用行程
+           播放条一家的类 —— .playbar 胶囊玻璃底 / .pb-btn 32px 圆钮 (SVG
+           图标同源 trips-playback-bar) / .pb-seek 4px 轨道 + 15px 蓝圆点
+           (进度变量同用 --pb), 地图侧的边距/屏底让位由 tesla-map-canvas
+           的 #fp-bar 补; 住地图卡外脚下 (视图流内末位, 不叠在画布上);
+           缩放钮退役 (双指捏合本来就有); 回放时镜头实时框住已走的全部路
+           (map-roads-playback), 画布左下浮当前日期与进度。
+           2026-10-02 用户点名「进度条短一点, 把驾驶员筛选放到一行」:
+           进度条收短 (max-width, tesla-map-canvas), 驾驶员筛选从屏底悬浮
+           条并进这条行尾 (#fp-drv, map-filters 接线) —— 足迹这页屏底条
+           退役, 地图下方只剩一行 -->
+      <div class="playbar" id="fp-bar">
+        <button type="button" id="fp-play" class="pb-btn"
+                aria-label="按时间顺序回放走过的路"><svg viewBox="0 0 24 24" width="13" height="13"><path d="M7.5 4.6v14.8L20 12z" fill="currentColor"/></svg></button>
+        <input type="range" id="fp-seek" class="pb-seek" min="0" max="1000" step="1" value="0"
+               aria-label="回放进度">
+        <button type="button" id="fp-drv" aria-label="筛选驾驶员" hidden></button>
+      </div>
+      <!-- 屏缘缝条 (2026-10-01 用户报「左边缘右划无法呼出菜单」): 地图卡两
+           侧有 16px 出血边距, 手指中心落在卡外的缝里时卡内边条 (上面的
+           #fp-edge) 接不到 —— 这条住视图层补上缝, 与卡内边条接力覆盖到
+           物理屏缘 (见 tesla-map-canvas 的 #view-map 定位) -->
+      <div class="drawer-edge" id="fp-gutter" aria-hidden="true"></div>
     </section>
 
     <!-- 充电记录视图 (P2); 全部 11 视图 P6 到齐, 逐视图注释在各段头 -->
@@ -637,6 +667,12 @@
           <button type="button" data-v="cost">充电费用</button>
         </div>
       </div>
+      <!-- 屏缘缝条 (2026-10-05 用户报「充电地图地图位置不能够滑动屏幕边缘
+           返回呼出菜单」): 地图卡两侧 16px 出血缝里的触摸谁也接不到, 卡内
+           边条 (#cm-edge) 从卡缘 16px 才起 —— 足迹 #fp-gutter / 状态页
+           #lv-gutter 同款, 视图层补一条接力到物理屏缘 (定位上下文 =
+           #view-chargemap 自带的 .view absolute, 别另立 position:relative) -->
+      <div class="drawer-edge" id="cm-gutter" aria-hidden="true"></div>
       <div class="backdrop" id="cm-backdrop"></div>
       <div class="sheet sheet-drag" id="cm-sheet">
         <div class="sh-title" id="sh-name">–</div>
@@ -653,22 +689,38 @@
     <!-- 设置四视图: 账号设置 (2026-09-27 从数据来源页拆出独立页, 用户点名
          排设置组首位) / 数据来源 / 地图设置 / 驾驶员。卡片标记沿用旧页
          (tm-*/amap-*/drv-*), 旧页顶栏/关于卡不搬; id 都带视图前缀的滚动器
-         (acct/db/mapset/drset)。账号卡弹层见 #acct-sheet -->
+         (acct/db/mapset/drset)。 -->
     <section class="view" id="view-settings-account" data-view="settings-account" hidden>
       <div class="view-scroll" id="acct-scroll">
         <div class="sec-head"><h2>账号设置</h2></div>
 
-        <!-- 账号卡 (3.3.0 从抽屉搬来, 2026-09-27 拆成独立页): 名字/徽章
-             /api/me 填, 改名称改密码点开底部弹层 #acct-sheet
-             (view/settings-account.js), 登出走 /api/logout -->
+        <!-- 账号三卡 (2026-10-05 二改, 用户点名「账号名改成 inline edit box /
+             改名·改密·退出分三个 panel / 说明行去掉」): ① 账号名 —— 名字行
+             点「改名」就地翻输入框 (地点详情 #placed-input 同款, Enter 存
+             Esc 弃); ② 修改密码; ③ 登出。早路: 3.3.0 账号卡住数据来源页,
+             更早住抽屉; 2026-09-27 拆独立页; 同日表单从底部弹层 #acct-sheet
+             搬进卡 (弹层整块退役) (view/settings-account.js) -->
         <section class="card" id="acct-card">
-          <h2>账号</h2>
-          <p class="hint">当前登录: <b id="acct-name">…</b><em id="acct-badge" hidden> · 管理员</em>。
-            改名称全站立即生效; 改密码只影响之后登录, 本设备不掉线。</p>
-          <div class="acct-acts">
-            <button type="button" id="acct-row" hidden>改名称 / 改密码</button>
-            <button type="button" id="logout" class="acct-out">登出</button>
+          <h2>账号名</h2>
+          <div class="drv-row">
+            <b class="drv-name" id="acct-name">…</b>
+            <em class="drv-badge" id="acct-badge" hidden>管理员</em>
+            <input type="text" class="drv-input" id="me-name-input" maxlength="20" autocomplete="off" hidden>
+            <button type="button" class="drv-act" id="me-name-cancel" hidden>取消</button>
+            <button type="button" class="drv-act" id="me-name-save">改名</button>
           </div>
+        </section>
+
+        <section class="card" id="pass-card">
+          <h2>修改密码</h2>
+          <label><span>当前密码</span><input id="me-old-pass" type="password" autocomplete="current-password"></label>
+          <label><span>新密码</span><input id="me-new-pass" type="password" autocomplete="new-password" minlength="6"></label>
+          <label><span>确认新密码</span><input id="me-new-pass2" type="password" autocomplete="new-password" minlength="6"></label>
+          <button type="button" class="primary" id="me-pass-save">改密码</button>
+        </section>
+
+        <section class="card">
+          <div class="acct-acts"><button type="button" id="logout" class="acct-out">登出</button></div>
         </section>
       </div>
     </section>
@@ -680,7 +732,6 @@
         <!-- 账号卡 2026-09-27 拆去账号设置独立页 (设置组首位) -->
         <section class="card">
           <h2>TeslaMate 数据库</h2>
-          <p class="hint">行程/充电数据来源的 PostgreSQL。改动后立即换库重连并实测, 连不上自动回滚; 建议填固定 IP/主机名。留空 = 保持现值。</p>
           <label><span>主机地址</span><input type="text" id="tm-host" autocomplete="off" spellcheck="false"></label>
           <div class="row2">
             <label><span>端口</span><input type="text" id="tm-port" inputmode="numeric" autocomplete="off"></label>
@@ -701,35 +752,33 @@
         <section class="card">
           <h2>地图显示</h2>
           <div>
-            <p class="hint">高德「Web端(JS API)」类型, 浏览器里用。没有它这些功能都没地图: 状态页车辆位置 / 足迹地图 / 充电地图 / 行程轨迹与回放, 以及行程断档补路 (轨迹缺段按导航补齐)。与安全码配对。当前 Key: <b id="amap-now">未设置</b>。留空 = 保持现值。</p>
+            <!-- 说明行 2026-10-05 三轮: 长说明先退役 (用户点名), 同日点名补回
+                 「每个类型的 key 给出获取方式 + 已填的 key 在框里显掩码」——
+                 掩码住 placeholder (留空仍 = 保持现值, 掩码串不会被存成新 key,
+                 mapSetLoad 填); 地图样式选择同日退役 (不允许用户选择, 固定
+                 幻影黑住适配层) -->
+            <p class="hint">获取: 高德开放平台 (console.amap.com) → 应用管理 → 创建应用 → 添加 Key, 类型选「Web端 (JS API)」; 安全码在 Key 详情页。</p>
             <label><span>Key</span><input type="text" id="amap-key" placeholder="留空保持现值" autocomplete="off" spellcheck="false"></label>
             <label><span>安全码</span><input id="amap-code" type="password" placeholder="留空保持现值" autocomplete="new-password"></label>
-            <label><span>地图样式</span>
-              <select id="amap-style">
-                <option value="amap://styles/dark">幻影黑 (纯黑)</option>
-                <option value="amap://styles/darkblue">极夜蓝 (深色 · 偏蓝)</option>
-                <option value="amap://styles/normal">标准 (浅色)</option>
-                <option value="amap://styles/light">月光银</option>
-                <option value="amap://styles/grey">雅士灰</option>
-                <option value="amap://styles/whitesmoke">远山黛</option>
-                <option value="amap://styles/blue">靛青蓝</option>
-                <option value="custom">自定义…</option>
-              </select>
-            </label>
-            <label id="amap-style-custom-row" hidden><span>样式地址</span>
-              <input type="text" id="amap-style-custom" placeholder="amap://styles/你的样式ID" autocomplete="off" spellcheck="false">
-            </label>
-            <!-- 样式说明长段 2026-09-27 退役 (用户点名): 预设名 + 自定义入口已足够 -->
           </div>
-          <button type="button" class="primary" id="amap-save">保存</button>
+          <!-- 保存 + 测试并排 (2026-10-06 用户点名「添加两个测试按钮」+ 同日
+               追点「只有测试正常才能保存」): 测试测框里的候选 Key, 通过
+               (只显示「正常」) 才解锁保存; 输入一变重新锁上 -->
+          <div class="btn-row">
+            <button type="button" class="primary" id="amap-save">保存</button>
+            <button type="button" class="plain" id="amap-test">测试</button>
+          </div>
         </section>
         <section class="card">
           <h2>足迹道路拟合</h2>
           <div>
-            <p class="hint">高德「Web服务」类型 (和上面的地图 Key 是两种类型, 不能混用; 同一应用里可以再建一把), 只在服务端用, 不进浏览器。管两件事: 把足迹轨迹拟合到实际道路 (画「走过的路」), 以及拟合中 GPS 断链按导航最短路径补全。没设置时新行程暂不进「走过的路」(已有的路不受影响)。当前: <b id="amap-web-now">未设置</b>。留空 = 保持现值。</p>
+            <p class="hint">获取: 高德开放平台 → 同一应用再添加一把 Key, 类型选「Web服务」—— 和上面的地图 Key 是两种类型, 不能混用。只在服务端用, 把足迹轨迹拟合到实际道路。</p>
             <label><span>Web 服务 Key</span><input type="password" id="amap-web-key" placeholder="留空保持现值" autocomplete="new-password"></label>
           </div>
-          <button type="button" class="primary" id="amap-web-save">保存</button>
+          <div class="btn-row">
+            <button type="button" class="primary" id="amap-web-save">保存</button>
+            <button type="button" class="plain" id="amap-web-test">测试</button>
+          </div>
         </section>
       </div>
     </section>
@@ -738,15 +787,34 @@
       <div class="view-scroll" id="drset-scroll">
         <div class="sec-head"><h2>驾驶员</h2></div>
         <section class="card">
-          <h2>驾驶员</h2>
-          <p class="hint">用于给行程标注驾驶员; 未标注的行程按<b>默认驾驶员</b>显示。</p>
           <div class="drv-add">
             <input type="text" id="drv-name" maxlength="30" placeholder="驾驶员名字" autocomplete="off">
             <button type="button" id="drv-add">添加</button>
           </div>
-          <div id="drv-list"></div>
+          <div id="drv-list" class="swipe-list"></div>
           <div class="drv-empty" id="drv-empty" hidden>还没有驾驶员 — 添加后可在行程里标注谁开的</div>
         </section>
+      </div>
+    </section>
+
+    <section class="view" id="view-settings-places" data-view="settings-places" hidden>
+      <div class="view-scroll" id="plc-scroll">
+        <div class="sec-head"><h2>常用地点</h2></div>
+        <section class="card">
+          <div id="plc-list"></div>
+          <!-- 首拉加载态 (2026-10-05 用户点名「页面的响应速度太慢了, 改成
+               异步的方式」): locations 聚合要汇总全部行程 (1-6 秒), 没旧数
+               据先亮它, 空态在数据真到手前不诈胡; 有旧数据 (再次进页) 旧
+               列表先顶着, 后台拉到再换 -->
+          <div class="plc-loading" id="plc-loading" hidden><div class="spin"></div>正在读取常用地点…</div>
+          <div class="drv-empty" id="plc-empty" hidden>还没有地点 — 有行程后这里会出现常去的地方</div>
+        </section>
+        <div id="plc-hid-sec" hidden>
+          <div class="sec-head"><h2>已删除</h2></div>
+          <section class="card" id="plc-hid-card">
+            <div id="plc-hid-list"></div>
+          </section>
+        </div>
       </div>
     </section>
 
@@ -798,24 +866,62 @@
 
 <div id="toast" aria-live="polite"></div>
 
-<!-- 账号弹层 (P6; 3.3.0 起入口从抽屉账号行改为账号卡的账号设置独立页): 改名称/
-     改密码。.sheet/.backdrop 与地图弹层同款 (z 90/91); 关层让路键盘
-     (ViewportDoctor.settled, 见 view/settings-account.js) -->
-<div class="backdrop" id="acct-backdrop"></div>
-<section class="sheet" id="acct-sheet" aria-label="账号">
+<!-- 常用地点组详情页 (壳级, 2026-10-04 用户点名「常用地点管理, 点击一个
+     名称, 就弹出一个页面, 页面上面是地图, 页面下面是真实地点列表, 点击
+     列表的 item, 地图切换到这个位置」): 管理页点组行开, 接 3.4.0 的原地
+     展开班。上小地图 = 组内各真实地点逐点圆点收进视野, 下列表 = 组的
+     details (名+次数); 点行地图居中放大到那点并高亮 (行变蓝/圆点反色);
+     行左滑删 raw (组删空自动收层)。没坐标/没地图 Key 地图整块藏起。
+     2026-10-05: 标题行挂「改名」(就地内联输入框, 驾驶员行内改名同款),
+     解除编组的删除搬进本层底部红钮, 管理页行上左滑整链退役。
+     2026-10-06 (用户点名「不从底下弹窗, 而是从右侧滑入窗口, 全屏, 弹出
+     后, 在屏幕左侧滑动推出。弹入弹出要有动画效果, 要跟手」): 底部弹窗
+     改全屏右滑页 —— 蒙版/把手退役, 左上角添返回钮, 左缘 .placed-edge
+     竖条 (iOS 返回手势位) 右拖跟手推出。 -->
+<section id="placed-sheet" aria-label="地点详情">
+  <div class="placed-edge" aria-hidden="true"></div>
+  <div class="placed-in">
+    <div class="placed-head">
+      <button type="button" class="placed-back" id="placed-back" aria-label="返回"><svg viewBox="0 0 24 24" width="22" height="22"><path d="m15 18-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <h2 class="sh-title" id="placed-title">地点详情</h2>
+      <input type="text" class="drv-input" id="placed-input" maxlength="60" autocomplete="off" hidden>
+      <button type="button" class="drv-act" id="placed-cancel" hidden>取消</button>
+      <button type="button" class="drv-act" id="placed-rename">改名</button>
+    </div>
+    <div id="placed-map" hidden></div>
+    <div id="placed-list"></div>
+    <!-- 底部删除钮 (2026-10-05 晚用户点名): 只给改过名的组显 (JS 按钮组名
+         不在原名列表), 红 = 解除编组的破坏性操作, confirm 二次确认 -->
+    <div class="placed-foot" id="placed-foot" hidden>
+      <button type="button" class="placed-del" id="placed-del">删除这个地点</button>
+    </div>
+  </div>
+</section>
+
+<!-- 常用地点改名弹层 (壳级, 2026-09-30 用户点名「点击地点名称, 可以弹出
+     修改地点名称对话框, 对话框上一个 inputbox, 下面是具体的地点位置地图」):
+     行程统计点柱名/柱身打开。小地图 = 该名最近一次出现的地址位置, 没坐标
+     (没反解) 或没地图 Key 时整块藏起, 不拦改名。
+     2026-10-02: 地图放大到约半屏 (用户报「弹出的地图太小了」); 输入框改
+     输入+下拉合一 (用户点名「可以选择已经存在的名字」) —— 名单 =
+     locations 接口的现有显示名, 选已有名 = 别名同名并成同一个地点。
+     2026-10-05 晚: 组详情层标题行的「改名」改成就地内联输入 (用户点名
+     「改名没必要再弹一个框」), 这层只剩行程统计柱名/柱身一个入口 (设置
+     页管理列表 3.4.3 起也不走这)。 -->
+<div class="backdrop" id="place-backdrop"></div>
+<section class="sheet" id="place-sheet" aria-label="地点命名">
   <div class="grab"></div>
-  <h2 class="sh-title">账号</h2>
-  <p class="hint">当前登录: <b id="me-name">…</b>。改名称全站立即生效; 改密码只影响之后登录, 本设备不掉线。</p>
-  <div class="drv-add">
-    <input type="text" id="me-name-input" maxlength="20" placeholder="新名称 (2~20 个字符)" autocomplete="off">
-    <button type="button" id="me-name-save">改名称</button>
+  <h2 class="sh-title">地点命名</h2>
+  <p class="hint" id="place-hint"></p>
+  <div class="drv-add place-add">
+    <div class="place-field">
+      <input type="text" id="place-input" maxlength="60" placeholder="给这个地点起个名 (留空 = 原名)" autocomplete="off">
+      <button type="button" id="place-down" aria-label="选择已有的名字"><svg viewBox="0 0 24 24" width="13" height="13"><path d="M5 9.5l7 6.5 7-6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div id="place-pops" hidden></div>
+    </div>
+    <button type="button" id="place-save">保存</button>
   </div>
-  <label><span>当前密码</span><input id="me-old-pass" type="password" autocomplete="current-password"></label>
-  <div class="row2">
-    <label><span>新密码</span><input id="me-new-pass" type="password" autocomplete="new-password" minlength="6"></label>
-    <label><span>确认</span><input id="me-new-pass2" type="password" autocomplete="new-password" minlength="6"></label>
-  </div>
-  <button type="button" class="primary" id="me-pass-save">改密码</button>
+  <div id="place-map" hidden></div>
 </section>
 
 <!-- 行程轨迹弹层 (壳级, 2026-09-22 从行程视图搬出): 分组页打开的合并
@@ -959,27 +1065,28 @@
 <script src="/tesla/static/js/track-animation.js?v=3"></script>
 <script src="/tesla/static/js/trip-playback.js?v=2"></script>
 <script src="/tesla/static/js/tesla-common.js?v=5"></script>
-<script src="/tesla/static/js/tesla-map-adapter.js?v=4"></script>
+<script src="/tesla/static/js/tesla-map-adapter.js?v=9"></script>
 <script src="/tesla/static/js/tesla-shell.js?v=1"></script>
 <script src="/tesla/static/js/tesla-navigation.js?v=3"></script>
-<script src="/tesla/static/js/tesla-viewport.js?v=3"></script>
-<script src="/tesla/static/js/tesla-pull-refresh.js?v=2"></script>
-<script src="/tesla/static/js/tesla-gesture.js?v=6"></script>
-<script src="/tesla/static/js/tesla-drawer.js?v=8"></script>
+<script src="/tesla/static/js/tesla-viewport.js?v=4"></script>
+<script src="/tesla/static/js/tesla-pull-refresh.js?v=3"></script>
+<script src="/tesla/static/js/tesla-gesture.js?v=8"></script>
+<script src="/tesla/static/js/tesla-drawer.js?v=9"></script>
 <script src="/tesla/static/js/tesla-car-switcher.js?v=6"></script>
-<script src="/tesla/static/js/tesla-filter-bar.js?v=5"></script>
+<script src="/tesla/static/js/tesla-filter-bar.js?v=7"></script>
 <script src="/tesla/static/js/tesla-paged-list.js?v=1"></script>
 <script src="/tesla/static/js/tesla-sheet-drag.js?v=5"></script>
+<script src="/tesla/static/js/view/trips-place-dialog.js?v=7"></script>
 <script src="/tesla/static/js/view/charging-page.js?v=2"></script>
 <script src="/tesla/static/js/view/charging-cards.js?v=12"></script>
 <script src="/tesla/static/js/view/charging-filters.js?v=2"></script>
-<script src="/tesla/static/js/view/charging-detail.js?v=15"></script>
-<script src="/tesla/static/js/view/charging-cost.js?v=4"></script>
+<script src="/tesla/static/js/view/charging-detail.js?v=16"></script>
+<script src="/tesla/static/js/view/charging-cost.js?v=5"></script>
 <script src="/tesla/static/js/view/stats-page.js?v=8"></script>
 <script src="/tesla/static/js/view/stats-chart-trend.js?v=11"></script>
-<script src="/tesla/static/js/view/stats-chart-dimensions.js?v=7"></script>
-<script src="/tesla/static/js/view/trips-stats-page.js?v=2"></script>
-<script src="/tesla/static/js/view/trips-stats-charts.js?v=5"></script>
+<script src="/tesla/static/js/view/stats-chart-dimensions.js?v=8"></script>
+<script src="/tesla/static/js/view/trips-stats-page.js?v=3"></script>
+<script src="/tesla/static/js/view/trips-stats-charts.js?v=12"></script>
 <script src="/tesla/static/js/view/battery-page.js?v=2"></script>
 <script src="/tesla/static/js/view/groups-page.js?v=7"></script>
 <script src="/tesla/static/js/view/changelog-view.js?v=4"></script>
@@ -997,28 +1104,32 @@
 <script src="/tesla/static/js/view/trips-playback-session.js?v=14"></script>
 <script src="/tesla/static/js/view/trips-preload-tiles.js?v=3"></script>
 <script src="/tesla/static/js/view/trips-preload-vector.js?v=3"></script>
-<script src="/tesla/static/js/view/trips-sheet-driver.js?v=12"></script>
+<script src="/tesla/static/js/view/trips-sheet-driver.js?v=13"></script>
 <script src="/tesla/static/js/view/trips-sheet-open.js?v=10"></script>
-<script src="/tesla/static/js/view/trips-export-video.js?v=3"></script>
-<script src="/tesla/static/js/view/trips-sheet-close.js?v=11"></script>
+<script src="/tesla/static/js/view/trips-export-video.js?v=4"></script>
+<script src="/tesla/static/js/view/trips-sheet-close.js?v=12"></script>
 <script src="/tesla/static/js/view/trips-sheet-stats.js?v=41"></script>
 <script src="/tesla/static/js/view/chargemap-page.js?v=1"></script>
 <script src="/tesla/static/js/view/chargemap-heatmap.js?v=5"></script>
-<script src="/tesla/static/js/view/chargemap-time-filters.js?v=8"></script>
-<script src="/tesla/static/js/roads-grid.js?v=3"></script>
-<script src="/tesla/static/js/view/map-page.js?v=12"></script>
-<script src="/tesla/static/js/view/map-tracks-render.js?v=10"></script>
-<script src="/tesla/static/js/view/map-roads-render.js?v=8"></script>
+<script src="/tesla/static/js/view/chargemap-time-filters.js?v=10"></script>
+<script src="/tesla/static/js/roads-grid.js?v=4"></script>
+<script src="/tesla/static/js/view/map-page.js?v=16"></script>
+<script src="/tesla/static/js/view/map-tracks-render.js?v=17"></script>
+<script src="/tesla/static/js/view/map-roads-render.js?v=13"></script>
+<script src="/tesla/static/js/view/map-roads-playback.js?v=14"></script>
 <script src="/tesla/static/js/view/map-local-store.js?v=3"></script>
-<script src="/tesla/static/js/view/map-roads-boot.js?v=6"></script>
-<script src="/tesla/static/js/view/map-boot.js?v=6"></script>
-<script src="/tesla/static/js/view/map-filters.js?v=9"></script>
+<script src="/tesla/static/js/view/map-roads-boot.js?v=8"></script>
+<script src="/tesla/static/js/view/map-boot.js?v=13"></script>
+<script src="/tesla/static/js/view/map-filters.js?v=17"></script>
 <script src="/tesla/static/js/view/live-page.js?v=9"></script>
-<script src="/tesla/static/js/view/live-driving.js?v=11"></script>
+<script src="/tesla/static/js/view/live-driving.js?v=13"></script>
 <script src="/tesla/static/js/view/settings-db.js?v=4"></script>
-<script src="/tesla/static/js/view/settings-map.js?v=10"></script>
-<script src="/tesla/static/js/view/settings-drivers.js?v=4"></script>
-<script src="/tesla/static/js/view/settings-account.js?v=4"></script>
+<script src="/tesla/static/js/view/settings-map.js?v=13"></script>
+<script src="/tesla/static/js/tesla-swipe-delete.js?v=4"></script>
+<script src="/tesla/static/js/view/settings-drivers.js?v=6"></script>
+<script src="/tesla/static/js/view/trips-place-detail.js?v=11"></script>
+<script src="/tesla/static/js/view/settings-places.js?v=8"></script>
+<script src="/tesla/static/js/view/settings-account.js?v=6"></script>
 <script src="/tesla/static/js/tesla-app-boot.js?v=4"></script>
 </body>
 </html>

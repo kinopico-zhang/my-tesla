@@ -1,5 +1,5 @@
 """充电列表: 条目组装/排序/过滤/分页 (SessionFilter 为查询条件载体)。"""
-from dataclasses import dataclass
+from pydantic import BaseModel, ConfigDict
 
 from sqlalchemy.orm import Session
 
@@ -106,9 +106,10 @@ def _sorted_charge_rows(rows: list[ChargeRow], sort: str) -> list[ChargeRow]:
                   reverse=True)
 
 
-@dataclass(frozen=True)
-class SessionFilter:
+class SessionFilter(BaseModel):
     """充电列表查询条件 (路由与仓库之间避免长参数列表)。"""
+
+    model_config = ConfigDict(frozen=True)
 
     date_range: DateRange | None
     charge_type: str        # all / fast / slow

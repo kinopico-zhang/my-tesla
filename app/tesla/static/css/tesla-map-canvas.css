@@ -13,13 +13,18 @@ main { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
 #map .amap-logo, #fp-map .amap-logo { display: none !important; }   /* "©…auto navi" 版权与 logo 都按需求去掉 */
 /* OSM 家族的瓦片压暗滤镜与 Leaflet 容器/版权角标规则已随服务商退役拆除
    (2026-09-25 地图只留高德; 高德暗色样式自带深底, 版权/logo 已在上面撤) */
-#fp-map, #cm-map, #lv-map, #trip-map { background: #0b0d10; }   /* 瓦片未到的空窗也是暗的 (录制底色同款) */
+/* 足迹地图底图换灰阶 (2026-09-30 用户点名「搞灰一点, 不要有彩色」): 瓦片
+   未到的空窗跟底图同色系, 冷开/缩放不再黑一下 (雅士灰是浅底) */
+#fp-map { background: #e4e4e2; }
+#cm-map, #lv-map, #trip-map { background: #0b0d10; }   /* 空窗也是暗的 (录制底色同款) */
 
 /* 地图圆角矩形 (2026-09-27, 与充电地图 #view-chargemap .map-stage 同款):
-   侧距 16px 对齐 .map-head, 圆角/发丝线/底面同款; 本页脚下没有内容行,
-   底距直接吃 --bar-clear (充电地图那边由脚下 pills 行 .cm-foot 出) */
+   侧距 16px 对齐 .map-head, 圆角/发丝线/底面同款; 2026-10-01 播放条挪到
+   卡外脚下 (用户点名「放到地图外面下方」), 卡底距归 0 —— 屏底让位
+   --bar-clear 的差事由播放条行接 (充电地图那边由脚下 pills 行 .cm-foot 出,
+   同一副格局) */
 #view-map .map-stage {
-  margin: 10px 16px calc(var(--bar-clear) + 10px);
+  margin: 10px 16px 0;
   border-radius: 16px; border: 1px solid var(--hairline);
   background: var(--surface); overflow: hidden;
 }
@@ -54,50 +59,66 @@ main { position: relative; flex: 1; min-height: 0; margin-top: 10px; }
 }
 .hint-card a { color: #7db3f0; }
 
-/* 加载条 (3.0.1 改款, 用户点名「进度条放最底下, 地图不要加模糊遮罩, 也
-   不要转圈」): 不再整屏遮罩蒙住地图 —— 地图全程看得见, 轨迹边下边画;
-   只在最底下浮一条 文字+进度, 不挡地图手势 (圆角卡内不再吃安全区) */
-.fp-load-bar {
-  position: absolute; left: 0; right: 0; bottom: 0; z-index: 25;
-  display: flex; flex-direction: column; align-items: center; gap: 7px;
-  padding: 12px 16px 14px;
-  background: linear-gradient(to top, rgba(11,13,16,.94), rgba(11,13,16,0));
-  pointer-events: none;
+/* 加载进度条 2026-09-29 整段退役 (用户点名: 图例与贴底进度条重叠 ——
+   「去掉加载进度条就行, 然后异步加载, 一边加载一边展示, 这样就不用
+   进度条了」; 道路本就流式下载边下边画, 路一段段自己冒出来, 进度条纯
+   冗余; 缩放钮给加载条让位的规则一并拆) */
+
+/* 底部控制排 → 播放条 (2026-10-01 用户点名重做「去掉放大缩小按钮…地图下方
+   改成播放按钮加进度条」, 同日再点名「放到地图外面下方」+「按钮照行程详情
+   页的播放控制样式」): 控件样式全复用行程播放条一家的类 —— .playbar 胶囊
+   玻璃底 / .pb-btn 32px 圆钮 (按下 scale .9) / .pb-seek 4px 轨道 + 15px 蓝
+   圆点 (进度变量同用 --pb, tesla-trips-playback 全局加载), 同款样式不另
+   起名。本页只补地图侧的边距 (侧距 16px 对齐卡、顶缝 10px、底下接过
+   --bar-clear 让位屏底悬浮筛选条 —— 卡底距归 0 的差事归这行, 充电地图那边
+   由脚下 pills 行 .cm-foot 出, 同一副格局)。缩放钮退役 (双指捏合本来就有)。
+   屏缘缝条 #fp-gutter (卡片两侧 16px 出血缝里的右划也接得住, 绑定见
+   map-filters) 直接锚 #view-map —— .view 本就是 position:absolute, 自身即
+   定位上下文, 不用也不许再给 #view-map 另立 position:relative: ID 特异度
+   会压掉 .view 的 absolute+inset:0, 视图被拉回流内塌成内容高 (2026-10-01
+   足迹地图整页黑屏事故: map-stage 只剩 2px, 画布 712×0, 统计行以下全黑;
+   测试 test_map_pages 有反向钉) */
+#fp-bar { margin: 10px 16px var(--bar-clear); }
+/* 2026-10-02 用户点名「进度条短一点, 把驾驶员筛选放到一行」: 进度条不再
+   摊满整行 (上限 220px, 窄屏可缩), 驾驶员筛选 (#fp-drv) 坐行尾 —— 足迹
+   这页屏底悬浮条随之退役 (chips 没了, body.no-bar → --bar-clear 退回
+   安全区, 上面那条 margin 自动贴底)。让位公式直接用 --bar-clear 本值:
+   这页常态是 no-bar (安全区+10), 将来若再有屏底条它也自动让到条上方 */
+#fp-bar .pb-seek { flex: 1 1 100px; max-width: 220px; }
+#fp-drv {   /* 驾驶员筛选 (播放条行尾): 裸文字 chip, 选中靠底色 —— 屏底条
+   .fchip 同一口径; 选项弹层仍走全局 #fb-pop (锚它上方) */
+  flex: none; margin-left: auto; max-width: 42%;
+  padding: 6px 10px; font-size: 12.5px; color: var(--ink-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-#view-map .fp-load-bar:not([hidden]) ~ .zoom-ctl {   /* 加载条贴底, 缩放钮往上让位 */
-  bottom: 96px;
+#fp-drv.on { background: rgba(57,135,229,.20); color: #7db3f0; border-radius: 999px; }
+/* 回放期的日期/进度浮标: 图例的同一槽位 (画布左下底沿), 与图例
+   互斥 —— 回放态图例收起它顶上; 不接指针。底子加浓不磨砂 (2026-10-02
+   性能批: 罩着持续平移的画布做 backdrop-blur, iOS 每帧都要重采样,
+   回放卡顿的帮凶之一) */
+#fp-play-date {
+  position: absolute; left: 14px; bottom: 14px;
+  z-index: 30; padding: 5px 12px; border-radius: 999px;
+  background: rgba(28,28,30,.92); border: 1px solid var(--hairline);
+  color: var(--ink-1); font-size: 12px; font-variant-numeric: tabular-nums;
+  white-space: nowrap; pointer-events: none;
 }
 
-/* 下载进度条 (轨迹流式下载时加载层内, 确定值): 轨迹存本地后只在补量时出现 */
-.fp-prog-wrap {
-  width: min(320px, 72%); height: 6px; border-radius: 3px; overflow: hidden;
-  background: rgba(255,255,255,.14);
-}
-.fp-prog {
-  height: 100%; width: 0; border-radius: 3px;
-  background: var(--blue); transition: width .2s;
-}
-
-/* 缩放钮收口到 #view-map (2026-09-27): 裸 .zoom-ctl 与充电地图 (后加载)
-   的同款规则互相盖 —— 卡片化后都在卡内 bottom:14px, 安全区让位由卡片
-   底距出, 钮自己不再吃 */
-#view-map .zoom-ctl {
-  position: absolute; right: 14px; bottom: 14px;
-  z-index: 30; display: flex; flex-direction: column; gap: 8px;
-  transition: bottom .25s ease;   /* 加载条出没时让位/回位跟着滑 */
-}
-#view-map .zoom-ctl button {
-  width: 42px; height: 42px; border-radius: 14px; font-size: 23px; line-height: 1;
-  background: rgba(28,28,30,.85); border: 1px solid var(--hairline); color: var(--ink-1);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
-}
-.zoom-ctl button:active { background: var(--surface-2); }
-
-/* ---------- 走过之路图例 (2026-09-29): 多—少热力渐变条 ---------- */
+/* ---------- 走过之路图例 (2026-09-29): 偶尔—频繁热力渐变条 ---------- */
 /* 底卡 (磨砂暗卡/画布内左下角浮起) 复用充电地图的全局 .legend; .lg-cap
    文本样式也来自那边 (同义复用不另起名), 本页只补渐变条行。图例只剩
-   渐变条 + 少/多两帽 (同日用户点名「去掉虚线, 去掉数字, 只保留多和少」) */
+   渐变条 + 偶尔/频繁两帽 (2026-09-29 先点名「去掉虚线, 去掉数字, 只保留
+   多和少」, 同日改口两端文案)。卡宽随内容走 —— 全局 .legend 定宽 150px
+   是给充电地图的 (它家渐变条 flex:1 会跟着缩), 这边渐变条定宽 132px 又
+   flex:none 不缩, 两帽文字戳出定宽卡外 (用户报「文字超过图例」)。选择器
+   钉 #fp-legend 不写 .legend 裸名 —— 拼串里裸 .legend 规则的头名是充电
+   地图的全局规则, 它家测试按首现切块断言, 裸名会抢了头名) */
+/* 2026-10-01 播放条挪出画布 (用户点名「放到地图外面下方」): 图例回画布
+   左下角底沿自占一槽 (回放期让位日期浮标), 帽文字 nowrap —— 用户点名
+   「图例两边的文字不要换行」(原先折在 flex 排里会被挤压换行; max-content
+   双保险) */
+#fp-legend { width: max-content; bottom: 14px; }
+#fp-legend .lg-cap { white-space: nowrap; }
 #view-map .lg-grad-row { display: flex; align-items: center; gap: 6px; }
 #view-map .lg-grad {
   width: 132px; height: 8px; border-radius: 4px; flex: none;

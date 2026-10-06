@@ -46,6 +46,9 @@ document.addEventListener("keydown", e => {
   if (e.key !== "Escape") return;
   if (!chgAlertBd.hidden) chgCloseAlert();
   else if (chgSheetOpen) chgCloseSheet();
+  else return;                          // 没关任何层: 放行给后注册的层
+  e.stopImmediatePropagation();         // 一层一关 (2026-10-02 全弹窗「从哪来
+                                        // 回哪去」): 别再串关筛选气泡/抽屉
 });
 
 /* 下滑关闭 (tesla-sheet-drag 壳级, iOS 安全规矩见彼处注释): 把手点一下

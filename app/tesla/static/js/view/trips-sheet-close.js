@@ -70,3 +70,15 @@ for (const z of document.querySelectorAll(
   "#sheet .sh-head, #sheet .sh-cells, #sheet .tp-stats, #sheet .tp-hist"))
   bindSheetDrag($("#sheet"), z, closeTrip, false);
 bindSheetSettle($("#sheet"), "show");   // 视口折腾后强制废弃旧栅格 (7556 同保险)
+
+/* Esc 收层 (2026-10-02 用户点名「从哪来回哪去」全弹窗补漏): 这张最常开的
+   层一直没接 Esc —— 触屏蒙版/把手/下拉三路够用, 桌面一直缺。写法照
+   cm-sheet 同款 (chargemap-time-filters)。选单/录制预览盖在这层之上
+   (z=95 > 90): 它们的 Esc 先注册先拦, 这里仍兜底让行 —— 脚本序被重排
+   也不会关错层 */
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape" || !$("#sheet").classList.contains("show")) return;
+  if (!$("#drv-pop").hidden || !$("#rec-modal").hidden) return;   // 上层开着先让上层收
+  closeTrip();
+  e.stopImmediatePropagation();   // 一层一关: 后注册的筛选气泡/抽屉不串关
+});

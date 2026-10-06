@@ -24,6 +24,11 @@ def test_trips_view_sheet_grab_drag_close(auth):
     assert "setPointerCapture(e.pointerId)" not in both   # iOS touch 指针 capture 即 cancel, 别回潮
     assert '$("#grab").addEventListener("click", closeTrip);' not in js
     assert 'grab.addEventListener("touchstart"' not in js   # 手柄不吃旧 touch 三件套
+    # Esc 收层 (2026-10-02 全弹窗「从哪来回哪去」补漏): 触屏三路够用, 桌面
+    # 一直缺; 选单/录制预览盖在这层上, 先让上层收
+    for frag in ('e.key !== "Escape" || !$("#sheet").classList.contains("show")',
+                 'if (!$("#drv-pop").hidden || !$("#rec-modal").hidden) return;'):
+        assert frag in js, f"行程弹层缺 Esc 关闭 {frag}"
 
 
 def test_trips_sheet_header_one_row(auth):
@@ -87,15 +92,14 @@ def test_trips_sheet_header_one_row(auth):
 def test_trips_sheet_handle_scoped_and_map_on_top(auth):
     """把手各归各弹层: 3.0 四弹层共用 .grab 类名, 裸规则互串 —— map-canvas
     的 38px hairline 胶囊 (元素底色) 叠着行程侧的实色 ::before 胶囊 = 重影
-    (2026-09-21 用户实报); 三张用 .grab 的弹层各自 scoped, 足迹/账号顺手
-    统一成实色。轨迹详情地图与统计格调换 (用户点名): 打开先见轨迹, 数字
+    (2026-09-21 用户实报); 弹层各自 scoped, 足迹顺手统一成实色 (足迹/
+    账号弹层已先后随「点路不弹窗」「账号改密码并页」退役)。轨迹详情地图
+    与统计格调换 (用户点名): 打开先见轨迹, 数字
     垫底; 数字带/播放条 2026-09-25 挪到分页外公共带 (三页等高修平,
     播放条不播不占位, 用户点名不放地图里; 更早的让位带方案两头都挨过批
     —— 底部空间没吃满 + 控制框周围黑边)。"""
     html = served_page(auth, "/tesla")
-    for frag in ["#sheet .grab {", "#sheet .grab::before",   # 行程: 实色胶囊
-                 "#acct-sheet .grab {"]:   # 账号: 各归各 (足迹弹层已随点路
-                                           # 不弹窗整块退役, 2026-09-29)
+    for frag in ["#sheet .grab {", "#sheet .grab::before"]:   # 行程: 实色胶囊
         assert frag in html, f"弹层句柄缺少 scoped 样式 {frag}"
     # 地图在上: DOM 里 trip-map-wrap → 数字带 → 播放条 (数字带/播放条
     # 2026-09-25 挪到分页外公共带, 三页共享), 播放条不在地图区里

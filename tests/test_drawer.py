@@ -62,14 +62,14 @@ def test_nav_groups_match_dom(auth):
         "行程": ["trips", "tripstats", "groups", "map"],   # 行程统计 2026-09-27
         "充电": ["charging", "stats", "battery", "chargemap"],   # 电池健康度 2026-09-27
         "设置": ["settings-account", "settings-db", "settings-map",
-                 "settings-drivers", "changelog"],   # 账号 2026-09-27 拆独立页居首
-    }
-    assert sum(len(p) for _, p in groups) == 14          # 14 视图零孤儿
+                 # 账号 09-27 拆页居首; 常用地点 09-30 (改名管理入口)
+                 "settings-drivers", "settings-places", "changelog"]}
+    assert sum(len(p) for _, p in groups) == 15          # 15 视图零孤儿
     html = served_page(auth, SHELL)
     keys = [k for _, pages in groups for k in pages]
     pos = [html.index(f'data-view="{k}"') for k in keys]
     assert pos == sorted(pos), "视图顺序与 NAV_GROUPS 不符"
-    assert html.count('data-view="') == 14               # 对账没丢页没多页
+    assert html.count('data-view="') == 15               # 对账没丢页没多页
 
 
 # ---------------------------------------------------------------- 开合与拖拽
@@ -107,21 +107,21 @@ def test_drawer_drag_wiring(auth):
 
 
 def test_gesture_surfaces_and_edges(auth):
-    """视图手势面: 各视图的滚动器/手势面都接 drawer: true (15 处绑定 ——
-    状态页常显化后空态/结束态两节退役, live 的面归面板+首帧等待;
-    2026-09-27 账号设置拆独立页 +1, 同日行程统计页 +1, 同日电池健康页
-    +1); 地图类视图 (足迹/充电地图/驾驶) 画布手势全给地图引擎 —— 右划开
-    抽屉的入口折到画布左缘 24px 窄条 (手势仲裁认它)。"""
+    """视图手势面: 各视图滚动器/手势面都接 drawer: true (17 处绑定); 地图
+    类画布手势全给引擎 —— 右划开抽屉入口折到画布左缘 40px 窄条 (10-01
+    用户报左缘手指常落卡外; #lv-gutter 10-04 / #cm-gutter 10-05 补缝条)。"""
     js = page_js(auth, SHELL)
-    assert js.count("{ drawer: true, ptr: true,") == 15
-    for edge in ("cm-edge", "fp-edge", "lv-edge"):
+    assert js.count("{ drawer: true, ptr: true,") == 17
+    for edge in ("cm-edge", "cm-gutter", "fp-edge", "fp-gutter", "lv-edge"):
         assert f'bindGestures($("#{edge}"), {{ drawer: true }});' in js, \
             f"{edge} 边条绑定缺"
     page = served_page(auth, SHELL)
-    for token in ('class="drawer-edge" id="lv-edge"', 'id="fp-edge"', 'id="cm-edge"'):
+    for token in ('class="drawer-edge" id="lv-edge"', 'id="fp-edge"',
+                  'id="cm-edge"', 'id="cm-gutter"'):
         assert token in page, f"边条骨架缺 {token}"
     block = page[page.index(".drawer-edge {"):page.index("}", page.index(".drawer-edge {"))]
-    for frag in ("position: absolute", "left: 0", "width: 24px", "touch-action: none"):
+    for frag in ("position: absolute", "left: 0", "width: 40px", "touch-action: none",
+                 "z-index: 40"):
         assert frag in block, f"边条规则缺 {frag}"
 
 
@@ -137,9 +137,9 @@ def test_navigation_plain_hidden(auth):
     for gone in ("TABS", "hideGroup", "showGroup", "pagerEl", ".scrollTo("):
         assert gone not in nav, f"组路由残留: {gone}"
     html = served_page(auth, SHELL)
-    assert html.count('<section class="view"') == 14
+    assert html.count('<section class="view"') == 15
     assert 'class="view" id="view-live" data-view="live">' in html   # 唯一亮着
-    assert len(re.findall(r'<section class="view"[^>]* hidden>', html)) == 13
+    assert len(re.findall(r'<section class="view"[^>]* hidden>', html)) == 14
 
 
 def test_boot_default_live(auth):
@@ -183,17 +183,19 @@ def test_global_chips_retired(auth):
 
 # ---------------------------------------------------------------- 账号卡
 def test_account_card(auth):
-    """账号卡 (3.3.0 从抽屉底部搬来, 2026-09-27 拆成账号设置独立页 —— 设置组
-    首位, 数据来源第二), id 沿用抽屉时代命名; 抽屉本体纯导航 —— 账号不在
-    抽屉里 (车辆选择定稿住抽屉顶, 时间筛选已下线)。"""
+    """账号三卡 (3.3.0 从抽屉底部搬来, 2026-09-27 拆成账号设置独立页 —— 设置组
+    首位, 数据来源第二), id 沿用抽屉时代命名; 2026-10-05 二改 (用户点名): 账号
+    名行内编辑 + 修改密码 + 登出分三张卡, 说明行退役; 抽屉本体纯导航 —— 账号
+    不在抽屉里 (车辆选择定稿住抽屉顶, 时间筛选已下线)。"""
     page = served_page(auth, SHELL)
     for token in ('id="acct-card"', 'id="acct-name"', 'id="acct-badge"',
-                  'id="acct-row"', 'id="logout"', "acct-out",
-                  '<h2>账号设置</h2>', 'id="acct-scroll"'):
+                  'id="me-name-input"', 'id="me-name-cancel"',
+                  'id="pass-card"', 'id="me-pass-save"', 'id="logout"',
+                  "acct-out", '<h2>账号设置</h2>', 'id="acct-scroll"'):
         assert token in page, f"账号卡缺 {token}"
     acct = page.index('data-view="settings-account"')
     db = page.index('data-view="settings-db"')
-    assert acct < page.index('id="acct-card"') < db   # 账号卡住自己的独立页 (设置组首位)
+    assert acct < page.index('id="acct-card"') < db   # 三卡住自己的独立页 (设置组首位)
     assert 'id="acct-card"' not in page[db:page.index('id="view-settings-map"')]   # 数据来源页不再有
     drw = page[page.index('<aside id="drawer"'):page.index("</aside>")]
     for gone in ("acct", "time-menu", "logout"):

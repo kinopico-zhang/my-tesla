@@ -149,6 +149,26 @@ def test_chargemap_view_skeleton(auth):
     assert 'id="view-seg"' not in html
 
 
+def test_chargemap_gutter_covers_screen_edge(auth):
+    """#189 (2026-10-05 用户报「充电地图地图位置不能够滑动屏幕边缘返回呼
+    出菜单」): 地图卡两侧 16px 出血缝是死区 —— 卡内 #cm-edge 从卡缘 16px
+    才起, iPhone 边缘右划的手指天然落 0-16px 次次落空。#cm-gutter 视图层
+    缝条直挂 #view-chargemap (足迹 #fp-gutter / 状态页 #lv-gutter 同款接力
+    到物理屏缘); 定位上下文就是 .view 的 absolute —— 另立 position:relative
+    会把整页塌成内容高 (足迹页黑屏事故), 反向钉死; 三探针再犯翻日志定罪。"""
+    page = served_page(auth, "/tesla")
+    assert 'class="drawer-edge" id="cm-gutter"' in page, "充电地图缝条骨架缺"
+    assert page.index('id="view-chargemap"') < page.index('id="cm-gutter"') < \
+        page.index('id="cm-backdrop"'), "缝条不在充电地图视图段内"
+    assert "#view-chargemap { position: relative; }" not in page, \
+        "缝条定位靠 .view 的 absolute, 别另立 relative (整页塌高事故)"
+    js = auth.get("/tesla/static/js/view/chargemap-time-filters.js").text
+    assert 'bindGestures($("#cm-gutter"), { drawer: true });' in js
+    for frag in ('diag("cm_gutter_touch"', 'diag("cm_gutter_end"',
+                 'diag("cm_gutter_cancel"'):
+        assert frag in js, f"缝条取证缺 {frag}"
+
+
 def test_chargemap_link_in_login_whitelist(auth):
     """登录回跳白名单仍收旧充电地图路径: 2.x 存的上次停留值跳旧路径, 302
     落回壳充电地图视图, 不丢。"""

@@ -17,7 +17,8 @@ sys.path.insert(0, str(ROOT))
 
 # sys.path 注入必须先于 app 导入 (import 位置告警属预期, 按需豁免)
 from app import account_store, authentication, config, database  # pylint: disable=wrong-import-position
-from app.tesla import roads_worker, speed_hist_cache, tracks_cache  # pylint: disable=wrong-import-position
+from app.tesla import place_worker, roads_worker  # pylint: disable=wrong-import-position
+from app.tesla import speed_hist_cache, tracks_cache  # pylint: disable=wrong-import-position
 from app.models import UsersBase  # pylint: disable=wrong-import-position
 from app.tesla.models import Base, OwnBase  # pylint: disable=wrong-import-position
 import app.main as m  # pylint: disable=wrong-import-position
@@ -66,6 +67,7 @@ def isolate(tmp_path, monkeypatch):
     tracks_cache.reset()
     speed_hist_cache.reset()
     roads_worker.reset()   # 拟合 worker: 收掉上个案可能起过的线程, 清记账
+    place_worker.reset()   # 地点命名 worker: 同上 (2026-10-02 #171)
     monkeypatch.setenv("MAP_CACHE_FILE", str(tmp_path / "tracks_cache.json"))
     monkeypatch.setenv("SPEED_HIST_CACHE_FILE",
                        str(tmp_path / "speed_hist_cache.json"))

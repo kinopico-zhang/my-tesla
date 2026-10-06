@@ -14,12 +14,14 @@ def _shell(auth):
 
 # ---------------------------------------------------------------- 脚本与加载序
 def test_map_roads_scripts_and_load_order(auth):
-    """道路层三脚本: roads-grid (纯逻辑) 在渲染层前, 道路同步在本地库后、
-    总同步 (map-boot) 前 —— 同为顶层 const/function, 序即文档。
+    """道路层脚本与加载序: roads-grid (纯逻辑) 在渲染层前, 回放层
+    (map-roads-playback, 2026-10-01 播放钮) 在渲染层后 —— 它拿
+    makeRoadLines/roadInViewNow 当画笔; 道路同步在本地库后、总同步
+    (map-boot) 前 —— 同为顶层 const/function, 序即文档。
     细化模块 (map-tracks-refine) 已随原始轨迹层整文件退役。"""
     html = _shell(auth)
-    for src in ('js/roads-grid.js?v=3', 'js/view/map-roads-render.js?v=8',
-                'js/view/map-roads-boot.js?v=6'):
+    for src in ('js/roads-grid.js?v=4', 'js/view/map-roads-render.js?v=13',
+                'js/view/map-roads-playback.js?v=14', 'js/view/map-roads-boot.js?v=8'):
         assert f'src="/tesla/static/{src}"' in html, f"缺脚本 {src}"
     refs = page_asset_paths(auth, "/tesla")
     assert refs.index("/tesla/static/js/roads-grid.js") \
@@ -29,6 +31,9 @@ def test_map_roads_scripts_and_load_order(auth):
         < refs.index("/tesla/static/js/view/map-boot.js")
     assert "/tesla/static/js/view/map-tracks-refine.js" not in html, \
         "细化模块应整文件退役 (只画走过的路)"
+    # 回放模块在渲染层后 (makeRoadLines/roadInViewNow 是它的画笔, 序即文档)
+    assert refs.index("/tesla/static/js/view/map-roads-render.js") \
+        < refs.index("/tesla/static/js/view/map-roads-playback.js")
 
 
 def test_map_roads_local_store_v3(auth):
@@ -82,7 +87,7 @@ def test_map_roads_sync_flow(auth):
 
 def test_map_roads_render_wiring(auth):
     """道路渲染 (渲染层唯一分支): 连续热力色阶切段折线 / 低倍主档单线降级
-    + 跨 15 级换画 (缩放收尾防抖 scheduleRoadZoom, 细化循环退役后由它接管) /
+    + 跨 15 级换画 (缩放收尾防抖 scheduleRoadZoom) / 同档爬两级重抽稀 (10-02) /
     ≥15 级只画视野内 (2026-09-29 手机端放到最大整页崩: 全量分段折线几万条
     iOS 内存爆 —— roadsInView 取视野集, 平移/缩放收尾 roadsViewportSync 防抖
     增删, _dropOut 摘视野外的线)。档位一律看实时缩放 (roadBand 变量等换画
@@ -91,19 +96,40 @@ def test_map_roads_render_wiring(auth):
     还是一个都会区的程数, 视野裁剪救不了)。点路不弹详情卡 (同日用户点名
     「点击路不要弹窗」: selectRoad/选中高亮/底部详情卡整链退役)。推断层
     (gaps 区间) 画灰虚线 GUESS_OPT「可能走过」—— 与证实段共享端点不断线,
-    不进次数计数。图例多—少渐变条。"""
+    不进次数计数。图例多—少渐变条。回放层的色走累计口径 (2026-10-02 用户
+    报「一开始的路径不是黄的, 应该越来越黄」): makeRoadLines 带 live 读
+    playStat, 走到当时为止 —— 同一条路越走越热, 升档的格经 playCellIdx 找
+    回早先画的线重染 (索引叫 playCellIdx 不叫 playIdx: 回放模块的走带进度
+    就是顶层 playIdx, 经典脚本共享全局词法域, 撞名 = 后加载脚本整条
+    SyntaxError, 页面全黑)。"""
     html = _shell(auth)
     for frag in ("makeRoadLines", "roadLegend",
-                 "roadZoomCrossed", "scheduleRoadZoom", "redrawRoads",
+                 "roadZoomCrossed", "scheduleRoadZoom", "redrawRoads", "fpPlayRestart",
                  "dominantStep", "linesById.set",
+                 "roadPlayReset", "roadPlayMerge", "roadPlayBump", "roadPlayEnd", "bumpSoon",
+                 "playDomStep", "playMaxStep", "playCellIdx", "mapLib.gcj([x0, y0])",
+                 "live ? playStat : roadCells", "RoadsGrid.thinFlat(",
                  "RoadsGrid.rowSpans(pts, g)", "RoadsGrid.runsByStep",
-                 "RoadsGrid.stepColor(r.b)", "RoadsGrid.stepOf(",
+                 "RoadsGrid.stepColor(r.b)", "RoadsGrid.stepOf(", "roadDecStep",
+                 "zIndex: 60 + r.b",
                  "map.getZoom() < ROAD_ZOOM",
                  "const GUESS_OPT", 'strokeStyle: "dashed"',
                  "roadsInView", "roadInViewNow", "roadsViewportSync",
                  "_dropOut", "lines._band = band",
                  "走过的路"):
         assert frag in html, f"道路渲染缺少 {frag}"
+    # 切走视图收播 (2026-10-02 报「打开就自动开始播放」): hide() 收整场; 此串
+    # 只在 map-filters.js (回放模块 document.hidden &&, 渲染层 Exit(false))
+    assert "if (fpPlaying) fpPlayExit(true);" in html, "切走视图应收掉回放"
+    # 自动开播一回 (10-02 点名「自动播放…用来加载数据」): 路一就绪即播/收尾
+    # 补播/回视图补播, 只此一回 (playAutoDone), 不在前台不播; 换驾驶员点名
+    # 重播 (同日点名「任何时候, 切换驾驶员都重播」): fpPlayArm 置旗 map-boot 消费
+    for ref, frag in (("map-roads-playback.js", "function fpPlayAuto()"),
+                      ("map-boot.js", "const autoOn = fpPlayAuto();"),
+                      ("map-boot.js", "fpPlayRestart();"),
+                      ("map-filters.js", "fpPlayArm();"), ("map-filters.js", "fpViewOn = true;")):
+        assert frag in auth.get(f"/tesla/static/js/view/{ref}").text, \
+            f"{ref} 自动开播/重播缺少 {frag}"
     # 点路不弹窗 (2026-09-29 用户点名): 详情卡/选中态整链退役净
     for gone in ("selectRoad", "fp-sheet", "fp-backdrop", "fp-sh-",
                  "line._rest", "可能走过的路 (推断)"):
@@ -112,8 +138,8 @@ def test_map_roads_render_wiring(auth):
     # (吃滞后变量的旧路不许回潮); 视野补线分帧 (跨回低倍/换画接管即作废)
     for frag in ("band = map && map.getZoom() >= ROAD_ZOOM ? 1 : 0",
                  "map.getZoom() < ROAD_ZOOM) ? list : list.filter(roadInView)",
-                 "map.getZoom() < ROAD_ZOOM) return;",
-                 "const rb = map.getZoom() >= ROAD_ZOOM ? 1 : 0",
+                 "map.getZoom() < ROAD_ZOOM) return;", "zoom - roadDrawnZoom >= 2",
+                 "const rb = map.getZoom() >= ROAD_ZOOM ? 1 : 0", "old._band === rb && !repath",
                  "map.add(lines);\n        linesById.set(add[i].id, lines);"):
         assert frag in html, f"档位实时口径缺少 {frag}"
     # 缩放收尾接防抖换画 + 视野增删; 平移收尾视野增删 (汇总三数不跟视野走,
@@ -124,15 +150,19 @@ def test_map_roads_render_wiring(auth):
 
 # ---------------------------------------------------------------- 骨架与样式
 def test_map_roads_skeleton(auth):
-    """图例默认藏 (无道路层不露), 只剩「少—多」热力渐变条 (2026-09-29 用户
-    点名「去掉虚线, 去掉数字, 只保留多和少」—— 虚线样例/次数帽/拟合进度行
-    整排退役); 点路不弹详情卡 (同日点名「点击路不要弹窗」, 详情弹层整块
-    拆净)。"""
+    """图例默认藏 (无道路层不露), 只剩热力渐变条 + 两端帽 (2026-09-29 用户
+    先点名「去掉虚线, 去掉数字, 只保留多和少」, 同日改口两端文案「偶尔
+    →频繁」); 图例卡宽随内容走 (全局 .legend 定宽 150px 装不下 132px 定宽
+    渐变条 + 两帽, 帽文字戳出卡外 —— 用户报「文字超过图例」)。点路不弹
+    详情卡 (同日点名「点击路不要弹窗」, 详情弹层整块拆净)。"""
     html = _shell(auth)
     assert 'class="legend" id="fp-legend" hidden>' in html
-    for frag in ('class="lg-grad"', '<span class="lg-cap">少</span>',
-                 '<span class="lg-cap">多</span>'):
+    for frag in ('class="lg-grad"', '<span class="lg-cap">偶尔</span>',
+                 '<span class="lg-cap">频繁</span>'):
         assert frag in html, f"骨架缺少 {frag}"
+    # 卡宽随内容 (定宽卡装不下不缩的渐变条, 帽文字会戳出去; 钉 #fp-legend
+    # 不写 .legend 裸名 —— .legend { 拼串头名是充电地图全局规则, 不抢)
+    assert "#fp-legend { width: max-content; bottom: 14px; }" in html
     # 图例退役净: 虚线样例/两行进度/次数帽不许回潮
     for gone in ('class="lg-guess"', "<span>可能走过 (推断)</span>",
                  'id="fp-lg-max"', 'id="fp-lg-prog"', "<span>走过次数</span>"):
@@ -162,7 +192,7 @@ def test_settings_amap_web_key_field(auth):
     两个 key」: 两类型易拿混分卡配置): 密码框留空保持现值, 当前状态行, 写明
     与地图 Key 是两种类型不能混用, 独立保存钮存后踢 worker (/roads/tick)。"""
     html = _shell(auth)
-    for frag in ('<h2>足迹道路拟合</h2>', 'id="amap-web-key"', 'id="amap-web-now"',
+    for frag in ('<h2>足迹道路拟合</h2>', 'id="amap-web-key"',
                  'type="password" id="amap-web-key"', 'id="amap-web-save"',
                  "两种类型, 不能混用", '"/tesla/map/api/roads/tick"'):
         assert frag in html, f"Web 服务 Key 设置缺少 {frag}"

@@ -14,6 +14,7 @@ TeslaMate 同款的大 Session 过滤随之退役)。曲线与峰值按「充电
 与 charging_stats.monthly_stats 同规矩); 采样按过程归属到过程起始日的
 本地日 (跨午夜的充电整段记在开始日, 对健康曲线无感)。
 """
+from pydantic import BaseModel
 from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.orm import Session
 
@@ -21,6 +22,13 @@ from ...models import Charge, ChargingProcess
 from ...schemas import BatteryHealth, BatteryHealthPoint
 from ..common import to_local
 from .charge_samples import charge_efficiency
+
+
+class DailyAgg(BaseModel):
+    """充电日累加器 (Σ额定续航 / Σ可用电量)。"""
+
+    rated: float = 0.0
+    level: float = 0.0
 
 
 def _daily_series(session: Session,
@@ -34,14 +42,14 @@ def _daily_series(session: Session,
         .join(Charge, Charge.charging_process_id == ChargingProcess.id)
         .where(*conds)
         .group_by(ChargingProcess.id, ChargingProcess.start_date)).all()
-    days: dict[str, list[float]] = {}
+    days: dict[str, DailyAgg] = {}
     for start_date, rated_sum, level_sum in rows:
-        bucket = days.setdefault(to_local(start_date).strftime("%Y-%m-%d"),
-                                 [0.0, 0.0])
-        bucket[0] += float(rated_sum)
-        bucket[1] += float(level_sum)
-    return [BatteryHealthPoint(day=day, range_km=round(r / u * 100, 1))
-            for day, (r, u) in sorted(days.items()) if u > 0]
+        bucket = days.setdefault(
+            to_local(start_date).strftime("%Y-%m-%d"), DailyAgg())
+        bucket.rated += float(rated_sum or 0.0)
+        bucket.level += float(level_sum or 0.0)
+    return [BatteryHealthPoint(day=day, range_km=round(b.rated / b.level * 100, 1))
+            for day, b in sorted(days.items()) if b.level > 0]
 
 
 def _current_estimate(session: Session,

@@ -68,20 +68,28 @@ def test_trip_stats_monthly(auth, db):
 
 
 def test_trip_stats_locations(auth, db):
-    """常去地点: 起终点地址并计 (地名优先), 次数降序; 终点无地址的 D
-    只贡献起点一次。"""
+    """常去地点 (2026-09-30 起按停车事件计: 挪车微程不计, 同一停车只计一
+    次 —— 口径细验在 test_place_parking): 长安镇 = D 起点 (最早且 D 终点
+    断链) + A/B/C 到达 = 4; 华为立体车库 = A/B/C 出发 (每次都接着上一程
+    的长安镇, 各是一次新停车) = 3。行带坐标 + raws + spots (种子地址没坐
+    标 → 如实 None / 空表)。"""
     _seed_stats(db)
     locs = auth.get("/tesla/trips/api/stats/locations").json()
     assert locs == [
-        {"name": "长安镇", "trips": 4},        # A/B/C 终点 + D 起点
-        {"name": "华为立体车库", "trips": 3},  # A/B/C 起点 (D 终点无地址)
+        {"name": "长安镇", "trips": 4, "lat": None, "lng": None,
+         "raws": ["长安镇"], "orig": None, "spots": [],
+         "details": [{"name": "长安镇", "trips": 4, "lat": None, "lng": None}]},
+        {"name": "华为立体车库", "trips": 3, "lat": None, "lng": None,
+         "raws": ["华为立体车库"], "orig": None, "spots": [],
+         "details": [{"name": "华为立体车库", "trips": 3,
+                      "lat": None, "lng": None}]},
     ]
 
 
 def test_trip_stats_dimensions(auth, db):
-    """维度聚合: 出发时段每 2 小时一组 (本地时区), 距离/时长/电耗落档计数
-    (没值的不进档 —— C 没续航不进电耗档)。车速档不在此验 —— 真速度分布
-    (positions 积分里程) 拆去 test_speed_hist。"""
+    """维度聚合: 出发时段每 2 小时一组 (本地时区), 距离/时长落档计数。
+    车速两档不在此验 —— 真速度分布与各速度段电量 (positions 积分) 拆去
+    test_speed_hist; 电耗落档 (by_wh) 2026-09-30 整链退役。"""
     _seed_stats(db)
     d = auth.get("/tesla/trips/api/stats/dimensions").json()
     # 出发时段: A 08:32→4 组, C 11:30→5 组, D 13:00→6 组, B 22:00→11 组
@@ -90,8 +98,9 @@ def test_trip_stats_dimensions(auth, db):
     assert d["by_dist"] == [1, 0, 0, 0, 1, 0, 0, 1, 0, 1]
     # 时长: C 8分→<10分, A 72分→1-1.5时, B 120分→2-3时, D 330分→≥5时
     assert d["by_dur"] == [1, 0, 0, 0, 0, 1, 0, 1, 0, 1]
-    # 电耗: A 212→200-220, B 143→140-160, D 234→220-240; C 未定标不计
-    assert d["by_wh"] == [0, 0, 0, 1, 0, 0, 1, 1, 0, 0]
+    # 速度·电耗: by_spd_kwh = 各速度段行车电量 (功率积分), 2026-09-30 起
+    # 旧「行程 Wh/km 落档计数」(by_wh) 整链退役; 没播采样点全 0
+    assert d["by_spd_kwh"] == [0.0] * 9
 
 
 def test_trip_stats_drivers(auth, db, owndb):
@@ -128,7 +137,7 @@ def test_trip_stats_uncalibrated_car(auth, db):
     mm = auth.get("/tesla/trips/api/stats/monthly").json()
     assert mm == [{"month": "2026-09", "trips": 1, "km": 42.5, "kwh": None}]
     d = auth.get("/tesla/trips/api/stats/dimensions").json()
-    assert d["by_wh"] == [0] * 10 and sum(d["by_dist"]) == 1
+    assert d["by_spd_kwh"] == [0.0] * 9 and sum(d["by_dist"]) == 1
     assert d["by_spd"] == [0.0] * 9    # 没播采样点: 速度档全 0 (直方图如实)
 
 
@@ -158,4 +167,4 @@ def test_trip_stats_empty_db(auth, db):
     d = auth.get("/tesla/trips/api/stats/dimensions").json()
     assert d["by_hour"] == [0] * 12
     assert d["by_dist"] == [0] * 10 and d["by_dur"] == [0] * 10
-    assert d["by_spd"] == [0.0] * 9 and d["by_wh"] == [0] * 10
+    assert d["by_spd"] == [0.0] * 9 and d["by_spd_kwh"] == [0.0] * 9

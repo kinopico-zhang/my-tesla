@@ -131,3 +131,7 @@ def test_charging_detail_nav_and_close_removed(auth):
                  'id="chg-sheet-close"', 'class="sheet-close"',
                  "⚡ 快充", "🔌 慢充"):
         assert gone not in page, f"充电详情残留 {gone}"
+    # Esc 一层一关 (2026-10-02 全弹窗「从哪来回哪去」): 关了层才拦断; 费用
+    # 编辑框的 keydown 对 Esc 放行 —— 开层即自动聚焦, 掐死就永远 Esc 不掉
+    assert 'if (!chgAlertBd.hidden) chgCloseAlert();' in page
+    assert 'if (e.key === "Escape") return;' in page

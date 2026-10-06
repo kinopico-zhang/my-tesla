@@ -84,7 +84,11 @@ $("#chg-al-save").addEventListener("click", saveCost);
 $("#chg-al-clear").addEventListener("click", () => { chgAlInput.value = ""; saveCost(); });
 chgAlertBd.addEventListener("click", e => { if (e.target === chgAlertBd) chgCloseAlert(); });
 chgAlInput.addEventListener("keydown", e => {
-  e.stopPropagation();
+  if (e.key === "Escape") return;   // Esc 放行 (2026-10-02 全弹窗「从哪来回哪
+                                    // 去」补漏): 开层即自动聚焦, 这里一
+                                    // stopPropagation 它就永远到不了 document
+                                    // 级 Esc 链, 这层就 Esc 不掉了
+  e.stopPropagation();              // 其余键 (Enter 存/输入中) 不外漏
   if (e.key === "Enter") saveCost();
 });
 

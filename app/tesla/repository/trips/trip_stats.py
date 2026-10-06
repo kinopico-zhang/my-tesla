@@ -1,8 +1,9 @@
-"""行程统计: 汇总/按月/常去地点/司机里程/多维聚合 (2026-09-27 新增, 参照
+"""行程统计: 汇总/按月/司机里程/多维聚合 (2026-09-27 新增, 参照
 充电统计; 电耗口径与行程列表同源 —— 额定续航差 × 桩端定标系数, 没定标
 的车不进电耗)。"""
 from typing import Any, Final
 
+from pydantic import BaseModel
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session, aliased
 
@@ -10,22 +11,31 @@ from ...models import Address, Drive, Driver, TripDriver
 from ...schemas import (
     TripDims,
     TripDriverStat,
-    TripLocStat,
     TripMonthlyStat,
     TripStatsSummary,
 )
 from ..charging import _bump
-from ..common import _clean_addr, fdate, to_local
+from ..common import fdate, to_local
 from .trip_listing import _consumption, _eff_by_car, _trip_rows_stmt
 
 TRIP_DIST_EDGES: Final = (2, 5, 10, 20, 50, 100, 150, 200, 300)       # 单程距离十档
 TRIP_DUR_EDGES: Final = (10, 20, 30, 45, 60, 90, 120, 180, 300)       # 行驶时长十档
-TRIP_WH_EDGES: Final = (100, 120, 140, 160, 180, 200, 220, 240, 260)  # 平均电耗十档
+
+# 常去地点统计与改名 (2026-09-30 拆到 .trip_places: 那链加停车事件口径后
+# 装不下 200 行上限, 起点排序的 _trip_rows 仍是两边共用)。
+
+
+class DriverAgg(BaseModel):
+    """司机归集中的累加器: 里程为空的行程照计次数不进里程。"""
+
+    km: float = 0.0
+    trips: int = 0
 
 
 def _trip_rows(session: Session, car_id: int | None = None) -> list[Any]:
     """全部已结束行程 (带起终点地址, 出发时间升序): 统计页各接口共用的取数。"""
-    stmt: Select[Any] = _trip_rows_stmt(aliased(Address), aliased(Address))
+    stmt: Select[*tuple[Any, ...]] = _trip_rows_stmt(
+        aliased(Address), aliased(Address))
     if car_id is not None:
         stmt = stmt.where(Drive.car_id == car_id)
     return list(session.execute(stmt.order_by(Drive.start_date)).all())
@@ -57,37 +67,20 @@ def trip_monthly(session: Session,
     """按本地月份分组的行程统计 (里程/电耗; 与充电统计同款 Python 侧分组)。"""
     rows = _trip_rows(session, car_id)
     effs = _eff_by_car(session, {d.car_id for d, _, _ in rows})
-    grouped: dict[str, list[tuple[Drive, float | None]]] = {}
+    grouped: dict[str, list[Drive]] = {}
     for d, _, _ in rows:
         grouped.setdefault(
-            to_local(d.start_date).strftime("%Y-%m"),
-            []).append((d, _consumption(d, effs.get(d.car_id))[0]))
+            to_local(d.start_date).strftime("%Y-%m"), []).append(d)
     stats = []
     for month, group in sorted(grouped.items()):
-        kwhs = [k for _, k in group if k is not None]
+        kwhs = [k for d in group
+                if (k := _consumption(d, effs.get(d.car_id))[0]) is not None]
         stats.append(TripMonthlyStat(
             month=month, trips=len(group),
-            km=round(sum(float(d.distance) for d, _ in group
+            km=round(sum(float(d.distance) for d in group
                          if d.distance is not None), 1),
             kwh=round(sum(kwhs), 1) if kwhs else None))
     return stats
-
-
-def trip_locations(session: Session,
-                   car_id: int | None = None) -> list[TripLocStat]:
-    """常去地点: 起终点地址并计 (地名优先, 否则清洗后的地址链), 次数降序。"""
-    rows = _trip_rows(session, car_id)
-    counts: dict[str, int] = {}
-    for _, start, end in rows:
-        for addr in (start, end):
-            if addr is None:
-                continue        # 没反向地理编码的行程不起终点, 不进地点统计
-            name = addr.name or _clean_addr(addr.display_name)
-            if name:
-                counts[name] = counts.get(name, 0) + 1
-    return [TripLocStat(name=k, trips=v)
-            for k, v in sorted(counts.items(),
-                               key=lambda kv: (-kv[1], kv[0]))[:12]]
 
 
 def trip_driver_stats(session: Session, own: Session,
@@ -106,35 +99,33 @@ def trip_driver_stats(session: Session, own: Session,
     marks = {m.drive_id: m.driver_id for m in own.scalars(
         select(TripDriver)
         .where(TripDriver.drive_id.in_([d.id for d, _, _ in rows]))).all()}
-    stats: dict[str, tuple[float, int]] = {}
+    stats: dict[str, DriverAgg] = {}
     for d, _, _ in rows:
         did = marks.get(d.id)
         driver = drivers.get(did) if did is not None else None
         shown = driver or default
         name = shown.name if shown is not None else "未标注"
-        km, n = stats.get(name, (0.0, 0))
-        stats[name] = (km + float(d.distance or 0), n + 1)
-    return [TripDriverStat(name=k, km=round(v[0], 1), trips=v[1])
+        agg = stats.get(name, DriverAgg())
+        stats[name] = DriverAgg(km=agg.km + float(d.distance or 0),
+                                trips=agg.trips + 1)
+    return [TripDriverStat(name=k, km=round(v.km, 1), trips=v.trips)
             for k, v in sorted(stats.items(),
-                               key=lambda kv: (-kv[1][0], kv[0]))]
+                               key=lambda kv: (-kv[1].km, kv[0]))]
 
 
 def trip_dimensions(session: Session, car_id: int | None = None) -> TripDims:
-    """行程统计维度聚合: 出发时段 (每 2 小时) / 单程距离 / 行驶时长 /
-    平均电耗 (充电统计落档同款, 没值/没定标的不进档)。车速档不在此算 ——
-    是 positions 积分的各速度段里程 (speed_hist_cache), 路由侧合入,
-    这里占位 [0] * 9。"""
+    """行程统计维度聚合: 出发时段 (每 2 小时) / 单程距离 / 行驶时长落档。
+    车速两档不在此算 —— 是 positions 积分的各速度段里程与电量
+    (speed_hist_cache), 路由侧合入, 这里占位 [0] * 9。"""
     rows = _trip_rows(session, car_id)
-    effs = _eff_by_car(session, {d.car_id for d, _, _ in rows})
     by_hour = [0] * 12    # 2 小时一组: 下标 = 出发小时 // 2 (与充电开始时段同款)
     by_dist = [0] * 10
     by_dur = [0] * 10
-    by_spd = [0.0] * 9    # 占位: 路由侧换 speed_hist_cache 的真速度分布
-    by_wh = [0] * 10
+    by_spd = [0.0] * 9        # 占位: 路由侧换 speed_hist_cache 的真速度分布
+    by_spd_kwh = [0.0] * 9    # 占位: 路由侧换 speed_hist_cache 的速度段电量
     for d, _, _ in rows:
         by_hour[to_local(d.start_date).hour // 2] += 1
         _bump(by_dist, d.distance, TRIP_DIST_EDGES)
         _bump(by_dur, d.duration_min, TRIP_DUR_EDGES)
-        _bump(by_wh, _consumption(d, effs.get(d.car_id))[1], TRIP_WH_EDGES)
     return TripDims(by_hour=by_hour, by_dist=by_dist, by_dur=by_dur,
-                    by_spd=by_spd, by_wh=by_wh)
+                    by_spd=by_spd, by_spd_kwh=by_spd_kwh)

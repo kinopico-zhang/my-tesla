@@ -9,11 +9,11 @@ from tests.seed_factories import seed_addresses, seed_drive
 def test_config_empty_without_env(auth, monkeypatch):
     monkeypatch.delenv("AMAP_KEY", raising=False)
     monkeypatch.delenv("AMAP_SECURITY_CODE", raising=False)
-    monkeypatch.delenv("AMAP_STYLE", raising=False)
-    # 样式默认幻影黑: 底色纯黑配深色 App (用户明确要的观感); 官方深色样式
-    # 按设计不带地名, 要地名走设置页 (极夜蓝或自建样式 ID)
+    monkeypatch.delenv("AMAP_STYLE", raising=False)   # 退役的 env, 有也不再看
+    # 地图样式已随「不允许用户选择」退役 (2026-10-05): 固定幻影黑住前端
+    # 适配层, config 只发 Key 与安全码
     assert auth.get("/tesla/map/api/config").json() == \
-        {"amap_key": None, "security_code": None, "style": "amap://styles/dark"}
+        {"amap_key": None, "security_code": None}
 
 
 def test_config_returns_env_values(auth, monkeypatch):
@@ -22,8 +22,7 @@ def test_config_returns_env_values(auth, monkeypatch):
     monkeypatch.setenv("AMAP_STYLE", "amap://styles/light")
     monkeypatch.setenv("MAP_PROVIDER", "osm")   # 退役的 env, 有也不再看
     assert auth.get("/tesla/map/api/config").json() == \
-        {"amap_key": "abc123", "security_code": "sec456",
-         "style": "amap://styles/light"}
+        {"amap_key": "abc123", "security_code": "sec456"}
 
 
 # ---------------------------------------------------------------- summary

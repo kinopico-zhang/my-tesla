@@ -170,3 +170,8 @@ $("#drv-pop").addEventListener("click", e => {   // 点蒙版收 (选单卡自�
   if (e.target === e.currentTarget) closeDrvPop();
 });
 $("#drv-pop-x").addEventListener("click", closeDrvPop);
+document.addEventListener("keydown", e => {   // Esc 收选单 (2026-10-02 全弹窗「从
+  if (e.key !== "Escape" || $("#drv-pop").hidden) return;   // 哪来回哪去」补漏:
+  closeDrvPop();                             // 它盖在行程详情层上, 先注册先拦,
+  e.stopImmediatePropagation();              // 底下那张不被串关
+});

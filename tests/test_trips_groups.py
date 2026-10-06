@@ -156,6 +156,7 @@ def test_trips_page_export_video(auth):
                  "function recCompose(", "function startRecExport(",
                  "function stopRecExport(", "function recShowResult(",
                  "function recCloseModal(", "out.captureStream(30)",
+                 'e.key !== "Escape" || $("#rec-modal").hidden',   # Esc 收预览 (2026-10-02 补漏)
                  "new MediaRecorder(", "videoBitsPerSecond: 6e6",
                  "navigator.share({ files: [recFile]", "anim.restart();",
                  "preserveDrawingBuffer: true", "function patchGLKeepBuffer()",

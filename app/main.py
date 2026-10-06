@@ -28,8 +28,8 @@ from .home import STATIC_DIR as HOME_STATIC_DIR
 from .home import accounts_api, middleware as home_middleware
 from .home import pages as home_pages, session_api
 from .models import UsersBase
-from .tesla import (roads_worker, settings_store, speed_hist_cache,
-                    tracks_cache)
+from .tesla import (place_worker, roads_worker, settings_store,
+                    speed_hist_cache, tracks_cache)
 from .tesla.models import OwnBase
 from .tesla.routers import (charging as charging_routes,
                             changelog as changelog_routes,
@@ -90,6 +90,11 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     # 足迹「走过之路」拟合 worker (高德纠偏回填, 没配 Web 服务 key 就空转;
     # worker 自身先睡 90s 让两条预热先跑)
     threading.Thread(target=roads_worker.start,
+                     args=(database.session_factory(),
+                           database.own_session_factory()), daemon=True).start()
+    # 常去地点命名 worker (高德逆地理回填, 同一把 Web 服务 key; 先睡 150s
+    # 与 roads 错峰)
+    threading.Thread(target=place_worker.start,
                      args=(database.session_factory(),
                            database.own_session_factory()), daemon=True).start()
     yield

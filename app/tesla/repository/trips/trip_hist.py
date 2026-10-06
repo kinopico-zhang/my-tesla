@@ -14,14 +14,15 @@ TeslaMate「不同速度下的能耗」面板 (2026-09-24 用户对账点名: �
 点位 ~10s, 不缓存挡不起)。payload v4 = {"v": 4, "rows": [[档, 地形, n功率,
 Σpower, Σpw·speed, Σspeed, Σ秒, Σ里程差], ...]}; v2 (同款自然档) 兼容读回, v1/v3 作废。
 """
-import json
-from typing import Any
-
+from pydantic import ValidationError
 from sqlalchemy import bindparam, text
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import TextClause
 
 from ...models import Drive, DriveHistCache
+from ...schemas.hist_schemas import (HistPayload, HistRow, PowerBin,
+                                     TimeKmBin)
+from ...schemas.trip_schemas import TrackHist
 
 # 每档原料: n功率/Σpower/Σ(pw·speed)/Σspeed 喂电耗卡 (官方公式), Σ秒/
 # Σ里程差喂时间/里程卡; 各档相加就是合并分组同款。dt/档沿按方言二选一
@@ -64,47 +65,42 @@ def _agg_sql(dialect: str) -> TextClause:
         bindparam("ids", expanding=True))
 
 
-def _dump(rows: list[list[Any]]) -> str:
-    return json.dumps({"v": 4, "rows": rows}, separators=(",", ":"))
+def _dump(rows: list[HistRow]) -> str:
+    return HistPayload(v=4, rows=rows).model_dump_json()
 
 
-def _load(payload: str | None) -> list[list[Any]] | None:
+def _load(payload: str | None) -> list[HistRow] | None:
     """缓存读回: v4 (自然档) 与 v2 (同款原料) 都有效; v3 (四舍五入档,
     2026-09-24 上午半天版) / v1 (旧公式) 或坏 JSON 作废 → None。"""
     try:
-        obj = json.loads(payload or "")
-    except (TypeError, ValueError):
+        return HistPayload.model_validate_json(payload or "").rows
+    except ValidationError:
         return None
-    if isinstance(obj, dict) and obj.get("v") in (2, 4):
-        rows = obj.get("rows")
-        if isinstance(rows, list):
-            return rows
-    return None
 
 
-def _hist_rows(session: Session, ids: list[int]) -> dict[int, list[list[Any]]]:
-    """一段一档一地形一行 (缓存 JSON 结构), 没轨迹数据的段不出现。"""
+def _hist_rows(session: Session, ids: list[int]) -> dict[int, list[HistRow]]:
+    """一段一档一地形一行 (缓存原料), 没轨迹数据的段不出现。"""
     rows = session.execute(_agg_sql(session.get_bind().dialect.name),
                            {"ids": ids})
-    out: dict[int, list[list[Any]]] = {}
+    out: dict[int, list[HistRow]] = {}
     for did, terr, b, n_pw, sum_pw, ps, s, secs, km in rows:
         if b is None:
             continue                    # speed 全空的采样 (理论不出现)
-        out.setdefault(int(did), []).append(
-            [int(b), int(terr), int(n_pw),
-             None if sum_pw is None else round(float(sum_pw), 6),
-             None if ps is None else round(float(ps), 6),
-             None if s is None else round(float(s), 6),
-             None if secs is None else round(float(secs), 3),
-             None if km is None else round(float(km), 6)])
+        out.setdefault(int(did), []).append(HistRow(
+            speed_bin=int(b), terrain=int(terr), n_pw=int(n_pw),
+            sum_pw=None if sum_pw is None else round(float(sum_pw), 6),
+            sum_ps=None if ps is None else round(float(ps), 6),
+            sum_speed=None if s is None else round(float(s), 6),
+            secs=None if secs is None else round(float(secs), 3),
+            km=None if km is None else round(float(km), 6)))
     return out
 
 
 def _rows_by_drive(unique: list[int], cached: dict[int, str],
-                   fresh: dict[int, list[list[Any]]],
-                   missing: list[int]) -> dict[int, list[list[Any]]]:
+                   fresh: dict[int, list[HistRow]],
+                   missing: list[int]) -> dict[int, list[HistRow]]:
     """各段的原料行 (缓存或新算), 没轨迹数据的段不出现。"""
-    rows_of: dict[int, list[list[Any]]] = {}
+    rows_of: dict[int, list[HistRow]] = {}
     for i in unique:
         rows = fresh.get(i) if i in missing else _load(cached[i])
         if rows:
@@ -112,37 +108,37 @@ def _rows_by_drive(unique: list[int], cached: dict[int, str],
     return rows_of
 
 
-def _merge_bins(rows_of: dict[int, list[list[Any]]],
-                eligible: set[int]) -> tuple[dict[int, list[float]],
-                                             dict[int, list[Any]]]:
-    """各段原料并档: bins (全地形 [Σ秒, Σ里程差]) 喂时间/里程卡; flatpk
-    (平地 × ≥1km 行程的 [n功率, Σpower, Σpw·speed, Σspeed, Σ里程差]) 喂
-    电耗卡 —— 各档相加就是合并分组同款。"""
-    bins: dict[int, list[float]] = {}
-    flatpk: dict[int, list[Any]] = {}
+def _merge_bins(rows_of: dict[int, list[HistRow]],
+                eligible: set[int]) -> tuple[dict[int, TimeKmBin],
+                                             dict[int, PowerBin]]:
+    """各段原料并档: bins (全地形 Σ秒/Σ里程差) 喂时间/里程卡; flatpk
+    (平地 × ≥1km 行程的功率原料) 喂电耗卡 —— 各档相加就是合并分组同款。"""
+    bins: dict[int, TimeKmBin] = {}
+    flatpk: dict[int, PowerBin] = {}
     for i, rows in rows_of.items():
-        for b, terr, n_pw, sum_pw, ps, s, secs, km in rows:
-            agg = bins.setdefault(int(b), [0.0, 0.0])
-            if secs is not None:
-                agg[0] += secs
-            if km is not None:
-                agg[1] += km
-            if terr != 0 or i not in eligible:
+        for r in rows:
+            agg = bins.setdefault(r.speed_bin, TimeKmBin())
+            if r.secs is not None:
+                agg.secs += r.secs
+            if r.km is not None:
+                agg.km += r.km
+            if r.terrain != 0 or i not in eligible:
                 continue               # 电耗卡: 只平地段, 只 ≥1km 行程
-            fp = flatpk.setdefault(int(b), [0, None, None, 0.0, 0.0])
-            fp[0] += n_pw
-            for k, v in ((3, s), (4, km)):
-                if v is not None:
-                    fp[k] += v
-            if ps is not None:
-                fp[2] = (fp[2] or 0.0) + ps
-            if sum_pw is not None:
-                fp[1] = (fp[1] or 0.0) + sum_pw
+            fp = flatpk.setdefault(r.speed_bin, PowerBin())
+            fp.n_pw += r.n_pw
+            if r.sum_speed is not None:
+                fp.sum_speed += r.sum_speed
+            if r.km is not None:
+                fp.km += r.km
+            if r.sum_ps is not None:
+                fp.sum_ps = (fp.sum_ps or 0.0) + r.sum_ps
+            if r.sum_pw is not None:
+                fp.sum_pw = (fp.sum_pw or 0.0) + r.sum_pw
     return bins, flatpk
 
 
-def _series(bins: dict[int, list[float]],
-            flatpk: dict[int, list[Any]]) -> dict[str, Any]:
+def _series(bins: dict[int, TimeKmBin],
+            flatpk: dict[int, PowerBin]) -> TrackHist:
     """三卡数组: t/km 逐档 (自家口径全量); pk/pw 官方面板口径 (平地 ×
     ≥1km, 0 档照画; 行过滤 Σspeed>0 且 Σ里程差>0)。"""
     top = max(bins)
@@ -151,22 +147,25 @@ def _series(bins: dict[int, list[float]],
     pw: list[float | None] = []
     pk: list[float | None] = []
     for k in range(0, top + 1, 10):
-        secs_a, km_a = bins.get(k, (0.0, 0.0))
+        agg = bins.get(k)
+        secs_a = agg.secs if agg is not None else 0.0
+        km_a = agg.km if agg is not None else 0.0
         t.append(round(secs_a / 60, 2))
         km_arr.append(round(km_a, 2))
         f = flatpk.get(k)
         # n功率>0 由 ps 非空保证; 官方面板: Σ(pw·speed)/Σspeed ×10 与 AVG(power)
-        if f and f[2] is not None and f[3] > 0 and f[4] > 0:
-            pk.append(round(f[2] / f[3] * 10, 1))
-            pw.append(round(f[1] / f[0], 2))
+        if f is not None and f.sum_ps is not None and f.sum_speed > 0 \
+                and f.km > 0:
+            pk.append(round(f.sum_ps / f.sum_speed * 10, 1))
+            pw.append(round((f.sum_pw or 0.0) / f.n_pw, 2))
         else:
             pk.append(None)
             pw.append(None)
-    return {"step": 10, "t": t, "km": km_arr, "pw": pw, "pk": pk}
+    return TrackHist(step=10, t=t, km=km_arr, pw=pw, pk=pk)
 
 
 def track_hist(session: Session, own: Session,
-               ids: list[int]) -> dict[str, Any] | None:
+               ids: list[int]) -> TrackHist | None:
     """速度档直方图 (单条/合并同途): t=各档分钟, km=各档里程 (自家口径);
     pw=平地档平均功率 kW, pk=平地档电耗 Wh/km (官方面板口径: 平地
     Σ(power·speed)/Σ(speed)×10 与 AVG(power), 只收 ≥1km 行程, 0 档照画
@@ -177,7 +176,7 @@ def track_hist(session: Session, own: Session,
                                   DriveHistCache.drive_id.in_(unique))}
     # 读不回 (没算过 / v3 四舍五入档 / v1 旧原料 / 坏 JSON) 一律重算重写
     missing = [i for i in unique if _load(cached.get(i)) is None]
-    fresh: dict[int, list[list[Any]]] = {}
+    fresh: dict[int, list[HistRow]] = {}
     if missing:
         fresh = _hist_rows(session, missing)
         for did in missing:

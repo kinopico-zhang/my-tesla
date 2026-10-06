@@ -144,7 +144,7 @@ def test_stats_module_wiring(auth):
     assert "view/trips-sheet-stats.js?v=41" in html    # v41: 三页独立 (curSess 直读/直方图开弹层即取/静默窗/整带收放退役)
     assert "js/trackutil.js?v=5" in html   # v5: 原始轨迹层退役 (扁平版函数)
     assert "view/trips-playback-session.js?v=14" in html    # defer 起播: 数据会话先挂, begin 才进播放态
-    assert "view/trips-sheet-close.js?v=11" in html    # 统计页 tp-hist 入下拉关闭区
+    assert "view/trips-sheet-close.js?v=12" in html    # 统计页 tp-hist 入下拉关闭区
     assert "view/trips-sheet-open.js?v=10" in html    # 编排重排: 直方图开弹层即取, playTrack(defer) 先于预载
     assert "css/tesla-trips-sheet.css?v=31" in html    # 整带收放规则撤掉 (布局恒定)
     assert "css/tesla-trips-playback.css?v=9" in html

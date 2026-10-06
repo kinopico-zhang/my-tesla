@@ -139,3 +139,8 @@ $("#rec-save").addEventListener("click", async () => {
 });
 $("#rec-close").addEventListener("click", recCloseModal);
 $("#rec-modal").addEventListener("click", e => { if (e.target.id === "rec-modal") recCloseModal(); });
+document.addEventListener("keydown", e => {   // Esc 收预览 (2026-10-02 全弹窗「从
+  if (e.key !== "Escape" || $("#rec-modal").hidden) return;   // 哪来回哪去」补漏:
+  recCloseModal();                           // 它盖在行程详情层上, 先注册先拦,
+  e.stopImmediatePropagation();              // 底下那张不被串关
+});

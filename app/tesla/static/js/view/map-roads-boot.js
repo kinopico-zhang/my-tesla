@@ -11,7 +11,7 @@
 // 2026-09-24 viewport-doctor 实证), 配方同 map-boot.js 的 50 帧。
 /* global diag, RoadsGrid, ROAD_FMT_V, manifest, manifestIdx, localDb,
           fpRowVisible, fpRoadAll, fpRoadPut, fpRoadDelete, fpRoadClear,
-          appendIfVisible, showLoading, showProgress, roadBandSync,
+          appendIfVisible, roadBandSync, fpPlaying,
           redrawRoads, roadLegend, map, overlays,
           roadsById: writable, roadCellsById: writable, roadCells: writable,
           roadMax: writable */
@@ -82,8 +82,7 @@ async function fpRoadsSync(man) {   // 道路层对账 → 待下清单 (本地�
 async function roadDownload(need) {   // 分批流式下载道路: 边下边建格边画 (配方同整版渲染)
   const total = need.length;
   const max0 = roadMax;               // 起步时的色阶上限 (收尾比对: 变了要重铺色)
-  showLoading(true, "正在下载走过的路 0 / " + total + "…");
-  let done = 0, lastFit = 0, sinceYield = 0;
+  let lastFit = 0, sinceYield = 0;
   const liveFit = total <= 200;   // 小补量才中途重定视野 (大批量的风暴, 见下)
   const CHUNK = 50;    // 与服务端单次上限 (200) 留余量, 一批一请求
   for (let i = 0; i < need.length; i += CHUNK) {
@@ -113,23 +112,22 @@ async function roadDownload(need) {   // 分批流式下载道路: 边下边建�
           mergeCells(cells, r.t);
           appendIfVisible(row);
         }
-        done++;
         if (++sinceYield >= 25) { sinceYield = 0; await raf(); }   // 冻结线 1
       }
-      showProgress(done, total);
       const now = Date.now();
       /* 中途重定视野只留给小补量 (增量几条): 全量重下 1800 程时每 500ms
          一次即时 setFitView, 每次都触发全图重渲染 —— 2026-09-29 手机端
          实测「疯狂刷新+黑屏」即此 (主线程打满地图不刷帧), 大批量只收尾一次 */
-      if (liveFit && now - lastFit > 500 && overlays.length) {
+      if (liveFit && now - lastFit > 500 && overlays.length && !fpPlaying) {
         lastFit = now;
         map.setFitView(overlays, true, [40, 40, 40, 40]);
       }
     }
   }
-  map.setFitView(overlays, false, [40, 40, 40, 40]);   // 收尾终态视野
+  if (!fpPlaying)
+    map.setFitView(overlays, false, [40, 40, 40, 40]);   // 收尾终态视野 (回放中让路: 镜头跟框说了算)
   roadBandSync();                                      // 档位对齐当前缩放 (下载期可能变焦)
-  if (roadMax !== max0) {   // 新路抬了色阶上限: 先画的线色阶过期, 分块重铺
+  if (!fpPlaying && roadMax !== max0) {   // 新路抬了色阶上限: 先画的线色阶过期, 分块重铺
     redrawRoads();          // (只比上限: 上限没动的档间微调留待下次整版渲染)
     roadLegend(true);
   }

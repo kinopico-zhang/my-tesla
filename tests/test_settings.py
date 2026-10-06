@@ -1,13 +1,16 @@
-"""设置页 API: TeslaMate 连接/高德 Key 存自有库 + 驾驶员管理。
+"""设置页 API: TeslaMate 连接/高德 Key 存自有库 + 驾驶员管理 + 两把 Key
+的「测试」钮端点 (Web 服务 Key 打一次逆地理回真伪)。
 
 引擎重建在测试里 monkeypatch 成记录器 (真重建会把注入的测试引擎换掉);
 验证查询走当前工厂 —— 注入引擎是 SQLite, SELECT 1 必通。
 """
+import httpx
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app import database
+from app.tesla import roads_amap
 from tests.tesla_static_files import served_page
 
 
@@ -40,71 +43,28 @@ def test_settings_save_amap_and_map_config_reflects(auth, monkeypatch):
     assert r.status_code == 200
     assert r.json()["amap"]["key_masked"] == "abcd****5678"
     assert auth.get("/tesla/map/api/config").json() == {
-        "amap_key": "abcd1234efgh5678",
-        "security_code": "9182ac3b", "style": "amap://styles/dark"}
+        "amap_key": "abcd1234efgh5678", "security_code": "9182ac3b"}
     # 留空 = 保持现值
     auth.post("/tesla/api/settings", json={"amap_key": "", "amap_security_code": ""})
     assert auth.get("/tesla/map/api/config").json()["amap_key"] == "abcd1234efgh5678"
 
 
-def test_settings_save_map_style_and_validation(auth, monkeypatch):
-    """地图样式: 预设/自定义 ID 存得下, map config 即时反映; 留空保持; 坏格式 400 不落库。
-
-    默认幻影黑 (dark): 底色纯黑配深色 App。深色样式也有地名 —— 标注依赖
-    样式数据异步加载, 首次打开过一两秒才出现 (页面自动补重渲染)。"""
-    monkeypatch.delenv("AMAP_STYLE", raising=False)
-    assert auth.get("/tesla/api/settings").json()["amap"]["style"] \
-        == "amap://styles/dark"
-    r = auth.post("/tesla/api/settings", json={"amap_style": "amap://styles/light"})
-    assert r.json()["amap"]["style"] == "amap://styles/light"
-    assert auth.get("/tesla/map/api/config").json()["style"] == "amap://styles/light"
-    # 自定义样式 ID (个性化地图编辑器产出)
-    custom = "amap://styles/d2b1f2e34c5a6789"
-    r = auth.post("/tesla/api/settings", json={"amap_style": custom})
-    assert r.json()["amap"]["style"] == custom
-    assert auth.get("/tesla/map/api/config").json()["style"] == custom
-    # 留空 = 保持现值
-    r = auth.post("/tesla/api/settings", json={"amap_style": ""})
-    assert r.json()["amap"]["style"] == custom
-    # 坏格式 400 且不落库
-    for bad in ("dark", "amap://styles/", "amap://styles/带空格",
-                "amap://styles/a/b", "http://evil/x"):
-        assert auth.post("/tesla/api/settings",
-                         json={"amap_style": bad}).status_code == 400, bad
-    assert auth.get("/tesla/api/settings").json()["amap"]["style"] == custom
-    # env 回落: 设置行有值时 env 不生效 (清不掉, 但能被覆盖) —— 换回预设即可
-    monkeypatch.setenv("AMAP_STYLE", "amap://styles/grey")
-    r = auth.post("/tesla/api/settings", json={"amap_style": "amap://styles/normal"})
-    assert r.json()["amap"]["style"] == "amap://styles/normal"
-
-
 def test_settings_map_provider_field_retired(auth, monkeypatch):
-    """地图服务商字段退役 (2026-09-25 用户点名「地图只保留高德」): 状态与
-    配置端点都不再有 provider; 旧客户端再 POST map_provider 是无效字段,
-    不炸不落库 (pydantic 忽略), 样式/Key 保存照常。"""
+    """地图服务商/样式字段退役 (2026-09-25「只保留高德」/ 2026-10-05「样式
+    选择去掉, 不允许用户选择」): 状态与配置端点都不再有 provider/style
+    (样式固定幻影黑住前端适配层); 旧客户端再 POST map_provider / amap_style
+    是无效字段, 不炸不落库 (pydantic 忽略), Key 保存照常。"""
     monkeypatch.setenv("MAP_PROVIDER", "osm")   # env 也不再看 (有也不生效)
+    monkeypatch.setenv("AMAP_STYLE", "amap://styles/light")
     state = auth.get("/tesla/api/settings").json()["amap"]
-    assert set(state) == {"key_masked", "security_code_set", "style",
+    assert set(state) == {"key_masked", "security_code_set",
                           "web_key_masked"}   # 3.3.3 起加轨迹拟合 Web 服务 Key
     cfg = auth.get("/tesla/map/api/config").json()
-    assert set(cfg) == {"amap_key", "security_code", "style"}
-    r = auth.post("/tesla/api/settings", json={"map_provider": "osm"})
-    assert r.status_code == 200
-    assert "provider" not in r.json()["amap"]
-
-
-def test_settings_tmdb_rollback_also_reverts_style(auth, monkeypatch):
-    """引擎验证失败整体回滚: 同请求里改的地图样式也要一起退回去。"""
-    monkeypatch.setenv("TMDB_HOST", "10.0.0.1")
-    auth.post("/tesla/api/settings",
-              json={"tmdb_host": "10.0.0.1", "tmdb_user": "u", "tmdb_password": "p"})
-    bad = sessionmaker(create_engine("sqlite:////nonexistent-dir/x.db"))
-    monkeypatch.setattr(database, "session_factory", lambda: bad)
+    assert set(cfg) == {"amap_key", "security_code"}
     r = auth.post("/tesla/api/settings",
-                  json={"tmdb_host": "10.0.0.2", "amap_style": "amap://styles/grey"})
-    assert r.status_code == 400
-    assert auth.get("/tesla/api/settings").json()["amap"]["style"] \
-        == "amap://styles/dark"   # 样式没被半路写入
+                  json={"map_provider": "osm", "amap_style": "amap://styles/grey"})
+    assert r.status_code == 200
+    assert "provider" not in r.json()["amap"] and "style" not in r.json()["amap"]
 
 
 def test_settings_save_tmdb_rebuilds_only_on_change(  # pylint: disable=redefined-outer-name
@@ -168,28 +128,114 @@ def test_drivers_crud_and_single_default(auth):
     assert auth.post("/tesla/api/drivers", json={"name": "x" * 31}).status_code == 422
 
 
+def test_web_key_test_verdicts(auth, monkeypatch):
+    """「测试」钮端点 (2026-10-06 用户点名「添加两个测试按钮」+ 同日追点
+    「测试正常只显示正常就行了, 只有测试正常才能保存」): 测 POST 来的候选
+    Web 服务 Key (空 = 测现值) —— 打一次逆地理回真伪, 通过 detail 就是
+    toast 文案「正常」; 无效 Key (10001) / 网络不通算不过; 配额限流
+    (10003 只发生在有效 Key 上) 报「有效但限流」。候选原样到高德 (mock
+    客户端收到的就是它, strip 过)。"""
+    seen: list[str] = []
+
+    def fake_client(payload):
+        def make(key, timeout=8.0):
+            seen.append(key)
+            return roads_amap.AmapClient(
+                key, transport=httpx.MockTransport(
+                    lambda request: httpx.Response(200, json=payload)))
+        return make
+
+    monkeypatch.delenv("AMAP_WEB_KEY", raising=False)
+    assert auth.post("/tesla/map/api/web-key-test").json() == \
+        {"ok": False, "detail": "还没填 Web 服务 Key"}
+
+    monkeypatch.setenv("AMAP_WEB_KEY", "webkey-123")
+    monkeypatch.setattr("app.tesla.routers.map.AmapClient",
+                        fake_client({"status": "1", "info": "OK",
+                                     "infocode": "10000",
+                                     "regeocode": {"pois": [], "roads": [],
+                                                   "addressComponent":
+                                                   {"district": "福田区"}}}))
+    assert auth.post("/tesla/map/api/web-key-test").json() == \
+        {"ok": True, "detail": "正常"}
+    # 候选优先: 框里给了就测框里的 (原样到高德); 空 key / 空白 = 测现值
+    auth.post("/tesla/map/api/web-key-test", json={"key": " candidate-xyz "})
+    assert seen == ["webkey-123", "candidate-xyz"]
+    auth.post("/tesla/map/api/web-key-test", json={"key": "  "})
+    assert seen[-1] == "webkey-123"
+
+    monkeypatch.setattr("app.tesla.routers.map.AmapClient",
+                        fake_client({"status": "0", "info": "INVALID_USER_KEY",
+                                     "infocode": "10001"}))
+    r = auth.post("/tesla/map/api/web-key-test").json()
+    assert r["ok"] is False and "10001" in r["detail"]
+
+    monkeypatch.setattr("app.tesla.routers.map.AmapClient",
+                        fake_client({"status": "0", "info": "DAILY_QUERY_OVER_LIMIT",
+                                     "infocode": "10003"}))
+    r = auth.post("/tesla/map/api/web-key-test").json()
+    assert r["ok"] is True and "限流" in r["detail"]
+
+    def boom(request):
+        raise httpx.ConnectError("no route")
+    monkeypatch.setattr("app.tesla.routers.map.AmapClient",
+                        lambda key, timeout=8.0: roads_amap.AmapClient(
+                            key, transport=httpx.MockTransport(boom)))
+    r = auth.post("/tesla/map/api/web-key-test").json()
+    assert r["ok"] is False and "网络" in r["detail"]
+
+
 def test_settings_views_and_entries(auth):
     """设置拆视图挂全 (账号设置/数据来源/地图设置/驾驶员, 表单原样搬壳;
     账号 2026-09-27 从数据来源页拆出独立页, 用户点名排设置组前两页);
-    3.0 的入口是抽屉设置组 (test_shell_wiring 钉住), 账号弹层在
-    test_shell_views 的生命周期用例里。"""
+    3.0 的入口是抽屉设置组 (test_shell_wiring 钉住); 账号 2026-10-05 二改:
+    账号名行内编辑 + 修改密码 + 登出分三张卡 (弹层退役, test_shell_views 钉住)。"""
     html = served_page(auth, "/tesla")
     for frag in ['id="view-settings-account"', '<h2>账号设置</h2>',
                  'id="view-settings-db"', 'id="view-settings-map"',
                  'id="view-settings-drivers"',
                  'id="tm-host"', 'id="tm-save"', "保存并连接", 'id="amap-key"',
                  'id="drv-list"', "/tesla/api/settings", "/tesla/api/drivers",
-                 'id="toast"', "设为默认", "留空 = 保持现值",
-                 # 地图样式选择 (深色默认幻影黑配 App; 样式说明长段 2026-09-27
-                 # 退役, 预设 + 自定义入口已足够 —— 用户点名删的)
-                 'id="amap-style"', 'value="amap://styles/dark"',
-                 'value="amap://styles/darkblue"', '极夜蓝',
-                 '幻影黑 (纯黑)</option>',
-                 'id="amap-style-custom"', "amap_style:"]:
+                 'id="toast"', "设为默认",
+                 # 高德两把 Key 各配一行获取方式 + 已填的在框里显掩码
+                 # (2026-10-05 用户点名, 掩码住 placeholder 不入提交值)
+                 "高德开放平台", "类型选「Web端 (JS API)」", "类型选「Web服务」",
+                 "两种类型, 不能混用",
+                 # 驾驶员页 10-04 左滑三钮 (v5): 常显钮退役, 改名是行内编辑
+                 'class="swipe-edit set-def">设为默认', 'class="swipe-edit ren">改名',
+                 'class="drv-input"', "window.confirm(`删除驾驶员",
+                 'bindSwipeDelete($("#drv-list")']:
         assert frag in html, f"设置视图缺少片段 {frag}"
-    # 服务商切换已退役 (只留高德): 下拉/收组逻辑不许回潮
+    # 测试钮 (2026-10-06 用户点名「添加两个测试按钮」+ 同日追点「测试正常
+    # 只显示正常就行了, 只有测试正常才能保存」): 两张 Key 卡各一枚, 与保存
+    # 主钮 .btn-row 并排 (次钮 .plain 描边蓝字)
+    for frag in ('id="amap-test"', 'id="amap-web-test"',
+                 'class="plain" id="amap-test">测试</button>',
+                 'class="plain" id="amap-web-test">测试</button>'):
+        assert frag in html, f"地图设置缺测试钮 {frag}"
+    sm = auth.get("/tesla/static/js/view/settings-map.js").text
+    for frag in ('$("#amap-test").addEventListener',
+                 "mapLib.probeKey(",              # Web端候选: 走适配层探针
+                                                     # (独立 iframe 建小图, 探针本体钉在 test_map_adapter)
+                 '$("#amap-web-test").addEventListener',
+                 'sendJSON("/tesla/map/api/web-key-test"',   # Web服务候选 POST 给服务端
+                 'JSON.stringify({ key:',
+                 'toast("正常")',                 # 通过只报「正常」
+                 '$("#amap-save").disabled',      # 保存闸: 测试通过才解锁
+                 '$("#amap-web-save").disabled',
+                 'addEventListener("input"'):     # 输入一变作废重测
+        assert frag in sm, f"地图设置脚本缺 {frag}"
+    # v12 的「测已保存值/未保存先拦」旧路退役 (与保存闸死循环, 不许回潮)
+    assert "先保存再测" not in sm
+    css = auth.get("/tesla/static/css/tesla-settings.css").text
+    for frag in (".btn-row {", ".plain {"):
+        assert frag in css, f"设置样式缺 {frag}"
+    # 服务商切换/地图样式选择/长说明已退役 (2026-09-25/10-05, 用户点名):
+    # 下拉/收组逻辑/样式保存不许回潮; 样式固定幻影黑住适配层
     for gone in ('id="map-provider"', "map_provider:", "syncProviderRows",
                  'id="amap-rows"', '<option value="osm">',
-                 "首次打开过一两秒才出现"):   # 样式说明长段 (2026-09-27 删)
+                 'id="amap-style"', "amap_style:", "styles/darkblue",
+                 'id="amap-style-custom"', 'id="amap-now"', 'id="amap-web-now"',
+                 "首次打开过一两秒才出现", "留空 = 保持现值"):
         assert gone not in html, f"退役的片段回潮: {gone}"
     assert "无地名" not in html   # 深色样式有地名, 旧说法不许回潮

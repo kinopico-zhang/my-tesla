@@ -171,7 +171,7 @@ def test_trips_page_merged_seg_title_dynamic(auth):
     # 版本号 (改过的都带上, 老缓存不掺和; driver 2026-09-25 加功耗格常显;
     # session/loop 2026-09-25 流式节拍开播定死 —— 时间流逝不随加载变速;
     # sheet-open/preload-vector 2026-09-25 走廊去重 + common 交还缓存策略
-    assert "view/trips-sheet-driver.js?v=12" in html
+    assert "view/trips-sheet-driver.js?v=13" in html
     assert "view/trips-playback-session.js?v=14" in html
     assert "view/trips-playback-loop.js?v=12" in html
     assert "view/trips-sheet-open.js?v=10" in html

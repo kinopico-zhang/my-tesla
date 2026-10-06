@@ -8,7 +8,8 @@ from app.tesla.roads_geom import (DP_EPS, GAP_FLOOR_KM, RoadPoint,
 
 def _pts(spacing_s=1.0, n=20, lng0=114.0, lat0=22.5, dlng=0.0001):
     """一条向东北方向匀速直线采样 (1s/点, ~11m/段)。"""
-    return [RoadPoint(lng0 + i * dlng, lat0 + i * dlng * 0.5, 40.0, 1000.0 + i * spacing_s)
+    return [RoadPoint(lng=lng0 + i * dlng, lat=lat0 + i * dlng * 0.5,
+                      sp=40.0, ts=1000.0 + i * spacing_s)
             for i in range(n)]
 
 

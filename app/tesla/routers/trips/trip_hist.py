@@ -32,4 +32,4 @@ def get_track_hist(ids: str, request: Request, response: Response,
     hist = repository.track_hist(db, own, id_list)
     if hist is None:
         raise HTTPException(404, "这些行程没有轨迹数据")
-    return TrackHist(**hist)
+    return hist

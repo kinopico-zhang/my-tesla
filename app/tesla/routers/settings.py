@@ -26,8 +26,6 @@ def save_settings(body: SettingsUpdate,
         state, engine_changed = settings_store.save_settings(own, body)
     except settings_store.EngineError as exc:
         raise HTTPException(400, str(exc)) from exc
-    except settings_store.StyleError as exc:
-        raise HTTPException(400, str(exc)) from exc
     if engine_changed:
         # 换库了: 旧轨迹缓存全作废, 后台重灌 (不阻塞响应)
         tracks_cache.reset()

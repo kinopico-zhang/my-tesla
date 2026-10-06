@@ -2,10 +2,10 @@
 
 列表/详情/统计都从这里的行取数出发 (排序分页与组装在调用方)。
 """
-from dataclasses import dataclass
 from datetime import datetime
 from collections.abc import Sequence
 
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import ColumnElement, and_, case, func, or_, select
 from sqlalchemy.orm import InstrumentedAttribute, Session
 
@@ -23,13 +23,35 @@ def list_cars(session: Session) -> list[CarInfo]:
             for cid, name, model, trim, vin in rows]
 
 
-@dataclass
-class ChargeAgg:
+class ChargeAgg(BaseModel):
     """一次充电过程的采样聚合 (峰值功率 / 是否快充 / 是否特斯拉超充)。"""
 
     power_max: float | None
     is_fast: bool
     tesla_dc: bool
+
+
+class CityAgg(BaseModel):
+    """城市/区县聚合累加器 (充电统计与城市下钻共用)。"""
+
+    sessions: int = 0
+    energy: float = 0.0
+    cost: float = 0.0
+
+
+class MapPointAgg(BaseModel):
+    """充电地图点位累加器: 同一地址多次充电归并, 展示名随最近一次充电。"""
+
+    id: int
+    city: str | None
+    lat: float
+    lng: float
+    sessions: int = 0
+    fast_sessions: int = 0
+    energy: float = 0.0
+    cost: float = 0.0
+    name: str = ""
+    latest: datetime
 
 
 _NO_AGG = ChargeAgg(power_max=None, is_fast=False, tesla_dc=False)
@@ -73,9 +95,10 @@ def _range_conditions(column: InstrumentedAttribute[datetime],
     return conds
 
 
-@dataclass
-class ChargeRow:
+class ChargeRow(BaseModel):
     """充电过程 + 关联地址/围栏 + 采样聚合 (列表/详情/汇总共用)。"""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     process: ChargingProcess
     address: Address | None

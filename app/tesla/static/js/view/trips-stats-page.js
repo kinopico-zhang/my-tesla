@@ -25,7 +25,8 @@ async function tsEnsureEcharts() {
 }
 
 /* ============================ 统计卡片 ============================ */
-let tSummaryData = null;   // 平均电耗图要算"未定标"次数 (总次数 - 进档次数)
+let tSummaryData = null;   // 汇总卡数据暂存 (tsRenderSummary 写; 2026-09-30
+                           // 速度·电耗图改功率积分口径, 不再读它算未定标)
 let tMonthlyData = [], tLocData = [], tDrvData = [], tDimsData = null;   // 图表数据 (渲染器共用)
 
 function tsRenderSummary(s) {

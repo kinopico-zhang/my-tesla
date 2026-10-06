@@ -9,6 +9,7 @@ from datetime import timezone
 from itertools import chain
 import json
 
+from pydantic import BaseModel
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
@@ -16,11 +17,19 @@ from ..models import Drive, DriveRoad, Position
 from ..roads_geom import RoadPoint
 
 
-def roads_lite(own: Session) -> dict[int, tuple[str, int, int]]:
-    """drive_id → (status, n, v): 清单拼 s/rn 用 (一程一行, 全扫毫秒级)。"""
+class RoadLite(BaseModel):
+    """清单用的道路行摘要 (一程一行): 拟合态 / 点数 / 算法版本。"""
+
+    status: str
+    n: int
+    v: int
+
+
+def roads_lite(own: Session) -> dict[int, RoadLite]:
+    """drive_id → 行摘要: 清单拼 s/rn 用 (一程一行, 全扫毫秒级)。"""
     rows = own.execute(select(DriveRoad.drive_id, DriveRoad.status,
                               DriveRoad.n, DriveRoad.v)).all()
-    return {d: (s, n, v) for d, s, n, v in rows}
+    return {d: RoadLite(status=s, n=n, v=v) for d, s, n, v in rows}
 
 
 def done_drive_ids(own: Session, ver: int) -> set[int]:
@@ -66,7 +75,7 @@ def closed_drives(session: Session) -> list[tuple[int, float]]:
                            .where(Drive.distance.is_not(None),
                                   Drive.end_date.is_not(None))
                            .order_by(Drive.start_date.desc())).all()
-    return [(int(i), float(d)) for i, d in rows]
+    return [(int(i), float(d or 0.0)) for i, d in rows]
 
 
 def drive_points(session: Session, drive_id: int) -> list[RoadPoint]:
@@ -79,8 +88,8 @@ def drive_points(session: Session, drive_id: int) -> list[RoadPoint]:
             .order_by(Position.date)
             .execution_options(stream_results=True))
     result = session.execute(stmt)
-    return [RoadPoint(float(lng), float(lat), float(sp or 0.0),
-                      d.replace(tzinfo=timezone.utc).timestamp())
+    return [RoadPoint(lng=float(lng), lat=float(lat), sp=float(sp or 0.0),
+                      ts=d.replace(tzinfo=timezone.utc).timestamp())
             for lng, lat, sp, d in chain.from_iterable(result.partitions(20_000))]
 
 

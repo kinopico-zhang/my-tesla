@@ -5,7 +5,7 @@ v2 ok 无推断行直采不重拟合 / 配额歇一小时 / 网络错误同程 3
 from datetime import date, datetime, timedelta
 
 from app.tesla import roads_amap, roads_worker
-from app.tesla.repository.map_roads import (done_drive_ids, road_row,
+from app.tesla.repository.map_roads import (RoadLite, done_drive_ids, road_row,
                                             roads_lite, save_road)
 from app.tesla.roads_fit import ROAD_FIT_V
 from tests.seed_factories import seed_drive, seed_position
@@ -113,8 +113,8 @@ def test_round_adopts_v2_ok_without_refit(db, owndb, monkeypatch):
     assert _round(monkeypatch)[0]
     assert _FakeClient.grasp_calls == 2          # 只重算了 6 (5 直采零调用)
     lite = roads_lite(owndb)
-    assert lite[5] == ("ok", 2, ROAD_FIT_V)      # 直采: 几何原样进 v3
-    assert lite[6][2] == ROAD_FIT_V              # guess 重算
+    assert lite[5] == RoadLite(status="ok", n=2, v=ROAD_FIT_V)   # 直采: 几何原样进 v3
+    assert lite[6].v == ROAD_FIT_V                               # guess 重算
     assert _round(monkeypatch) == (False, 0.0)   # 幂等: 无待办
 
 

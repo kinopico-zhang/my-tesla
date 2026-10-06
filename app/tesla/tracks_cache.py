@@ -10,13 +10,11 @@
 整册 json.load 会同时顶起原始 dict 树 + 模型拷贝两份大内存, 小内存 NAS
 直接 swap 颠簸假死, 读取侧逐行解析、写入侧逐条落盘配对。
 """
-import json
 import os
 import threading
-from dataclasses import dataclass
 from pathlib import Path
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
@@ -29,8 +27,14 @@ from .schemas import MapManifest, MapManifestTrack, MapTrack
 CACHE_VERSION = 5
 
 
-@dataclass
-class _CacheState:
+class _CacheHead(BaseModel):
+    """磁盘缓存首行: 版本 + 已覆盖到的最大 drive id。"""
+
+    v: int
+    max_id: int
+
+
+class _CacheState(BaseModel):
     """内存缓存水位: 已覆盖到的最大 drive id 与全量轨迹。"""
 
     max_id: int
@@ -94,10 +98,11 @@ def build_manifest(tracks: list[MapTrack], own: Session) -> MapManifest:
     rows: list[MapManifestTrack] = []
     done = 0
     for t in tracks:
-        status, rn, ver = roads.get(t.id, ("", 0, 0))
-        if ver != roads_fit.ROAD_FIT_V:      # 旧算法版本的行不算数
-            status, rn = "", 0
+        lite = roads.get(t.id)
+        if lite is None or lite.v != roads_fit.ROAD_FIT_V:
+            status, rn = "", 0     # 旧算法版本的行不算数
         else:
+            status, rn = lite.status, lite.n
             done += 1
         s = 1 if status == "ok" else (3 if status == "guess"
                                       else (2 if status else 0))
@@ -117,18 +122,17 @@ def warm(factory: sessionmaker[Session]) -> None:
 
 
 def _read_disk_cache() -> tuple[int, list[MapTrack]]:
-    """读磁盘缓存 (JSONL, 见模块头); 逐行解析校验, 原始 dict 用完即弃;
-    版本不符 / 损坏一律当作没有 (全量重建)。"""
+    """读磁盘缓存 (JSONL, 见模块头); 逐行解析校验, 版本不符 / 损坏一律
+    当作没有 (全量重建)。"""
     try:
         with open(cache_file(), encoding="utf-8") as handle:
-            head = json.loads(handle.readline())
-            if int(head["v"]) != CACHE_VERSION:
+            head = _CacheHead.model_validate_json(handle.readline())
+            if head.v != CACHE_VERSION:
                 return -1, []
-            tracks = [MapTrack.model_validate(json.loads(line))
+            tracks = [MapTrack.model_validate_json(line)
                       for line in handle if line.strip()]
-        return int(head["max_id"]), tracks
-    except (OSError, ValueError, TypeError, KeyError, AttributeError,
-            ValidationError):
+        return head.max_id, tracks
+    except (OSError, ValueError, ValidationError):
         return -1, []
 
 
@@ -139,11 +143,10 @@ def _write_disk_cache(max_id: int, tracks: list[MapTrack]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = Path(str(path) + ".tmp")
         with open(tmp, "w", encoding="utf-8") as handle:
-            handle.write(json.dumps({"v": CACHE_VERSION, "max_id": max_id},
-                                    separators=(",", ":")) + "\n")
+            handle.write(_CacheHead(v=CACHE_VERSION,
+                                    max_id=max_id).model_dump_json() + "\n")
             for track in tracks:
-                handle.write(json.dumps(track.model_dump(),
-                                        separators=(",", ":")) + "\n")
+                handle.write(track.model_dump_json() + "\n")
         os.replace(tmp, path)
     except OSError:
         pass

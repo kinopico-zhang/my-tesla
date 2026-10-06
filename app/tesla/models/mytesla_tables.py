@@ -154,3 +154,7 @@ class DriveRoad(OwnBase):
     err: Mapped[str] = mapped_column(String, default="")
     gaps: Mapped[str] = mapped_column(String, default="[]")
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)
+
+
+# 地点域三表 (改名 PlaceAlias / 高德命名 PlaceName / 隐藏 HiddenPlace)
+# 2026-10-03 拆去 place_tables.py (本文件顶 200 行上限)

@@ -2,9 +2,10 @@
 
 省市区解析与地区树在 region_tree.py; 查无数据的 NotFound 也在这里。
 """
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 from datetime import timezone as dt_timezone
+
+from pydantic import BaseModel, ConfigDict
 
 from ... import config
 
@@ -35,9 +36,12 @@ def _fnum(value: float | int | None) -> float | None:
     return None if value is None else float(value)
 
 
-@dataclass(frozen=True)
-class DateRange:
-    """本地日期区间 → 库内 UTC 裸时间戳边界 ([start, end), end 为 to 次日零点)。"""
+class DateRange(BaseModel):
+    """本地日期区间 → 库内 UTC 裸时间戳边界 ([start, end), end 为 to 次日零点)。
+
+    frozen: 只当值用 (hashable), 不许原地改。"""
+
+    model_config = ConfigDict(frozen=True)
 
     start: datetime | None
     end: datetime | None
@@ -65,14 +69,25 @@ def parse_date_range(frm: str | None, to: str | None) -> DateRange | None:
     return DateRange(start=start, end=end)
 
 
-@dataclass(frozen=True)
-class BBox:
-    """地图视野框 (西/南/东/北)。"""
+class BBox(BaseModel):
+    """地图视野框 (西/南/东/北), frozen 同 DateRange。"""
+
+    model_config = ConfigDict(frozen=True)
 
     west: float
     south: float
     east: float
     north: float
+
+
+class PlaceCoords(BaseModel):
+    """一个地点名的最近坐标 (lat/lng 可空: 地址行没坐标如实 None);
+    frozen → 可进 set 去重 (常去地点的停车点全录)。"""
+
+    model_config = ConfigDict(frozen=True)
+
+    lat: float | None = None
+    lng: float | None = None
 
 
 def _keep_indices(count: int, per: int) -> list[int]:

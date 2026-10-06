@@ -6,13 +6,17 @@
 
   ① tesla-viewport: 裸 Safari 也有医 (dvh 探针对账钉 --shell-h), 键盘
      拆锁不再只限独立模式, 末拍 lift 带 force 硬回锁;
-  ② 四张弹层 CSS: 开态 transform:none (闲置不顶变换层), 高度/封顶吃
-     --shell-h (钉高后弹层跟着回满; 足迹地图详情弹层 2026-09-29 随「点路
-     不弹窗」退役, 原五张); #acct-sheet (账号) 3.0 并页裸进文档流没穿
-     弹层壳, 键盘解锁期顶到最前面盖住所有视图 (2026-09-21 用户实报),
-     当天补齐同款基座;
-  ③ bindSheetSettle: 视口折腾后强制废弃旧栅格, 四张弹层都接上
-     (足迹地图详情弹层 2026-09-29 随「点路不弹窗」退役, 原五张);
+  ② 五张弹层 CSS: 开态 transform:none (闲置不顶变换层), 高度/封顶吃
+     --shell-h (钉高后弹层跟着回满; placed 组详情层 2026-10-06 改全屏
+     右滑页 —— 四边钉死不吃 dvh, 开态 none 照旧); 足迹地图详情弹层
+     2026-09-29 随「点路
+     不弹窗」退役, #acct-sheet (账号) 2026-10-05 随「账号改密码都放在一个
+     页面, 不需要弹出页面」退役 (更早 3.0 并页裸进文档流没穿弹层壳, 键盘
+     解锁期顶到最前面盖住所有视图, 2026-09-21 用户实报后当天补齐基座);
+     #place-sheet (常用地点改名) 2026-09-30 首版漏写基座 (壳里没有裸
+     .sheet 家族规则), 当晚用户实测后补齐;
+  ③ bindSheetSettle: 视口折腾后强制废弃旧栅格, 弹层都接上 (账号/
+     足迹地图详情先后 09-29/10-05 退役);
   ④ body 尺寸单点: 只许 base.css 定 —— 并页搬进来的视图 css 重复声明
      会把 var(--shell-h) 盖掉 (同特异度后来者胜), 钉高全盘失灵。
      (抽屉的回前台 snap 收净是 7556 的第五道保险 —— 3.3.0 定稿抽屉回归,
@@ -47,6 +51,21 @@ def test_viewport_dvh_lie_probe_pinned(auth):
     assert "var(--shell-h" not in js
 
 
+def test_viewport_page_zoom_disabled(auth):
+    """⑤ 页面缩放全禁 (2026-09-30 用户点名「任何操作都不要放大页面」):
+    输入聚焦自动放大 → 壳 meta maximum-scale=1 (user-scalable=no 同押);
+    双指整页缩放 → gesture 事件全局拦 (Safari 的 pinch 不吃 touch-action,
+    四张地图原先各自拦, 非地图页漏着 —— 统计页双指就把整页放大了);
+    双击放大 → meta + body touch-action 双保险 (test_shell_wiring 钉的
+    pan-y)。地图自己的两指缩放走 touch 事件, 不受影响。"""
+    page = served_page(auth, "/tesla")
+    assert 'maximum-scale=1, user-scalable=no' in page
+    js = _js(auth, VIEWPORT_JS)
+    for frag in ('for (const ev of ["gesturestart", "gesturechange"])',
+                 "document.addEventListener(ev, e => e.preventDefault())"):
+        assert frag in js, f"gesture 全局拦缺 {frag}"
+
+
 def test_viewport_keyboard_unlock_covers_safari(auth):
     """① 键盘拆锁扩到裸 Safari (之前只限独立模式, 7556 正是裸 Safari 的
     账); 末拍 lift(true) 防 Safari 工具栏状态变了后文档一直敞着。"""
@@ -58,29 +77,26 @@ def test_viewport_keyboard_unlock_covers_safari(auth):
 
 
 def test_sheets_open_state_transform_none(auth):
-    """② 四张弹层开态 transform:none —— 闲置不顶独立变换层 (iOS 折腾完
+    """② 五张弹层开态 transform:none —— 闲置不顶独立变换层 (iOS 折腾完
     键盘/工具栏不留旧栅格); none↔105% 按单位矩阵插值, 滑入滑出照旧。
-    translateY(0) 的开态不许回潮。"""
+    translateY(0) 的开态不许回潮 (账号弹层 10-05 退役)。"""
     page = served_page(auth, "/tesla")
     for sel in ("#chg-sheet.on", "#sheet.show", "#cm-sheet.show",
-                "#acct-sheet.show"):
+                "#place-sheet.show", "#placed-sheet.show"):
         assert f"{sel} {{ transform: none; }}" in page, f"{sel} 开态不是 none"
     assert "transform: translateY(0); }" not in page, "有弹层开态仍是 translateY(0)"
 
 
 def test_sheets_height_consume_shell_h(auth):
     """② 弹层高度/封顶吃 --shell-h: 钉高后弹层跟着回满 (7556 的压扁当场
-    弹回来); 未钉时 calc(var(--shell-h, 100dvh) * N) 与裸 dvh 等值。
-    #acct-sheet 裸奔两天的基座 (fixed/105%/z 91) 一并钉死。"""
+    弹回来); 未钉时 calc(var(--shell-h, 100dvh) * N) 与裸 dvh 等值。"""
     page = served_page(auth, "/tesla")
-    # chg/acct 内容自高只封顶 (4 份); 其余两张固定高度 82% + 封顶 92%
-    # (足迹地图详情弹层 2026-09-29 随「点路不弹窗」退役, 原 5/3 份)
+    # chg/place 内容自高只封顶 (4 份; 账号弹层 10-05 退役, placed 组详情层
+    # 10-06 改全屏右滑页退役 —— 四边钉死, 一寸 dvh 都不吃, 压扁类账与它
+    # 无关); 其余两张固定高度 82% + 封顶 92%
+    # (足迹地图详情弹层 2026-09-29 随「点路不弹窗」退役)
     assert page.count("max-height: calc(var(--shell-h, 100dvh) * .92);") == 4
     assert page.count("height: calc(var(--shell-h, 100dvh) * .82);") == 2
-    block = page[page.index("#acct-sheet {"):page.index("}", page.index("#acct-sheet {"))]
-    for need in ("position: fixed", "bottom: 0; z-index: 91",
-                 "transform: translateY(105%)"):
-        assert need in block, f"#acct-sheet 基座缺 {need}"
     for gone in ("max-height: 92dvh", "height: 82dvh"):
         assert gone not in page, f"弹层还吃裸 dvh: {gone}"
 
@@ -102,8 +118,8 @@ def test_body_sizing_declared_once_in_base(auth):
 def test_sheet_settle_wired_on_all_four_sheets(auth):
     """③ bindSheetSettle: 视口折腾 (visualViewport resize / 回前台) 后给
     开着的弹层过一遍微变换回 none, 强制废弃已烂的栅格; 收起瞬间 MutationObserver
-    清 inline none, 不压住类里的 105% 滑出。四张弹层全接上 (足迹地图详情
-    弹层 2026-09-29 随「点路不弹窗」退役)。"""
+    清 inline none, 不压住类里的 105% 滑出。五张弹层全接上 (账号/
+    足迹地图详情弹层先后 09-29/10-05 随「点路不弹窗」「账号改密码并页」退役)。"""
     js = _js(auth, SHEET_DRAG_JS)
     for frag in ("function bindSheetSettle(sheet, openClass)",
                  'sheet.style.transform = "translateY(0.01px)"',
@@ -114,16 +130,20 @@ def test_sheet_settle_wired_on_all_four_sheets(auth):
     for wiring in ('bindSheetSettle(chgSheet, "on")',
                    'bindSheetSettle($("#sheet"), "show")',
                    'bindSheetSettle($("#cm-sheet"), "show")',
-                   'bindSheetSettle($("#acct-sheet"), "show")'):
+                   'bindSheetSettle($("#place-sheet"), "show")',
+                   'bindSheetSettle($("#placed-sheet"), "show")'):
         assert wiring in served_page(auth, "/tesla"), f"没接上 {wiring}"
 
 
 def test_sheet_drag_wiring(auth):
-    """详情弹层信息区下滑收起 (用户点名): 四张明细弹层 (充电/行程/充电地图/
-    账号) 共用壳级 tesla-sheet-drag —— 拖着跟手, 松手回弹, 拉过 90px 才关,
-    拖过 8px 抑制随后的 click; 把手点一下也关, 信息区点一下不关 (✕/下拉框
-    在上面)。move/up 挂 window 级不捕获: iOS Safari 对 touch 指针 capture
-    会当场 pointercancel (2026-09-13 用户实测拉不动)。
+    """详情弹层信息区下滑收起 (用户点名): 明细弹层 (充电/行程/充电地图/
+    地点改名) 共用壳级 tesla-sheet-drag —— 拖着跟手, 松手回弹,
+    拉过 90px 才关, 拖过 8px 抑制随后的 click; 把手点一下也关, 信息区点
+    一下不关 (✕/下拉框在上面)。move/up 挂 window 级不捕获: iOS Safari 对
+    touch 指针 capture 会当场 pointercancel (2026-09-13 用户实测拉不动);
+    账号弹层原也在此列, 2026-10-05 随「账号改密码并页」退役;
+    地点组详情层 2026-10-06 随「右滑全屏页」退役 —— 推出手势换到左缘
+    右拖 (bindPlacedDrag, 钉在 test_place_hide, 同款 window 级不捕获)。
     轴向仲裁 (2026-09-27 用户点名「左右滑会被判定下滑」): slop 内弹层
     不动; 横向占优 = 横滑交还原生 (弹层分页切页/地图平移) 并解绑弹回;
     明确向下 (vy > 2|dx|) 才接管 —— 45° 斜角拖着弹层乱晃的旧路不许回潮。"""
@@ -140,14 +160,16 @@ def test_sheet_drag_wiring(auth):
                   'if (Math.abs(dx) > Math.abs(vy)) {', 'axis = "x"; detach();',
                   'if (vy > Math.abs(dx) * 2) axis = "y";',
                   'if (moved) { sheet.style.transition = ""; sheet.style.transform = ""; }',
-                  # 四张弹层的接线 (把手 tap 关 / 信息区只拖不点关;
+                  # 弹层的接线 (把手 tap 关 / 信息区只拖不点关;
                   # 充电详情正文一屏装下, 正文区整片同绑;
-                  # 足迹地图详情弹层 2026-09-29 随「点路不弹窗」退役)
+                  # 足迹地图详情弹层 2026-09-29 随「点路不弹窗」退役,
+                  # 账号弹层 2026-10-05 随「账号改密码并页」退役,
+                  # 地点组详情层 2026-10-06 随「右滑全屏页」退役)
                   'bindSheetDrag(chgSheet, $("#chg-grab-zone"), chgCloseSheet, true)',
                   'bindSheetDrag(chgSheet, chgSheetBody, chgCloseSheet, false)',
                   'bindSheetDrag($("#sheet"), $("#grab"), closeTrip, true)',
                   'bindSheetDrag($("#cm-sheet"), $("#cm-sheet"), cmCloseSheet, false)',
-                  'bindSheetDrag($("#acct-sheet"), $("#acct-sheet .grab"), closeAcct, true)'):
+                  'bindSheetDrag($("#place-sheet"), $("#place-sheet .grab"), closePlace, true)'):
         assert token in page, f"弹层拖拽缺 {token}"
     assert "setPointerCapture(e.pointerId)" not in page
 

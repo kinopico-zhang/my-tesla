@@ -115,7 +115,7 @@ def get_merged_track_stream(ids: str, request: Request,
     etag = _track_etag(repository.fills_version(own), "s", ids)
     # 流式自己 new Response 直接返回, 不吃注入 response 的头合并 → 头挂
     # 两路响应自己身上 (304 在 plan 之前, 重开连头部查询都省)
-    cc = {"ETag": etag, "Cache-Control": "private, no-cache"}
+    cc: dict[str, str] = {"ETag": etag, "Cache-Control": "private, no-cache"}
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=304, headers=cc)
     id_list = _merged_id_list(ids, db)

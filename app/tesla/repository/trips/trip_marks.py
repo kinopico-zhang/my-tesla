@@ -1,12 +1,14 @@
 """行程标注: 驾驶员归集 (标注/兜底口径) + 高速费估价。"""
-import json
+from pydantic import TypeAdapter
 
 from sqlalchemy import ColumnElement, delete, or_, select
 from sqlalchemy.orm import Session
 
 from ...models import Drive, Driver, TripDriver, TripToll
 from ..common import NotFound
-from ...schemas import TripItem, TripTollIn
+from ...schemas import TollRoad, TripItem, TripTollIn
+
+_TOLL_ROADS = TypeAdapter(list[TollRoad])
 
 
 def driver_scope(own: Session,
@@ -81,8 +83,7 @@ def save_trip_toll(own: Session, drive_id: int, body: TripTollIn) -> None:
     row.tolls = body.tolls
     row.toll_km = body.toll_km
     row.distance = body.distance
-    row.roads = json.dumps([r.model_dump() for r in body.roads],
-                           ensure_ascii=False, separators=(",", ":"))
+    row.roads = _TOLL_ROADS.dump_json(body.roads).decode("utf-8")
     own.commit()
 
 

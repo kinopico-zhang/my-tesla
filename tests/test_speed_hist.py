@@ -3,7 +3,9 @@
 每点采样速度 × 距上一点的间隔 (滞后积分: 每程第一点只起头; 间隔超
 60s 的整段丢, 断连缺口不猜; 同秒重复点 0 权重), speed_hist_cache 两级
 记账 (内存 + 磁盘 JSONL, 缺哪条补哪条的增量, 不追 id 水位 —— 多车行程
-id 交错)。
+id 交错)。by_spd_kwh = 各速度段行车电量 (2026-09-30 用户点名「电耗分布
+横纵坐标不对, 横坐标应该是速度, 纵坐标是平均电耗」: 功率 kW 同口径积分,
+负功率 = 动能回收如实负; power 缺采样只积里程), 缓存 v2 起每行 {id, b, w}。
 
 种子数学: 间隔 36s → 每点里程 = 速度 × 36/3600 = 速度 × 0.01 km,
 速度取整十让档值落在干净的小数上。"""
@@ -62,6 +64,7 @@ def test_speed_bins_endpoint(auth, db):
     _spd_positions(db)
     d = auth.get(DIM).json()
     assert d["by_spd"] == [0.3, 0, 0, 0, 0.9, 2.0, 0, 3.1, 3.3]
+    assert d["by_spd_kwh"] == [0.0] * 9    # 没播功率: 电量如实 0 (里程照积)
 
 
 def test_speed_bins_car_filter(auth, db):
@@ -85,7 +88,7 @@ def test_speed_bins_car_filter(auth, db):
 
 
 def test_speed_hist_cold_scan_writes_disk(auth, db, tmp_path):
-    """冷启: 现场积分 + 落盘 (JSONL: 首行头 {v}, 之后一行一条 {id, b})。"""
+    """冷启: 现场积分 + 落盘 (JSONL: 首行头 {v}, 之后一行一条 {id, b, w})。"""
     _seed_stats(db)
     _spd_positions(db)
     assert len(auth.get(DIM).json()["by_spd"]) == 9
@@ -93,9 +96,10 @@ def test_speed_hist_cold_scan_writes_disk(auth, db, tmp_path):
         encoding="utf-8").splitlines()
     assert json.loads(lines[0]) == {"v": speed_hist_cache.CACHE_VERSION}
     assert len(lines) == 5                    # 头行 + 四条行程
-    rec = {json.loads(x)["id"]: json.loads(x)["b"] for x in lines[1:]}
-    assert rec[1] == [0, 0, 0, 0, 0, 2.0, 0, 0, 3.3]
-    assert rec[2] == [0, 0, 0, 0, 0.9, 0, 0, 0, 0]
+    rec = {json.loads(x)["id"]: json.loads(x) for x in lines[1:]}
+    assert rec[1]["b"] == [0, 0, 0, 0, 0, 2.0, 0, 0, 3.3]
+    assert rec[2]["b"] == [0, 0, 0, 0, 0.9, 0, 0, 0, 0]
+    assert rec[1]["w"] == [0, 0, 0, 0, 0, 0, 0, 0, 0]   # 没播功率: 电量 0
 
 
 def test_speed_hist_warm_memory_skips_scan(auth, db, monkeypatch):
@@ -115,7 +119,8 @@ def test_speed_hist_disk_cache_without_scan(auth, db, tmp_path, monkeypatch):
     这里盘上已覆盖全部行程。"""
     (tmp_path / "speed_hist_cache.json").write_text(json.dumps(
         {"v": speed_hist_cache.CACHE_VERSION}) + "\n"
-        + json.dumps({"id": 1, "b": [0, 0, 0, 0, 0, 7.7, 0, 0, 0]}) + "\n")
+        + json.dumps({"id": 1, "b": [0, 0, 0, 0, 0, 7.7, 0, 0, 0],
+                      "w": [0, 0, 0, 0, 0, 1.5, 0, 0, 0]}) + "\n")
     seed_drive(db, id=1)
 
     def boom(*_args):
@@ -123,6 +128,7 @@ def test_speed_hist_disk_cache_without_scan(auth, db, tmp_path, monkeypatch):
 
     monkeypatch.setattr(speed_hist_cache, "_scan", boom)
     assert auth.get(DIM).json()["by_spd"] == [0, 0, 0, 0, 0, 7.7, 0, 0, 0]
+    assert auth.get(DIM).json()["by_spd_kwh"] == [0, 0, 0, 0, 0, 1.5, 0, 0, 0]
 
 
 def test_speed_hist_old_version_rebuilds(auth, db, tmp_path, monkeypatch):
@@ -164,6 +170,26 @@ def test_speed_hist_incremental_missing_only(auth, db, monkeypatch):
     monkeypatch.setattr(speed_hist_cache, "_scan", spy)
     assert auth.get(DIM).json()["by_spd"] == [0.3, 0, 0, 0, 0.9, 2.0, 1.3, 3.1, 3.3]
     assert seen["ids"] == [5]
+
+
+def test_speed_bins_kwh_power_integration(auth, db):
+    """各速度段电量 (by_spd_kwh): 功率 kW × 间隔积分, 与里程同速度档同
+    滞后口径 —— 间隔归属后点, 首点是锚不积 (里程侧同款); 含动能回收
+    (负功率如实负, 平均电耗才会出现负段); power 缺采样的点只积里程不积
+    电量。36s 间隔 → 每点电量 = 功率 × 0.01 kWh: 100 km/h 三点中首点
+    是锚, 20 kW 只在第 2 点积一段 → 0.2 kWh, 第 3 点功率缺采样只积
+    里程; 40 km/h (40-60 档) -10 kW ×2 → -0.2 kWh (下坡回收多于耗电)。"""
+    _seed_stats(db)
+    _seed_pts(db, 1, [
+        {"date": datetime(2026, 9, 10, 0, 32, 0), "speed": 100.0, "power": 20.0},
+        {"date": datetime(2026, 9, 10, 0, 32, 36), "speed": 100.0, "power": 20.0},
+        {"date": datetime(2026, 9, 10, 0, 33, 12), "speed": 100.0},   # 功率缺采样
+        {"date": datetime(2026, 9, 10, 0, 33, 48), "speed": 40.0, "power": -10.0},
+        {"date": datetime(2026, 9, 10, 0, 34, 24), "speed": 40.0, "power": -10.0},
+    ])
+    d = auth.get(DIM).json()
+    assert d["by_spd"] == [0, 0, 0.8, 0, 0, 2.0, 0, 0, 0]
+    assert d["by_spd_kwh"] == [0, 0, -0.2, 0, 0, 0.2, 0, 0, 0]
 
 
 def test_speed_hist_corrupt_file_ignored(auth, db, tmp_path):

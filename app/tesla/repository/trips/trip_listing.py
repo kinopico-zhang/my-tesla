@@ -1,7 +1,7 @@
 """行程列表与单条: 条目组装/过滤条件 (时间/地区/里程/驾驶员)/起终点地区树。"""
-from dataclasses import dataclass
 from typing import Any
 
+from pydantic import BaseModel
 from sqlalchemy import ColumnElement, Select, func, select
 from sqlalchemy.orm import InstrumentedAttribute, Session, aliased
 
@@ -49,8 +49,7 @@ def _trip_item(drive: Drive, start_addr: Address | None,
         kwh=kwh, wh_per_km=wh_per_km)
 
 
-@dataclass(frozen=True)
-class TripFilter:
+class TripFilter(BaseModel):
     """行程列表过滤条件 (顶栏时间 + 筛选行起终地区 / 里程)。
 
     from_loc / to_loc 是 "/" 连接的省市区路径 (1~3 段):
@@ -67,7 +66,7 @@ class TripFilter:
 
 
 def _trip_rows_stmt(start_addr: type[Address],
-                    end_addr: type[Address]) -> Select[Any]:
+                    end_addr: type[Address]) -> Select[*tuple[Any, ...]]:
     """行程查询骨架: 只取已结束行程, 带起终点地址实体 (整链清洗与省市区
     链/地名都要, display_name 单列不够用; 结束时间降序交给调用方)。"""
     return (select(Drive, start_addr, end_addr)

@@ -102,6 +102,7 @@ def test_trips_card_place_line_marquee_and_driver_pick(auth):
         "if (!line.clientWidth) continue;",
         'id="drv-pop"', "function openDrvPick(", "async function assignDriver(",
         'e.target.closest(".ct-drv")', 'id="drv-pop-x"',
+        'e.key !== "Escape" || $("#drv-pop").hidden',   # Esc 收选单 (2026-10-02 补漏)
         "还没添加驾驶员",
     ]:
         assert frag in html, f"行程卡片缺少 {frag}"

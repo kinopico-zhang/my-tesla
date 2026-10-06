@@ -46,8 +46,8 @@ def test_shell_skeleton(auth):
     # P5 +充电地图/足迹/驾驶 = 8 个 → P6 +设置三视图 (数据来源/地图设置/
     # 驾驶员; 日志 P3 已在设置组) = 11 个到齐; 3.3.0 定稿回 11 视图直挂;
     # 2026-09-27 账号设置拆独立页 → 12 个, 同日行程统计入行程组 → 13 个,
-    # 同日电池健康度入充电组 → 14 个
-    assert html.count('data-view="') == 14
+    # 同日电池健康度入充电组 → 14 个; 2026-09-30 常用地点入设置组 → 15 个
+    assert html.count('data-view="') == 15
 
 
 def test_zero_history_entries(auth):
@@ -118,8 +118,8 @@ def test_pull_refresh_wiring(auth):
     assert "ptrRelease" in js
     assert 'e.type === "touchcancel"' in js       # 系统打断只弹回不刷
     # 回调登记收进 bindGestures (cfg.onRefresh): 视图漏给 bindPTR 传回调
-    # 的话手势会空转不拉数 (P5 前踩过, 四个视图一起中招)
-    assert "if (cfg.ptr) bindPTR(el, cfg.onRefresh)" in js
+    # 的话手势会空转不拉数 (P5 前踩过); ptrMove = 下拉位移挂载 (舞台图传整舞台)
+    assert "if (cfg.ptr) bindPTR(el, cfg.onRefresh, cfg.ptrMove)" in js
 
 
 def test_boot_first_navigate_hides_default_view(auth):
@@ -132,7 +132,7 @@ def test_boot_first_navigate_hides_default_view(auth):
     assert "冷启首跳" in js
     html = served_page(auth, SHELL)
     assert 'class="view" id="view-live" data-view="live">' in html   # 唯一亮着
-    assert len(re.findall(r'<section class="view"[^>]* hidden>', html)) == 13
+    assert len(re.findall(r'<section class="view"[^>]* hidden>', html)) == 14
 
 
 def test_echarts_lazy_loaded(auth):
@@ -177,16 +177,22 @@ def test_time_filter_retired(auth):
 
 
 def test_filter_bar_chips(auth):
-    """悬浮筛选条: 有筛选的视图走 chips (充电三枚 / 行程 / 足迹), 弹层
-    #fb-pop 锚在 chip 上方, 没注册 chips 的视图整条收起 (充电地图的度量
-    2026-09-27 搬进页内 pills)。用户点名两条硬规矩: 筛选只在屏底固定位置
+    """悬浮筛选条: 有筛选的视图走 chips (充电三枚 / 行程), 弹层 #fb-pop
+    锚在 chip 上方, 没注册 chips 的视图整条收起 (充电地图的度量
+    2026-09-27 搬进页内 pills; 足迹 2026-10-02 驾驶员筛选并进播放条行尾
+    #fp-drv, 也退役)。用户点名两条硬规矩: 筛选只在屏底固定位置
     (顶部不许再有筛选控件), chip 是裸文字不框椭圆 (选中靠底色, 不靠边框)。"""
     js = page_js(auth, SHELL)
-    for v in ("charging", "trips", "map"):
+    for v in ("charging", "trips"):
         assert f'registerChips("{v}"' in js
+    assert 'registerChips("map"' not in js    # 足迹 chips 退役 (并播放条行)
     assert '"no-chips"' in js
     assert "anchorPop" in js
     assert "closeFbPop" in js
+    # 点外收走 pointerdown (2026-10-02 全弹窗「从哪来回哪去」: 地图画布
+    # preventDefault 后不合成 click, 靠 click 点地图收不起); Esc 一层一关
+    assert 'document.addEventListener("pointerdown"' in js
+    assert "e.stopImmediatePropagation();" in js
     page = served_page(auth, SHELL)
     assert 'id="view-seg"' not in page       # 顶部不留筛选控件
     i = page.index(".fchip {")               # chip 不框椭圆: 无边框无圆标

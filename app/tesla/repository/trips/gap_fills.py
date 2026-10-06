@@ -5,9 +5,9 @@
 from datetime import datetime, timedelta
 import json
 import math
-from typing import NamedTuple
 from collections.abc import Sequence
 
+from pydantic import BaseModel
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
@@ -42,9 +42,8 @@ def _wgs_km(a: Sequence[float], b: Sequence[float]) -> float:
     return EARTH_RADIUS_KM * math.hypot(dx, dy)
 
 
-class _TrackPoint(NamedTuple):
+class _TrackPoint(BaseModel):
     """轨迹点 (原始采样或补路插入), 合并轨迹按 drive_id 分段。"""
-
     drive_id: int
     date: datetime
     lng: float
@@ -72,10 +71,11 @@ def _interpolated_fill(a: Position, b: Position,
     anchors = {(round(a.longitude, 5), round(a.latitude, 5)),
                (round(b.longitude, 5), round(b.latitude, 5))}
     return [_TrackPoint(
-        _drive_of(a),
-        a.date + timedelta(seconds=span * f),
-        round(float(lng), 5), round(float(lat), 5),
-        round(speed_a + (speed_b - speed_a) * f, 1), None, None)
+        drive_id=_drive_of(a),
+        date=a.date + timedelta(seconds=span * f),
+        lng=round(float(lng), 5), lat=round(float(lat), 5),
+        speed=round(speed_a + (speed_b - speed_a) * f, 1),
+        power=None, elevation=None)
         for (lng, lat), f in zip(path, frac)
         if (round(float(lng), 5), round(float(lat), 5)) not in anchors]
 
@@ -110,9 +110,10 @@ def _track_points(own: Session, positions: Sequence[Position]
     返回 (points, fill_indices): 补路点在 points 里的下标集合 —— 它们
     本就稀疏珍贵, 下采样时全部保留, 不能被等间隔抽掉 (抽掉等于白补)。
     """
-    pts = [_TrackPoint(_drive_of(p), p.date, round(float(p.longitude), 5),
-                       round(float(p.latitude), 5), p.speed or 0.0, p.power,
-                       p.elevation)
+    pts = [_TrackPoint(drive_id=_drive_of(p), date=p.date,
+                       lng=round(float(p.longitude), 5),
+                       lat=round(float(p.latitude), 5), speed=p.speed or 0.0,
+                       power=p.power, elevation=p.elevation)
            for p in positions]
     fills = _fill_points(own, positions)
     if not fills:
@@ -162,8 +163,7 @@ def _densify(path: list[list[float]]) -> list[list[float]]:
         n = int(_wgs_km(path[i - 1], path[i]) / FILL_STEP_KM)
         for k in range(1, n + 1):
             r = k / (n + 1)
-            out.append([round(lng0 + (lng1 - lng0) * r, 5),
-                        round(lat0 + (lat1 - lat0) * r, 5)])
+            out.append([round(lng0 + (lng1 - lng0) * r, 5), round(lat0 + (lat1 - lat0) * r, 5)])
         out.append(path[i])
     return out
 

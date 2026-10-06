@@ -1,9 +1,10 @@
 """充电统计: 维度聚合/地图点位/汇总/按月按地分组 (与列表同源同日期口径)。"""
-from typing import Any, Final
+from collections.abc import Callable
+from typing import Final
 
 from sqlalchemy.orm import Session
 
-from .charge_samples import ChargeRow, _charge_rows
+from .charge_samples import ChargeRow, CityAgg, MapPointAgg, _charge_rows
 from .charging_sessions import _location_name
 from ..common import DateRange, _clean_addr, _fnum, fdate, to_local
 from ...models import Address, ChargingProcess
@@ -66,7 +67,7 @@ def charging_dimensions(session: Session, date_range: DateRange | None,
     by_power = [0] * 10
     by_price = [0] * 10
     by_duration = [0] * 10
-    cities: dict[str, dict[str, float]] = {}
+    cities: dict[str, CityAgg] = {}
     for row in rows:
         cp = row.process
         by_hour[to_local(cp.start_date).hour // 2] += 1
@@ -76,17 +77,17 @@ def charging_dimensions(session: Session, date_range: DateRange | None,
         _bump(by_duration, cp.duration_min, DUR_EDGES)
         city = _city_name(row.address)
         if city:      # 无地址/无城市的充电不进城市维度 (与城市筛选下拉同口径)
-            c = cities.setdefault(city, {"sessions": 0, "energy": 0.0, "cost": 0.0})
-            c["sessions"] += 1
-            c["energy"] += (_fnum(cp.charge_energy_used)
-                            or _fnum(cp.charge_energy_added) or 0.0)
-            c["cost"] += _fnum(cp.cost) or 0.0
-    top = sorted(cities.items(), key=lambda kv: -kv[1]["sessions"])[:10]
+            c = cities.setdefault(city, CityAgg())
+            c.sessions += 1
+            c.energy += (_fnum(cp.charge_energy_used)
+                         or _fnum(cp.charge_energy_added) or 0.0)
+            c.cost += _fnum(cp.cost) or 0.0
+    top = sorted(cities.items(), key=lambda kv: -kv[1].sessions)[:10]
     return ChargeDims(
         by_hour=by_hour, by_soc=by_soc, by_power=by_power,
         by_price=by_price, by_duration=by_duration,
-        by_city=[CityStat(city=k, sessions=int(v["sessions"]),
-                          energy=round(v["energy"], 1), cost=round(v["cost"], 2)) for k, v in top])
+        by_city=[CityStat(city=k, sessions=int(v.sessions),
+                          energy=round(v.energy, 1), cost=round(v.cost, 2)) for k, v in top])
 
 
 def charging_map_locations(session: Session,
@@ -97,7 +98,7 @@ def charging_map_locations(session: Session,
     展示名与列表口径一致 —— geofence 名 (家/公司) 优先于地址名;
     同一地址多次充电挂不同 geofence 时, 取最近一次充电的名字。"""
     rows = _charge_rows(session, date_range, None, car_id)
-    points: dict[int, dict[str, Any]] = {}
+    points: dict[int, MapPointAgg] = {}
     for row in rows:
         addr = row.address
         if addr is None or addr.latitude is None or addr.longitude is None:
@@ -105,28 +106,26 @@ def charging_map_locations(session: Session,
         cp = row.process
         p = points.get(addr.id)
         if p is None:
-            p = points[addr.id] = {
-                "id": addr.id, "city": addr.city,
-                "lat": float(addr.latitude), "lng": float(addr.longitude),
-                "sessions": 0, "fast_sessions": 0, "energy": 0.0, "cost": 0.0,
-                "name": "", "latest": cp.start_date,
-            }
-        p["sessions"] += 1
+            p = points[addr.id] = MapPointAgg(
+                id=addr.id, city=addr.city,
+                lat=float(addr.latitude), lng=float(addr.longitude),
+                latest=cp.start_date)
+        p.sessions += 1
         if row.agg.is_fast:
-            p["fast_sessions"] += 1
-        p["energy"] += _fnum(cp.charge_energy_used) or _fnum(cp.charge_energy_added) or 0.0
-        p["cost"] += _fnum(cp.cost) or 0.0
-        if cp.start_date >= p["latest"]:     # ≥: 首行也会填名字
-            p["latest"] = cp.start_date
-            p["name"] = (row.geofence.name
-                         if row.geofence is not None and row.geofence.name
-                         else addr.name or _clean_addr(addr.display_name))
+            p.fast_sessions += 1
+        p.energy += _fnum(cp.charge_energy_used) or _fnum(cp.charge_energy_added) or 0.0
+        p.cost += _fnum(cp.cost) or 0.0
+        if cp.start_date >= p.latest:     # ≥: 首行也会填名字
+            p.latest = cp.start_date
+            p.name = (row.geofence.name
+                      if row.geofence is not None and row.geofence.name
+                      else addr.name or _clean_addr(addr.display_name))
     return [ChargeMapLocation(
-                id=p["id"], name=p["name"], city=p["city"],
-                lat=p["lat"], lng=p["lng"],
-                sessions=p["sessions"], fast_sessions=p["fast_sessions"],
-                energy=round(p["energy"], 1), cost=round(p["cost"], 2))
-            for p in sorted(points.values(), key=lambda p: (-p["sessions"], p["id"]))]
+                id=p.id, name=p.name, city=p.city,
+                lat=p.lat, lng=p.lng,
+                sessions=p.sessions, fast_sessions=p.fast_sessions,
+                energy=round(p.energy, 1), cost=round(p.cost, 2))
+            for p in sorted(points.values(), key=lambda p: (-p.sessions, p.id))]
 
 
 def charging_summary(session: Session,
@@ -167,8 +166,8 @@ def monthly_stats(session: Session,
             to_local(row.process.start_date).strftime("%Y-%m"), []).append(row)
     return [MonthlyStat(
         month=month, sessions=len(group),
-        energy_used=_sum_field(group, "charge_energy_used"),
-        cost=_sum_field(group, "cost"),
+        energy_used=_sum_by(group, lambda r: r.process.charge_energy_used),
+        cost=_sum_by(group, lambda r: r.process.cost),
         fast_sessions=sum(1 for r in group if r.agg.is_fast))
         for month, group in sorted(grouped.items())]
 
@@ -185,16 +184,16 @@ def location_stats(session: Session,
             []).append(row)
     stats = [LocationStat(
         location=location, city=city, sessions=len(group),
-        energy_used=_sum_field(group, "charge_energy_used"),
-        cost=_sum_field(group, "cost"),
+        energy_used=_sum_by(group, lambda r: r.process.charge_energy_used),
+        cost=_sum_by(group, lambda r: r.process.cost),
         fast_sessions=sum(1 for r in group if r.agg.is_fast))
         for (location, city), group in grouped.items()]
     stats.sort(key=lambda s: s.sessions, reverse=True)
     return stats
 
 
-def _sum_field(rows: list[ChargeRow], field: str) -> float | None:
-    """对行的 process 属性求和 (忽略 None); 全空返回 None。"""
-    values = [v for row in rows
-              if (v := getattr(row.process, field)) is not None]
+def _sum_by(rows: list[ChargeRow],
+            pick: Callable[[ChargeRow], float | None]) -> float | None:
+    """按取值函数对行求和 (忽略 None); 全空返回 None。"""
+    values = [v for row in rows if (v := pick(row)) is not None]
     return float(sum(values)) if values else None

@@ -1,5 +1,6 @@
 """足迹地图视图接线测试: 驾驶员筛选 chip, 一级标题, 「走过的路」同步
-(清单对账 + IndexedDB 增量 + 进度条)。2026-09-29 起原始轨迹层整链退役
+(清单对账 + IndexedDB 增量; 加载进度条 2026-09-29 退役 —— 边下边画本就
+增量展示)。2026-09-29 起原始轨迹层整链退役
 (用户点名「只显示走过的路」), 全精度下载/抽稀细化/轨迹流端点都不再有。
 拆自 test_map.py (结构化重构; P7 起按 3.0 单壳改口径)。"""
 
@@ -14,26 +15,29 @@ def _shell(auth):
 
 def test_map_view_skeleton(auth):
     """足迹视图骨架: 摘要两格 (筛选口径, 2026-09-29 用户点名「不需要显示
-    行程数量, 就显示里程和时长就行了」—— 原三格并排太挤, 数字溢出格子)
-    + 圆角矩形画布 (fp- 前缀防撞名, 2026-09-27 用户点名「足迹地图的页面
-    布局和充电地图一样」) + 下载进度条; 时间筛选 3.3.0 下线 (全时段),
-    时间菜单/日历已整链退役; 点路不弹详情卡 (同日点名, 弹层整块拆净)。"""
+    行程数量, 就显示里程和时长就行了」—— 原三格太挤, 数字溢出格子)
+    + 圆角矩形画布 (fp- 前缀防撞名, 2026-09-27「布局和充电地图一样」);
+    时间筛选 3.3.0 下线, 菜单/日历整链退役; 点路不弹详情卡 (同日点名);
+    加载进度条同日退役 (与图例重叠, 边下边画本就增量展示)。"""
     html = _shell(auth)
     for frag in ['id="view-map"', 'data-view="map"',
                  'id="fp-map-head"', 'id="fp-stats"', 'id="fp-map"',
-                 'id="fp-loading"', 'id="fp-error"', 'id="fp-retry"',
-                 'id="fp-keyhint"', 'id="fp-prog"',
-                 'id="fp-zin"', 'id="fp-zout"']:
+                 'id="fp-error"', 'id="fp-retry"',
+                 'id="fp-keyhint"',
+                 'id="fp-play"', 'id="fp-play-date"',
+                 'id="fp-seek"']:
         assert frag in html, f"足迹视图缺少 {frag}"
     # 摘要只剩里程/时长两格: 行程数一格与详情弹层退役净 (点路不弹窗)
     for gone in ('id="st-drives"', 'id="fp-sheet"', 'id="fp-backdrop"'):
         assert gone not in html, f"摘要/弹层残留 {gone}"
     # 关键 id 全页唯一 (孤儿节点会重复 id, JS 绑错元素且不报错)
-    for i in ("fp-map", "fp-stats", "fp-loading", "fp-error", "fp-prog",
-              "fp-zin", "fp-zout"):
+    for i in ("fp-map", "fp-stats", "fp-error", "fp-play", "fp-play-date",
+              "fp-seek", "fp-gutter"):
         assert html.count(f'id="{i}"') == 1, f"壳 {i} 重复"
-    # 地图引擎经适配层 (服务商可切, 设置视图定), 样式兜底幻影黑在适配层
+    # 地图引擎经适配层 (服务商可切, 设置视图定), 幻影黑兜底在适配层;
+    # 足迹地图单图钉灰阶底图 (2026-09-30「搞灰」) —— 彩色只留给热力色
     assert 'mapLib.createMap("fp-map"' in html
+    assert 'style: "amap://styles/grey"' in html
     # 地图套圆角矩形卡片 (与充电地图同款: 侧距 16px/圆角 16/发丝线/裁圆角)
     assert "#view-map .map-stage {" in html
     for frag in ("border-radius: 16px", "border: 1px solid var(--hairline)",
@@ -41,37 +45,38 @@ def test_map_view_skeleton(auth):
         assert frag in html[html.index("#view-map .map-stage {"):
                             html.index("}", html.index("#view-map .map-stage {"))], \
             f"足迹地图圆角卡缺 {frag}"
-    # 汇总两数走 summary 端点的筛选口径 (2026-09-29 用户点名「足迹地图和
-    # 充电地图的逻辑是不一样的, 不用联动」: 此前照充电地图抄了视野内口径,
-    # 平移缩放数字跟着跳; 同批撤行程数一格 —— 三格太挤数字溢出);
-    # bbox 仍记 (高倍只画视野内的判定用)
-    for frag in ("function renderStats(", "t.gbb"):
+    # 汇总两数走 summary 端点的筛选口径 (2026-09-29 用户点名「与充电地图
+    # 不联动」: 平移缩放数字不动); bbox 仍记 (高倍只画视野内的判定用)
+    for frag in ("function renderStats(", "t.gbb", "thinFlat"):
         assert frag in html, f"汇总/bbox 缺 {frag}"
     mv = 'map.on("moveend", () => { trackEvt("moveend"); roadsViewportSync(); });'
     assert mv in html
-    # 缩放钮收口到本页 (与充电地图的互盖拆除): 卡内 bottom 14px
-    assert "#view-map .zoom-ctl {" in html
-    # 3.0.1 加载条改款 (用户点名「进度条放最底下, 不要模糊遮罩, 也不要
-    # 转圈」): 不再整屏遮罩蒙地图 —— 地图全程可见; 只在最底下浮一条
-    # 文字+进度, 不挡手势; 缩放钮给加载条让位
-    assert 'class="fp-load-bar" id="fp-loading" hidden>' in html
-    load_block = html[html.index('id="fp-loading"'):html.index('id="fp-error"')]
-    assert '<div class="spin"></div>' not in load_block, "加载条不带转圈"
-    assert ".fp-load-bar {" in html and "pointer-events: none;" in html
-    assert "#view-map .fp-load-bar:not([hidden]) ~ .zoom-ctl {" in html
+    # 屏缘缝条 (2026-10-01 用户报「左边缘右划无法呼出菜单」): 卡外 16px 出血
+    # 缝里右划谁也接不到, 视图层补一条接力到屏缘。锚就是 #view-map 自己
+    # (.view 的 absolute 即定位上下文) —— 反向钉: 不许再立 position:relative
+    # (ID 特异度压掉 .view 的 absolute+inset:0, 塌成内容高 → 整页黑屏)
+    assert '<div class="drawer-edge" id="fp-gutter"' in html \
+           and "#view-map { position: relative; }" not in html
+    # 3.0.1 加载条 2026-09-29 整链退役 (用户点名「图例和进度条重叠 —— 去掉
+    # 进度条, 异步加载一边展示」: 道路本就流式边下边画): 条/文字/进度格/
+    # 两个进度函数全不许回潮 (钉 function 前缀 —— 充地图注释提过旧名, 裸词误伤)
+    for gone in ('id="fp-loading"', 'id="fp-prog"', ".fp-load-bar", ".fp-prog",
+                 "function showLoading", "function showProgress",
+                 "正在下载走过的路", "正在绘制走过的路"):
+        assert gone not in html, f"加载进度条残党 {gone}"
     # "©…auto navi" 版权与高德 logo 都按需求去掉 (高德无官方开关, CSS 藏)
     assert ('#map .amap-copyright, #fp-map .amap-copyright,\n'
             '#map .amap-logo, #fp-map .amap-logo { display: none !important; }') in html
 
 
 def test_map_view_driver_chip(auth):
-    """驾驶员筛选 chip: 选项来自设置视图驾驶员表 (没配驾驶员整颗藏掉),
-    口径与行程视图一致 (默认驾驶员含未标注); 深链 ?driver_id= 加载期抠出,
-    表里已删的回落"全部"。"""
+    """驾驶员筛选 (2026-10-02 并进播放条行尾 #fp-drv, 屏底条这页退役):
+    选项来自设置视图驾驶员表 (没配驾驶员整颗藏掉), 口径与行程视图一致
+    (默认驾驶员含未标注); 深链 ?driver_id= 抠出, 表里已删回落"全部"。"""
     html = _shell(auth)
-    for frag in ['registerChips("map"', "fpDrvLabel", "buildFpDrvPop",
+    for frag in ['id="fp-drv"', "fpDrvLabel", "buildFpDrvPop",
                  '"驾驶员: 全部"', '"/tesla/api/drivers"', "fpFetchDrivers",
-                 "fpSaveFilters", "refreshBarChips",
+                 "fpSaveFilters", "fpDrvChipSync", '$("#fp-drv").addEventListener',
                  'fpQs0.get("driver_id")',              # 深链加载期抠出 (洗参前)
                  "drivers.some(d => d.id === drvId)",   # 已删驾驶员回落全部
                  "if (!drivers.length) return;"]:       # 没配驾驶员 chip 不出现
@@ -86,7 +91,7 @@ def test_map_view_driver_chip(auth):
 def test_map_footprint_sync_flow(auth):
     """同步只走「走过的路」(2026-09-29 用户点名「只显示走过的路就行了,
     不需要显示每一条轨迹」): 清单驱动对账道路本地库 (IndexedDB), 缺的
-    分批流式下载 (边下边画 + 进度条 + 视野跟随扩大); 所有刷新入口收口
+    分批流式下载 (边下边画 + 视野跟随扩大, 无进度条); 所有刷新入口收口
     fpSync (互斥, 进行中再触发排一轮)。"""
     html = _shell(auth)
     # 本地库 (IndexedDB): 只剩道路仓, v3 升级顺手删旧轨迹仓释放空间
@@ -103,7 +108,6 @@ def test_map_footprint_sync_flow(auth):
                  "const CHUNK = 50;",
                  "resp.body.getReader()", "new TextDecoder()",
                  "appendIfVisible(row)", "fpRoadPut(localDb, row)",
-                 "showProgress(done, total)", "正在下载走过的路 ",
                  "map.setFitView(overlays, true, [40, 40, 40, 40])"]:
         assert frag in html, f"道路同步缺少 {frag}"
     # fpSync 互斥: 同步中再触发 (换筛选/下拉刷新) 排一轮, 不并发
@@ -128,6 +132,50 @@ def test_map_footprint_sync_flow(auth):
                  "row.d === drvId || (fpDefaultDrv && row.d == null)",
                  '"/tesla/map/api/summary" + trackParams()']:
         assert frag in html, f"本地筛选缺少 {frag}"
+
+
+# ---------------------------------------------------------------- 时间回放
+def test_map_playback_wiring(auth):
+    """播放条 (2026-10-01 用户点名重做「去掉放大缩小按钮, 地图下方改成播放
+    按钮加进度条, 可播放暂停/调进度, 视角实时变化框住所有路径): [▶/‖][进度条]
+    一条在地图卡外下方 (✕ 钮退役); 10-02 修三处: 回放色按累计升温 (报「一开始
+    的路径不是黄的」—— live 读 playStat); 回放只在人看着时活着 (报「打开就自动
+    播放」—— 切视图/切后台整场收播, 大帧间隔停原地); 正常层藏而不拆; 两格联动;
+    出口钩变否决; 打开即开播 (不等铺层); 10-04 收场兜底重画改暗铺一帧换装。"""
+    html = _shell(auth)
+    for frag in ('<div class="playbar" id="fp-bar">', 'id="fp-play" class="pb-btn"',
+                 'aria-label="按时间顺序回放走过的路"', 'id="fp-seek" class="pb-seek"',
+                 "#fp-bar { margin: 10px 16px var(--bar-clear); }",
+                 "var(--pb, 0%)", "#fp-legend { width: max-content; bottom: 14px; }",
+                 "#fp-legend .lg-cap { white-space: nowrap; }"):
+        assert frag in html, f"播放条缺少 {frag}"
+    # 缩放钮/旧控制排退役净 (foot-gap 占位随 .map-foot 整排拆)
+    for gone in ('id="fp-zin"', 'id="fp-zout"', '<div class="map-foot"',
+                 'id="fp-stop"', "foot-gap", "#view-map .zoom-ctl", "play-row"):
+        assert gone not in html, f"缩放钮/旧控制排残留 {gone}"
+    js = auth.get("/tesla/static/js/view/map-roads-playback.js").text
+    for frag in ("fpPlayEnter", "fpPlayResume", "fpPlayPause", "fpPlaySeek",
+                 "fpPlayExit", "fpPlayFit", "setBounds", "mapLib.bounds",
+                 "PLAY_SEEK_CHUNK", 'addEventListener("maplib:swap"',
+                 '$("#fp-play").addEventListener', '$("#fp-seek").addEventListener',
+                 "playLayerOk = !tracksRendering && overlays",
+                 "writeStats", "fpRestoreStats", "o.show()", "FP_ICON_PAUSE", "--pb",
+                 'addEventListener("visibilitychange"', "mapLib.bounds(playCam), true)",
+                 "roadPlayMerge", "roadPlayBump", "makeRoadLines(t, true)", "PLAY_UI_MS",
+                 "renderTracks(fpVisibleTracks(), true)", "gen === renderGen"):
+        assert frag in js, f"回放模块缺少 {frag}"
+    # 让路闸/出口钩/藏层: 正常层回放期只藏不拆 (收场 show 亮回); renderTracks
+    # 入口反调 fpPlayExit(false) —— 换筛选/同步任何重渲染都是对回放态的否决
+    for ref, frag in (("map-tracks-render.js", "if (fpPlaying) fpPlayExit(false);"),
+                      ("map-tracks-render.js", "if (fpPlaying) for (const l of lines) l.hide();"),
+                      ("map-roads-render.js", "if (fpPlaying) return;"),
+                      ("map-roads-render.js", "if (fpPlaying || !map || !mapReady"),
+                      ("map-roads-boot.js", "overlays.length && !fpPlaying"),
+                      ("map-boot.js", "if (roadsById.size && !autoOn) await renderTracks"),
+                      ("map-tracks-render.js", "roadBand === 0 && !fpPlaying && !hidden"),
+                      ("map-tracks-render.js", "let tracksRendering = false;")):
+        assert frag in auth.get(f"/tesla/static/js/view/{ref}").text, \
+            f"{ref} 让路闸/旗缺少 {frag}"
 
 
 def test_map_page_titles(auth):

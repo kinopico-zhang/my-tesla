@@ -26,8 +26,7 @@ def test_charging_view_lifecycle(auth):
     首进 boot, 换车/换筛选整页重拉。"""
     js = page_js(auth, SHELL)
     assert 'registerView("charging"' in js
-    assert "makePager(" in js
-    assert "chgBooted" in js                       # 首次进视图才 boot
+    assert "makePager(" in js and "chgBooted" in js   # 首次进视图才 boot
     assert "chgPager.start()" in js and "chgPager.stop()" in js
     assert "chgRefetch" in js                      # 详情缓存同页要清
 
@@ -136,9 +135,9 @@ def test_map_views_lifecycle(auth):
     assert "clearInterval(lvPollTimer)" in js and "clearInterval(lvTicker)" in js
     assert "if (gen !== lvGen) return;" in js           # 迟到响应作废
     assert js.count('"car_id", String(shellState.carId)') >= 3   # 三视图多车穿参
-    assert ('bindGestures(fpHead, { drawer: true, ptr: true, '
-            'onRefresh: () => fpSync() })') in js
-    assert 'bindGestures($("#lv-panels"), { drawer: true, ptr: true, onRefresh: poll })' in js
+    assert ('bindGestures(fpHead, { drawer: true, ptr: true, onRefresh: () => fpSync(),\n'
+            '                       ptrMove: $("#view-map") });') in js
+    assert 'bindGestures($("#lv-panels"), { drawer: true, ptr: true, onRefresh: poll' in js
     for edge in ("cm-edge", "fp-edge", "lv-edge"):      # 左缘窄条供右划开抽屉
         assert f'$("#{edge}"), {{ drawer: true }}' in js
     # 深链偏好: ?driver_id= (足迹) / ?metric= (充电地图, 旧页叫 ?view=,
@@ -158,35 +157,41 @@ def test_map_views_lifecycle(auth):
 
 def test_settings_views_lifecycle(auth):
     """设置四视图+账号 (P6): 旧设置页一页拆三 (数据来源/地图设置/驾驶员),
-    每次进视图都拉现值 (设置对象两视图共用, 不读到旧值); 删除二次确认替
-    native confirm; 账号 2026-09-27 拆成独立页 (设置组首位) —— 改名称/改
-    密码开底部弹层, 关层让路键盘 (ViewportDoctor.settled 没回满不拆层,
-    固定壳收键黑带的防治), 进视图/下拉刷新重拉当前登录。"""
+    每次进视图都拉现值 (设置对象两视图共用, 不读到旧值); 地点删除走原生
+    confirm; 账号 2026-09-27 拆成独立页 (设置组首位), 当天表单从底部弹层
+    搬进卡; 2026-10-05 二改 (用户点名): 账号名行内编辑 (改名钮就地翻输入
+    框) + 修改密码 + 登出分三张卡, 说明行退役, 进视图/下拉刷新重拉当前
+    登录。"""
     js = page_js(auth, SHELL)
-    assert 'registerView("settings-account"' in js
-    assert 'registerView("settings-db"' in js
-    assert 'registerView("settings-map"' in js
-    assert 'registerView("settings-drivers"' in js
-    assert "dbLoad" in js and "mapSetLoad" in js and "loadDrivers" in js
+    for view in ("settings-account", "settings-db", "settings-map",
+                 "settings-drivers", "settings-places"):   # 常用地点 09-30
+        assert f'registerView("{view}"' in js
+    assert "dbLoad" in js and "mapSetLoad" in js and "loadDrivers" in js \
+        and "loadPlaces" in js
     assert 'sendJSON("/tesla/api/settings"' in js           # 保存走带方法请求
     assert 'await getJSON("/tesla/trips/api/regions")' in js  # 保存并实测
-    assert '"确认删除"' in js                                 # 删除二次确认 (3s 窗)
-    assert "confirm(" not in js                               # 不用 native confirm
-    # 账号页: 当前登录 acctCardLoad (/api/me), 登出走 /api/logout; 改名存住后卡上同步
+    assert '"确认删除"' in js                     # 分组删除: 武装式; 驱动 10-04 换 confirm
+    assert "window.confirm(" in js                     # 地点/驱动删除: 原生对话框 (10-04)
+    # 账号页: 名字/徽章 acctCardLoad (/api/me), 登出走 /api/logout; 改名存住后
+    # 行上当场换新名 (行内编辑: Enter 存 Esc 弃, 没动过不打接口)
     assert "acctCardLoad" in js
     assert 'await getJSON("/api/me")' in js
     assert 'fetch("/api/logout", { method: "POST" })' in js
-    assert '$("#acct-row").addEventListener("click", openAcct)' in js
+    assert 'sendJSON("/api/account/name"' in js and 'sendJSON("/api/account/password"' in js
+    assert "openAcct" not in js                       # 弹层整块退役 (10-05)
     assert ('bindGestures($("#acct-scroll"), '
             '{ drawer: true, ptr: true, onRefresh: acctCardLoad })') in js
-    assert "ViewportDoctor.settled()" in js
     page = served_page(auth, SHELL)
-    for token in ('id="acct-card"', 'id="acct-sheet"', 'id="acct-backdrop"',
-                  'id="me-pass-save"', 'id="logout"',
+    for token in ('id="acct-card"', 'id="acct-name"', 'id="acct-badge"',
+                  'id="me-name-input"', 'id="me-name-cancel"',
+                  'id="me-pass-save"', 'id="pass-card"', 'id="logout"',
                   'data-view="settings-account"', 'id="acct-scroll"',
                   'data-view="settings-db"', 'data-view="settings-map"',
-                  'data-view="settings-drivers"', "tesla-settings.css"):
+                  'data-view="settings-drivers"', 'data-view="settings-places"',
+                  "tesla-settings.css"):
         assert token in page, f"设置组缺标记 {token}"
+    assert 'id="acct-sheet"' not in page and 'id="acct-backdrop"' not in page   # 弹层拆净
+    assert "本设备不掉线" not in page     # 说明行 10-05 退役 (名字/徽章自表意)
 
 
 def test_floor_css_loads_last(auth):

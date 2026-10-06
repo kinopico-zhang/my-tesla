@@ -30,7 +30,8 @@ def test_secret_file_regenerates_when_missing_or_short(tmp_path, monkeypatch):
 
 def test_record_fail_clears_scanner_bloated_table(monkeypatch):
     """失败表被扫描器撑爆 (>10000 条) 时整体清空重来, 防内存失控。"""
-    fails = {f"10.{i // 65536}.{i // 256 % 256}.{i % 256}": (1, 0)
+    fails = {f"10.{i // 65536}.{i // 256 % 256}.{i % 256}":
+             authentication.LoginFailRecord(fails=1)
              for i in range(10001)}
     monkeypatch.setattr(authentication, "_login_fails", fails)
     authentication.record_fail("192.0.2.9")
@@ -155,7 +156,7 @@ def test_tmdb_host_falls_back_empty_when_docker_lookup_fails(owndb, monkeypatch)
         raise RuntimeError("找不到容器")
 
     monkeypatch.setattr(database, "resolve_db_host", boom)
-    assert settings_store.effective_tmdb(owndb)["host"] == ""
+    assert settings_store.effective_tmdb(owndb).host == ""
     monkeypatch.setenv("TMDB_HOST", "db.lan")
     assert "db.lan" in settings_store.engine_url(owndb)
 

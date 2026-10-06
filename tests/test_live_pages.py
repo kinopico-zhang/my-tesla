@@ -127,8 +127,9 @@ def test_live_page_skeleton(auth):
     assert ('#map .amap-copyright, #lv-map .amap-copyright,\n'
             '#map .amap-logo, #lv-map .amap-logo { display: none !important; }') in html
     # 地名首帧竞态: 样式数据异步加载, complete 后延时补重渲染才有地名
-    # (getFeatures 是高德方言 → 有这方法才补画)
-    assert 'if (lvMap.getFeatures) lvMap.setFeatures(lvMap.getFeatures());' in html
+    # (getFeatures 是高德方言 → 有这方法才补画; lvMap 判空 → 出视图销毁后
+    #  1.5s/5s/12s 的补拍不再撞 null, 2026-10-01 实报 window_error)
+    assert 'if (lvMap && lvMap.getFeatures) lvMap.setFeatures(lvMap.getFeatures());' in html
     assert "s.soc > 50" in html and "#32d74b" in html
 
 

@@ -10,6 +10,7 @@ from typing import Any
 
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
+from pydantic import BaseModel
 
 DB_CONTAINER = os.environ.get("TMDB_CONTAINER", "teslamate_cn_database_1")
 
@@ -47,14 +48,37 @@ def resolve_db_host() -> str:
         f"无法定位数据库容器 {DB_CONTAINER}，请设置 TMDB_HOST 环境变量指向 PostgreSQL 地址")
 
 
-def build_db_url(overrides: dict[str, str] | None = None) -> str:
+class DbConnectValues(BaseModel):
+    """一次 TeslaMate 连接要拼的五项 (字段留空 = 未设, 走下层 env/容器定位)。"""
+
+    host: str = ""
+    port: str = ""
+    user: str = ""
+    password: str = ""
+    name: str = ""
+
+
+class _PgConnectArgs(BaseModel):
+    """postgres 专属连接参数 (psycopg 认的这一组, 建引擎时整体交给它)。"""
+
+    connect_timeout: int = 10
+    keepalives: int = 1
+    keepalives_idle: int = 30
+    keepalives_interval: int = 10
+    keepalives_count: int = 3
+
+
+_PG_ARGS = _PgConnectArgs()
+
+
+def build_db_url(values: DbConnectValues | None = None) -> str:
     """拼接 SQLAlchemy 连接串: 设置页字段 > env > docker 容器定位。"""
-    ov = {k: v for k, v in (overrides or {}).items() if v}   # 空串 = 未设, 走下层
-    user = ov.get("user") or os.environ.get("TMDB_USER", "teslamate")
-    password = ov.get("password") or os.environ.get("TMDB_PASS", "123456")
-    host = ov.get("host") or os.environ.get("TMDB_HOST") or resolve_db_host()
-    port = ov.get("port") or os.environ.get("TMDB_PORT", "5432")
-    name = ov.get("name") or os.environ.get("TMDB_NAME", "teslamate")
+    ov = values or DbConnectValues()   # 空串 = 未设, 走下层
+    user = ov.user or os.environ.get("TMDB_USER", "teslamate")
+    password = ov.password or os.environ.get("TMDB_PASS", "123456")
+    host = ov.host or os.environ.get("TMDB_HOST") or resolve_db_host()
+    port = ov.port or os.environ.get("TMDB_PORT", "5432")
+    name = ov.name or os.environ.get("TMDB_NAME", "teslamate")
     return f"postgresql+psycopg://{user}:{password}@{host}:{port}/{name}"
 
 
@@ -65,11 +89,7 @@ def init_engine(url: str | None = None) -> None:
     if url.startswith("postgresql"):
         # keepalive: 容器网络抽风时的黑洞连接 (对端已死但无 FIN/RST)
         # 会在 ~60s 内探测断开抛错, 取数线程不至于永等
-        connect_args: dict[str, Any] = {"connect_timeout": 10,
-                                        "keepalives": 1,
-                                        "keepalives_idle": 30,
-                                        "keepalives_interval": 10,
-                                        "keepalives_count": 3}
+        connect_args: dict[str, Any] = _PG_ARGS.model_dump()
     else:
         connect_args = {}   # SQLite (测试) 不认 postgres 专属参数
     _EngineState.engine = create_engine(
