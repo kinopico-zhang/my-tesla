@@ -73,7 +73,8 @@ from .trip_stats_schemas import (
 )
 
 __all__ = [
-    "AmapConfig", "AmapKeyTest", "AmapKeyTestIn", "AmapSettings", "BatteryHealth", "BatteryHealthPoint",
+    "AmapConfig", "AmapKeyTest", "AmapKeyTestIn", "AmapSettings",
+    "BatteryHealth", "BatteryHealthPoint",
     "CarInfo", "ChargeCurve", "ChargeDims",
     "ChargeMapLocation", "ChargingSession", "ChargingSessionDetail",
     "ChargingSessionsPage", "ChargingSummary", "CityStat", "CostUpdateRequest",

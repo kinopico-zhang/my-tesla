@@ -29,6 +29,10 @@ async function mapSetLoad() {
     ? `${s.amap.web_key_masked} · 留空保持` : "未设置";
 }
 
+/* 保存闸状态: 候选测试通过了才 true (输入一变作废) —— 两个保存钮的
+   finally 读它决定回锁还是留开, 声明得走在保存钮前面 */
+let amapOk = false, webOk = false;
+
 $("#amap-save").addEventListener("click", async () => {
   const btn = $("#amap-save");
   // 高德 Key 绑在引擎脚本 URL 上, 页内换不净 (要整页刷新); 安全码能热换
@@ -92,7 +96,6 @@ $("#amap-web-save").addEventListener("click", async () => {
 /* ---------- 测试钮 + 保存闸 (v12 添钮, v13 追点「只有测试正常才能保存」):
    测的是「框里的候选」—— 空框回落现值, 与保存同一口径。通过只报
    「正常」; 输入一变作废 (要重测), 测试通过才解锁保存。 */
-let amapOk = false, webOk = false;   // 本卡候选测试通过了 (输入一变作废)
 const amapGate = () => { $("#amap-save").disabled = !amapOk; };
 const webGate = () => { $("#amap-web-save").disabled = !webOk; };
 for (const id of ["amap-key", "amap-code"])

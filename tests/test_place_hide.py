@@ -152,7 +152,7 @@ def test_management_page_frontend(auth, db):
                   'id="placed-map"', 'id="placed-list"',
                   'id="plc-loading"', '<div id="plc-list"></div>',
                   'id="placed-foot"', 'class="placed-del" id="placed-del"',
-                  "trips-place-detail.js?v=11"):
+                  "trips-place-detail.js?v=12"):
         assert token in page, f"管理页缺 {token}"
     assert 'id="placed-backdrop"' not in page, "蒙版随右滑全屏页退役"
     # 管理页长提示段整段退役 (2026-10-04 用户点名删): 行为说明住更新日志,
@@ -163,7 +163,7 @@ def test_management_page_frontend(auth, db):
     assert "<h2>常用地点管理</h2>" not in page
     assert "左滑可删除" not in page   # 详情层提示行 v9 退役 (唯此一段, 注释「左滑删 raw」不同串)
     assert page.index("tesla-swipe-delete.js?v=4") < \
-        page.index("trips-place-detail.js?v=11") < \
+        page.index("trips-place-detail.js?v=12") < \
         page.index("settings-places.js?v=8")
     plc = auth.get("/tesla/static/js/view/settings-places.js").text
     for frag in ('sendJSON("/tesla/trips/api/stats/place-hide"',  # 只剩恢复区
@@ -188,7 +188,8 @@ def test_management_page_frontend(auth, db):
                  "window.confirm(`删除「", "ViewportDoctor.settled()",
                  # v11 右滑全屏页: 左缘条 + 返回钮跟手推出, 蒙版/把手退役
                  "function bindPlacedDrag(els, onClose)",
-                 'bindPlacedDrag(document.querySelectorAll("#placed-sheet .placed-edge, #placed-back")',
+                 'bindPlacedDrag(document.querySelectorAll'
+                 '("#placed-sheet .placed-edge, #placed-back")',
                  '$("#placed-back").addEventListener("click", closePlaceDetail)',
                  "sheet.style.transform = `translateX(${dx}px)`",
                  "if (dx > w / 3 || (vx > 0.5 && dx > 20)) onClose();",

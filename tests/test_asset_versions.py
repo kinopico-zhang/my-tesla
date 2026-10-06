@@ -26,7 +26,8 @@ def test_guard_assets_versioned_on_shell(auth):
                    ("css/tesla-map-canvas.css", 21),    # v21: 驾驶员筛选并播放条行 + 进度条封顶
                                                          #   220px + 日期浮标去磨砂 (性能);
                                                          #   v20: 播放条挪地图卡外脚下
-                   ("js/tesla-map-adapter.js", 9),        # v9: 坏 Key 探针报人话
+                   ("js/tesla-map-adapter.js", 10),       # v10: 探针声明序 (lint);
+                                                         # v9: 坏 Key 探针报人话
                                                          # (引擎没起来, 裸 TypeError
                                                          # 不见人); v8: probeKey 候选
                                                          # Key 探针 (设置页「测试」钮,
@@ -188,7 +189,8 @@ def test_guard_assets_versioned_on_shell(auth):
                    ("js/view/settings-db.js", 4),       # bindGestures 回 drawer
                    ("js/view/settings-drivers.js", 6),  # v6: 加载失败 toast (别装空列表);
                                                          # v5: 左滑三钮 + 行内改名 (v4: bindGestures)
-                   ("js/view/settings-map.js", 13),     # v13: 测试改测框里的候
+                   ("js/view/settings-map.js", 14),     # v14: 闸状态声明序 (lint);
+                                                         # v13: 测试改测框里的候
                                                          # 选 + 通过才解锁保存
                                                          # (Web端独立 iframe 建
                                                          # 小图 / Web服务 POST

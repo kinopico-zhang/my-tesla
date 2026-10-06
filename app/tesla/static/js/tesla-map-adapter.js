@@ -127,8 +127,9 @@ const mapLib = (() => {
     return new Promise((resolve, reject) => {
       const fr = document.createElement("iframe");
       fr.style.cssText = "position:fixed;left:-9999px;top:0;width:220px;height:220px;border:0;";
+      let kill = 0;   // 先占位再补真值 (fin 要引用 kill, 声明序别让 lint 挑刺)
       const fin = fn => { clearTimeout(kill); fr.remove(); fn(); };
-      const kill = setTimeout(() => fin(() => reject(new Error("测试超时"))), 15000);
+      kill = setTimeout(() => fin(() => reject(new Error("测试超时"))), 15000);
       fr.onload = async () => {
         try {
           const win = fr.contentWindow, doc = win.document;

@@ -1,8 +1,7 @@
 #!/bin/sh
 # 启动服务: 有证书时 HTTPS 与 HTTP 双开 (两个端口两个进程), 没证书只开 HTTP。
-#   HTTPS  → PORT      (默认 8500, Let's Encrypt 证书由 NAS 上的 acme.sh 签发
-#                       续期, reloadcmd 调组合仓根 deploy/restart_service.sh ——
-#                       3.0 拆仓后服务从组合仓根起, 本仓那份旧脚本已删)
+#   HTTPS  → PORT      (默认 8500, Let's Encrypt 证书由 WSL 上的 acme.sh 签发
+#                       续期, reloadcmd 调组合仓根 deploy/local/reload-cert.sh)
 #   HTTP   → HTTP_PORT (默认 8501, 局域网 IP 直连明文访问)
 # 存在 .env 时自动加载 (AMAP_KEY / HTTP_PORT 等, 见 .env.example)。
 # HTTP=1 ./run.sh 可临时只开明文 (跳过 TLS, 单进程, 调试用)。
@@ -24,8 +23,7 @@ fi
 
 # 有证书: HTTPS (主入口) + HTTP (局域网明文) 双开。
 # 两个进程各自持有轨迹缓存与登录限速表 (会话 cookie 是无状态 HMAC 签名,
-# 跨进程通用); 停服务时组合仓根的 deploy/restart_service.sh 按命令行特征杀
-# 全部进程。
+# 跨进程通用); systemd 停服务时整个组一起收。
 HTTP_PORT="${HTTP_PORT:-8501}"
 $PY -m uvicorn app.main:app --host "$HOST" --port "$PORT" \
   --ssl-keyfile data/certs/privkey.pem --ssl-certfile data/certs/fullchain.pem &

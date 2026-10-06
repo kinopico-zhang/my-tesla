@@ -141,7 +141,7 @@ def test_place_dialog_and_settings_page(auth, db):
                   'data-view="settings-places"', 'id="plc-scroll"',
                   'id="plc-list"', 'id="plc-empty"',
                   "<h2>常用地点</h2>", "trips-place-dialog.js?v=7",
-                  "trips-place-detail.js?v=11", "settings-places.js?v=8"):
+                  "trips-place-detail.js?v=12", "settings-places.js?v=8"):
         assert token in page, f"常用地点前端缺 {token}"
     # 脚本序: 弹层在壳级拖拽件之后 (bindSheetDrag 是它的依赖)。弹层只剩
     # 行程统计柱名/柱身一个入口 (2026-10-05 晚详情层改名改内联输入后,
@@ -150,7 +150,7 @@ def test_place_dialog_and_settings_page(auth, db):
     # 管理页殿后。
     assert page.index("tesla-sheet-drag.js") < page.index("trips-place-dialog.js?v=7")
     assert page.index("tesla-swipe-delete.js?v=4") < \
-        page.index("trips-place-detail.js?v=11") < \
+        page.index("trips-place-detail.js?v=12") < \
         page.index("settings-places.js?v=8")
     js = auth.get("/tesla/static/js/view/trips-place-dialog.js").text
     for frag in ("function openPlaceDialog(row, onSaved)",

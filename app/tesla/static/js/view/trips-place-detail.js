@@ -293,12 +293,13 @@ function closePlaceDetail() {
 function bindPlacedDrag(els, onClose) {
   const sheet = $("#placed-sheet");
   let x0 = 0, y0 = 0, dx = 0, lastX = 0, lastT = 0, vx = 0, axis = "", swallow = false;
+  let move = null, release = null, cancel = null;   // detach 要引用, 先占位再装
   const detach = () => {
     window.removeEventListener("pointermove", move);
     window.removeEventListener("pointerup", release);
     window.removeEventListener("pointercancel", cancel);
   };
-  const move = e => {
+  move = e => {
     const mx = e.clientX - x0, my = e.clientY - y0;
     if (!axis) {
       if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;    // slop 内不动
@@ -313,7 +314,7 @@ function bindPlacedDrag(els, onClose) {
     if (now > lastT) vx = (e.clientX - lastX) / (now - lastT);
     lastX = e.clientX; lastT = now;
   };
-  const release = () => {
+  release = () => {
     detach();
     if (axis !== "x") return;
     sheet.classList.remove("dragging");
@@ -321,7 +322,7 @@ function bindPlacedDrag(els, onClose) {
     if (dx > w / 3 || (vx > 0.5 && dx > 20)) onClose();
     else sheet.style.transform = "";        // 不过阈: 原位弹回
   };
-  const cancel = () => {                    // 系统手势/来电打断: 原位弹回
+  cancel = () => {                    // 系统手势/来电打断: 原位弹回
     detach();
     if (axis === "x") {
       sheet.classList.remove("dragging");

@@ -24,9 +24,10 @@ else
 fi
 
 # 静态检查: app 严检; tests 是 pytest 仪式代码 (fixture 形参/保护访问/
-# 模块内导入), 单独放宽这几类 —— 4.0 没有 per-path-ignores, 只好两次调用
+# 模块内导入) 外加场景清单成组长大 (C0302 行帽), 单独放宽 ——
+# 4.0 没有 per-path-ignores, 只好两次调用
 .venv/bin/python -m pylint app || rc=1
-.venv/bin/python -m pylint tests --disable=W0613,W0212,R0801,C0415 || rc=1
+.venv/bin/python -m pylint tests --disable=W0613,W0212,R0801,C0415,C0302 || rc=1
 .venv/bin/python -m mypy || rc=1
 
 .venv/bin/python -m pytest tests -q || rc=1
@@ -46,17 +47,7 @@ FRONT="node node_modules/eslint/bin/eslint.js app/home/static app/tesla/static/j
    && node node_modules/stylelint/bin/stylelint.mjs 'app/*/static/css/*.css' \
    && node node_modules/html-validate/bin/html-validate.mjs 'app/*/static/*.html'"
 
-DOCKER=/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker
-if $DOCKER exec mytesla-debug true 2>/dev/null; then
-  # QNAP 部署: 宿主 node 缺 ICU, 工具链在调试容器里跑 (本仓 = /repo/apps/my-tesla,
-  # 软链的 node_modules 在容器内解析到 /repo/node_modules)
-  if ! $DOCKER exec mytesla-debug sh -c "cd /repo/apps/my-tesla && $FRONT"; then
-    echo "前端静态检查失败 (或调试容器 mytesla-debug 未运行)" >&2
-    rc=1
-  fi
-else
-  sh -c "$FRONT" || rc=1
-fi
+sh -c "$FRONT" || rc=1
 
 # 单元测试 + 覆盖率门禁: 只统计纯逻辑模块 (页面脚本由 E2E 覆盖)
 node node_modules/c8/bin/c8.js \
