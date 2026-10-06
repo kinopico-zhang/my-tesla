@@ -120,37 +120,74 @@ const mapLib = (() => {
   }
 
   /* 设置页「测试」钮的候选 Key 探针 (2026-10-06): 独立 iframe 里装指定
-     Key/安全码的引擎并建一张小图 —— Key 钉在引擎脚本 URL 上, iframe 有
-     自己的 window, 与本页已装的引擎互不沾, 候选不用先保存也不用刷新。
-     出图判据与各视图建图同一条 (complete); 15 秒总闸兜一切卡死。 */
+     Key/安全码的引擎, 建一张小图 + 打一发逆地理 —— 两步各有各的验法:
+     出图只证明渲染链路通 (实测高德给格式合法的坏 Key 也照样发全量 JS、
+     complete 照样触发, 光出图判不了真伪), Key/安全码真伪在逆地理服务
+     接口上验, error 时回调 result 就是高德错误码 (INVALID_USER_KEY /
+     INVALID_USER_SCODE), 直译给人看, 不用猜。引擎装在 iframe 自己的
+     window, 与本页已装的引擎互不沾, 候选不用先保存也不用刷新。
+     iframe 必须带 src —— 裸 iframe 的 onload 在 Safari 不保证触发
+     (桌面 Chrome 一直好使, 手机上干等到超时)。配额/限流只发生在有效
+     Key 上, 算「Key 有效」(与服务端 Web 服务测试同口径); 45 秒总闸
+     兜一切卡死。 */
   function probeKey(key, code) {
     return new Promise((resolve, reject) => {
       const fr = document.createElement("iframe");
+      fr.src = "about:blank";   // Safari: 裸 iframe 不保证 onload, 显式 src 才稳
       fr.style.cssText = "position:fixed;left:-9999px;top:0;width:220px;height:220px;border:0;";
       let kill = 0;   // 先占位再补真值 (fin 要引用 kill, 声明序别让 lint 挑刺)
-      const fin = fn => { clearTimeout(kill); fr.remove(); fn(); };
-      kill = setTimeout(() => fin(() => reject(new Error("测试超时"))), 15000);
+      const fin = (fn, arg) => { clearTimeout(kill); fr.remove(); fn(arg); };
+      kill = setTimeout(() => fin(reject, new Error("测试超时")), 45000);
       fr.onload = async () => {
         try {
           const win = fr.contentWindow, doc = win.document;
+          if (!doc.body) throw new Error("iframe 文档没起来");
           doc.body.style.margin = "0";
           if (code) win._AMapSecurityConfig = { securityJsCode: code };
           await injectScript("https://webapi.amap.com/maps?v=2.0&key="
             + encodeURIComponent(key), doc);
-          // 坏 Key: 脚本下得来但引擎不建 (AMap 全局缺位), 别让裸 TypeError 见人
-          if (!win.AMap) throw new Error("引擎没起来 (Key 不对?)");
+          // 坏 Key (格式非法): 脚本下得来但引擎不建 —— 引擎脚本会把错误码
+          // 写进 body, 有就带给人看; 别让裸 TypeError 见人
+          if (!win.AMap) {
+            const why = (doc.body.textContent || "").trim().slice(0, 120);
+            throw new Error(why ? `引擎没起来 — 高德说: ${why}`
+                                : "引擎没起来 (Key 不对?)");
+          }
           const box = doc.createElement("div");
           box.style.cssText = "width:100%;height:100%;";
           doc.body.appendChild(box);
+          // 第一步: 出图 (complete 与各视图建图同一条判据)
           await new Promise((res, rej) => {
             const m = new win.AMap.Map(box, { zoom: 11, center: [114.05, 22.55] });
             const timer = setTimeout(() => rej(
-              new Error("10 秒内没有出图 (Key 或安全码不对?)")), 10000);
+              new Error("12 秒内没有出图 (Key 或安全码不对?)")), 12000);
             m.on("complete", () => { clearTimeout(timer); res(); });
           });
-          fin(resolve);
+          // 第二步: 逆地理验真伪 (Geocoder 是插件, 先装后用)
+          await new Promise(res => win.AMap.plugin("AMap.Geocoder", res));
+          const verdict = await new Promise((res, rej) => {
+            new win.AMap.Geocoder().getAddress([114.05, 22.55], (status, result) => {
+              if (status === "complete" && result && result.info === "OK") res("正常");
+              else if (typeof result === "string" && /LIMIT|EXCEED/i.test(result)) {
+                res(`Key 有效, 但高德限流/配额: ${result}`);
+              } else if (result === "INVALID_USER_KEY") {
+                rej(new Error("Key 不对 (高德: INVALID_USER_KEY)"));
+              } else if (result === "INVALID_USER_SCODE") {
+                rej(new Error("安全码不配这把 Key (高德: INVALID_USER_SCODE)"));
+              } else if (result === "USERKEY_PLAT_NOMATCH") {
+                // 用户实测翻车主因: Web服务 Key 填进了 Web端卡 (类型不匹配)
+                rej(new Error("Key 类型不对, 要「Web端 (JS API)」类型的 Key"
+                  + " (高德: USERKEY_PLAT_NOMATCH)"));
+              } else {
+                rej(new Error(`高德报: ${typeof result === "string"
+                  ? result : `status=${status}`}`));
+              }
+            });
+            setTimeout(() => rej(new Error("逆地理 15 秒没回")), 15000);
+          });
+          fin(resolve, verdict);
         } catch (err) {
-          fin(() => reject(err));
+          fin(reject, err);
         }
       };
       document.body.appendChild(fr);

@@ -220,7 +220,8 @@ def test_settings_views_and_entries(auth):
                  '$("#amap-web-test").addEventListener',
                  'sendJSON("/tesla/map/api/web-key-test"',   # Web服务候选 POST 给服务端
                  'JSON.stringify({ key:',
-                 'toast("正常")',                 # 通过只报「正常」
+                 "toast(verdict)",               # 通过转述探针回话
+                                                     # (正常 / Key 有效但限流), 不再写死「正常」
                  '$("#amap-save").disabled',      # 保存闸: 测试通过才解锁
                  '$("#amap-web-save").disabled',
                  'addEventListener("input"'):     # 输入一变作废重测

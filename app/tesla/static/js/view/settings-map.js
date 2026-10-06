@@ -117,9 +117,11 @@ $("#amap-test").addEventListener("click", async () => {
       code = code || cfg.security_code || "";
     }
     if (!key) { toast("测试未通过: 还没填 Key"); return; }
-    await mapLib.probeKey(key, code);   // 独立 iframe 装候选引擎建小图 (探针住适配层)
+    // 独立 iframe 装候选引擎建小图 + 逆地理验真伪 (探针住适配层);
+    // 通过时带回结论整句 (正常 / Key 有效但限流), 直接转述
+    const verdict = await mapLib.probeKey(key, code);
     amapOk = true; amapGate();
-    toast("正常");
+    toast(verdict);
   } catch (err) {
     toast(`测试未通过: ${err.message}`);
   } finally {

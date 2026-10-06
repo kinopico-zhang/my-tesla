@@ -26,8 +26,18 @@ def test_guard_assets_versioned_on_shell(auth):
                    ("css/tesla-map-canvas.css", 21),    # v21: 驾驶员筛选并播放条行 + 进度条封顶
                                                          #   220px + 日期浮标去磨砂 (性能);
                                                          #   v20: 播放条挪地图卡外脚下
-                   ("js/tesla-map-adapter.js", 10),       # v10: 探针声明序 (lint);
-                                                         # v9: 坏 Key 探针报人话
+                   ("js/tesla-map-adapter.js", 13),       # v13: 类型错配人话
+                                                         # (USERKEY_PLAT_NOMATCH →
+                                                         # 「要 Web端 JS API 类型」);
+                                                         # v12: 探针改两步验 (出图只证
+                                                         # 渲染链, 坏 Key 也照样 complete ——
+                                                         # 真伪在逆地理服务接口上验,
+                                                         # INVALID_USER_KEY/SCODE 直译
+                                                         # 给人看; 限流/配额算 Key 有效);
+                                                         # v11: Safari 裸 iframe onload
+                                                         # 不保证 → 显式 src; v10: 探针
+                                                         # 声明序 (lint); v9: 坏 Key 探针
+                                                         # 报人话
                                                          # (引擎没起来, 裸 TypeError
                                                          # 不见人); v8: probeKey 候选
                                                          # Key 探针 (设置页「测试」钮,
@@ -189,7 +199,9 @@ def test_guard_assets_versioned_on_shell(auth):
                    ("js/view/settings-db.js", 4),       # bindGestures 回 drawer
                    ("js/view/settings-drivers.js", 6),  # v6: 加载失败 toast (别装空列表);
                                                          # v5: 左滑三钮 + 行内改名 (v4: bindGestures)
-                   ("js/view/settings-map.js", 14),     # v14: 闸状态声明序 (lint);
+                   ("js/view/settings-map.js", 15),     # v15: 测试结论改转述探针
+                                                         # 回话 (正常/Key 有效但限流);
+                                                         # v14: 闸状态声明序 (lint);
                                                          # v13: 测试改测框里的候
                                                          # 选 + 通过才解锁保存
                                                          # (Web端独立 iframe 建
