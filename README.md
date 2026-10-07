@@ -41,6 +41,11 @@
 > 账号体系 (登录/注册/账号管理) 内嵌在 `app/home/`, 单独 clone 本仓即可部署,
 > 不需要组合仓。
 
+<p align="center">
+<img src="docs/screenshot-charging.png" width="300" alt="充电记录 · My Tesla (演示数据)">
+<img src="docs/screenshot-map.png" width="300" alt="足迹地图 · My Tesla (演示数据)">
+</p>
+
 ## ✨ 功能
 
 - 🔋 **充电** — 充电记录 (费用 / 区域统计) · 充电统计 · 充电地图
