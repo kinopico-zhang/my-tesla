@@ -12,7 +12,7 @@
 
 ![pylint](https://img.shields.io/badge/pylint-10.00%2F10-brightgreen)
 ![mypy](https://img.shields.io/badge/mypy-strict-2A6DB2)
-![pytest](https://img.shields.io/badge/pytest-411%20passed-0A9EDC?logo=pytest&logoColor=white)
+![pytest](https://img.shields.io/badge/pytest-417%20passed-0A9EDC?logo=pytest&logoColor=white)
 ![coverage](https://img.shields.io/badge/JS%20coverage-95%25%2B-brightgreen)
 
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
@@ -126,8 +126,9 @@ npm install               # 前端工具链 (eslint/tsc/stylelint/html-validate/
 ./run_tests.sh            # pylint + mypy + pytest + 前端全套 + 覆盖率门禁
 ```
 
-门禁全绿才算过: pylint 10.00/10 (app 严检) · mypy 严格模式 · pytest 411 例
-(真实 ORM + SQLite 临时库, 不碰真实数据) · ESLint / tsc --checkJs /
+门禁全绿才算过: pylint 10.00/10 (app 严检) · mypy 严格模式 · pytest 417 例
+(真实 ORM + SQLite 临时库, 不碰真实数据; 含 e2e 冒烟: 起真 uvicorn
+子进程打真 HTTP —— 登录 → 页面 → 静态资源, 与 ./run.sh 生产路径同构) · ESLint / tsc --checkJs /
 stylelint / html-validate / node --test · c8 覆盖率 ≥95% (纯逻辑模块)。
 CI 在 GitHub Actions 三平台跑同一套门禁。
 
