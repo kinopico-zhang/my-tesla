@@ -90,3 +90,15 @@ form.addEventListener("submit", async e => {
 });
 document.getElementById("user").focus();
 
+// 首启引导: 库里还没有管理员时, 登录页让位给引导页 (注册第一个管理员,
+// 顺路配数据源/地图 Key)。已初始化 (needed=false) 或查询失败都静默留在
+// 本页 —— 引导是首启增强, 不挡正常登录。
+(async () => {
+  try {
+    const r = await fetch("/api/setup-status", { cache: "no-store" });
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d && d.needed) location.replace("/setup");
+  } catch (_e) {}
+})();
+

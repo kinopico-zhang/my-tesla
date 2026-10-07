@@ -22,7 +22,9 @@ _PUBLIC_PATHS = frozenset((
     # Safari 露地址栏)
     "/tesla/login",
     "/api/login", "/api/logout",
-    "/api/register", "/api/invite-status"))
+    "/api/register", "/api/invite-status",
+    # 首启引导: 真开口的判据 (无管理员) 在页面/接口内部自验, 中间件不碰库
+    "/setup", "/api/setup-status", "/api/setup-admin"))
 _STATIC_PREFIXES = ("/static/", "/tesla/static/")
 
 # 账号体系从 /tesla 搬到根路径 (账号属于 My Home, 不属于任何一个应用);

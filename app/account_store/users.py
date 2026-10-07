@@ -19,6 +19,14 @@ def user_count(session: Session) -> int:
     return len(session.execute(select(User.uuid)).all())
 
 
+def admin_exists(session: Session) -> bool:
+    """库里有没有管理员 (首启引导的判据; 有账号无管理员的坏库也能救)。
+
+    不用 admin_user(): 它 scalar_one_or_none 遇到多管理员的遗留行会炸。"""
+    return session.execute(
+        select(User.uuid).where(User.is_admin).limit(1)).first() is not None
+
+
 def create_user(session: Session, name: str, password: str, *,
                 is_admin: bool = False) -> User:
     """建账号 (名称唯一; uuid 后端生成)。"""

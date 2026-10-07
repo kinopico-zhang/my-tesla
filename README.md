@@ -12,7 +12,7 @@
 
 ![pylint](https://img.shields.io/badge/pylint-10.00%2F10-brightgreen)
 ![mypy](https://img.shields.io/badge/mypy-strict-2A6DB2)
-![pytest](https://img.shields.io/badge/pytest-417%20passed-0A9EDC?logo=pytest&logoColor=white)
+![pytest](https://img.shields.io/badge/pytest-430%20passed-0A9EDC?logo=pytest&logoColor=white)
 ![coverage](https://img.shields.io/badge/JS%20coverage-95%25%2B-brightgreen)
 
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
@@ -61,7 +61,7 @@
 ```sh
 python3.13 -m venv .venv
 .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
-cp .env.example .env      # 编辑: 至少设 AUTH_PASS; TeslaMate 连接可留到设置页填
+cp .env.example .env      # 可全留空, 首启走 /setup 引导; TeslaMate 连接也可后填
 ./run.sh
 ```
 
@@ -70,9 +70,11 @@ cp .env.example .env      # 编辑: 至少设 AUTH_PASS; TeslaMate 连接可留�
 (默认 8501, 局域网 IP 直连); 没证书只开 `PORT` 的明文。会话 cookie 是
 无状态 HMAC 签名, 两个口通用。
 
-打开 `http://<host>:8500/` → 自动进 `/tesla/charging` (未登录先到登录页,
-账密是 `.env` 里 `AUTH_USER`/`AUTH_PASS` 种下的管理员, 之后可在界面里改;
-**`AUTH_PASS` 不设则不种管理员**, 仓库是公开的, 不带默认口令)。
+打开 `http://<host>:8500/` → 自动进 `/tesla/charging`。账号库为空时
+登录页会带去 `/setup` 引导页: 注册第一个管理员, 顺路配 TeslaMate 连接
+与地图 Key, 全部可跳过、之后在设置页随时补。`.env` 里设 `AUTH_PASS`
+是旧口径种子 (只在空库时生效, 设了就不再进引导; 仓库是公开的, 不带
+默认口令)。
 
 ## 🌐 页面与 URL
 
@@ -110,7 +112,7 @@ TeslaMate 连接三种给法 (优先级从高到低): 设置页里填 (存自有
 
 | 变量 | 默认 | 说明 |
 |---|---|---|
-| `AUTH_USER` / `AUTH_PASS` | `admin` / 空 | 首启种子管理员; `AUTH_PASS` 不设则不种 |
+| `AUTH_USER` / `AUTH_PASS` | `admin` / 空 | 旧口径首启种子 (不设则走 `/setup` 引导; 只在空账号库时种) |
 | `PORT` / `HTTP_PORT` / `HTTP` | `8500` / `8501` | 双端口; `HTTP=1` 强制明文 (调试) |
 | `TMDB_HOST` 等 | docker 定位 | TeslaMate PostgreSQL (设置页里填的优先) |
 | `AMAP_KEY` / `AMAP_SECURITY_CODE` | 空 | 高德 Web端 JS API Key |

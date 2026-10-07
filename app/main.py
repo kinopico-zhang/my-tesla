@@ -1,7 +1,7 @@
 """My Tesla 独立部署的装配: 内嵌账号体系 (app/home) + TeslaMate 展示应用 (/tesla/*)。
 
-独立仓 = 从 My Home 组合仓拆出来的自足部署: clone 下来建 .venv 与
-.env (至少 AUTH_PASS, 见 .env.example), ./run.sh 即起。My Home 组合
+独立仓 = 从 My Home 组合仓拆出来的自足部署: clone 下来建 .venv,
+./run.sh 即起 (首启无管理员时浏览器打开 /setup 引导注册, 见 .env.example)。My Home 组合
 部署时本模块不参与 —— 外层加载 app/tesla 子包挂自己的路由, 账号体系
 用组合仓自己的门厅层 (同一枚会话 cookie)。
 
@@ -76,7 +76,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         with database.users_session_factory()() as users:  # pylint: disable=not-callable
             account_store.ensure_admin(users, config.AUTH_USER, config.AUTH_PASS)
     else:
-        print("AUTH_PASS 未设置: 首启不种管理员 —— 在 .env 里设 AUTH_PASS 后重启",
+        print("AUTH_PASS 未设置: 首启无管理员时, 打开 /setup 引导注册",
               file=sys.stderr)
     with database.own_session_factory()() as own:   # pylint: disable=not-callable
         url = settings_store.engine_url(own)

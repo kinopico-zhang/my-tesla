@@ -15,6 +15,8 @@ from ..schemas import (
     MeInfo,
     OkResponse,
     RegisterCredentials,
+    SetupCredentials,
+    SetupStatus,
 )
 
 api = APIRouter(prefix="/api")
@@ -106,6 +108,32 @@ def register(creds: RegisterCredentials, request: Request,
             account_store.InvitationError) as exc:
         raise HTTPException(400, str(exc)) from exc
     authentication.clear_fails(ip)
+    resp = JSONResponse(OkResponse(ok=True).model_dump())
+    _set_session_cookie(resp, user.uuid)
+    return resp
+
+
+@api.get("/setup-status", response_model=SetupStatus)
+def setup_status(users: Session = Depends(database.get_users_db)) -> SetupStatus:
+    """首启引导是否需要 (登录页进页即查; 公开, 只暴露 needed 一个布尔)。"""
+    return SetupStatus(needed=not account_store.admin_exists(users))
+
+
+@api.post("/setup-admin", response_model=OkResponse)
+def setup_admin(creds: SetupCredentials,
+                users: Session = Depends(database.get_users_db)) -> JSONResponse:
+    """首启引导: 建立第一个管理员, 注册即登录 (后续步骤的设置接口即带会话)。
+
+    只有库里一个管理员都没有时才开口 (已有 → 409); 创建型端点没有可爆破
+    的秘密, 不挂登录那种单 IP 限速。检查与建号之间是毫秒级竞态窗口,
+    首启局域网场景接受。"""
+    if account_store.admin_exists(users):
+        raise HTTPException(409, "已初始化, 请直接登录")
+    try:
+        user = account_store.create_user(users, creds.name, creds.password,
+                                         is_admin=True)
+    except (account_store.InvalidNameError, account_store.PasswordError) as exc:
+        raise HTTPException(400, str(exc)) from exc
     resp = JSONResponse(OkResponse(ok=True).model_dump())
     _set_session_cookie(resp, user.uuid)
     return resp

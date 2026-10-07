@@ -1,0 +1,91 @@
+/* setup-page — 首启引导页样式 (register 页为底 + 步骤条/提示/跳过/完成)。 */
+:root {
+  color-scheme: dark;
+  --bg: #000;
+  --surface: #1c1c1e;
+  --surface-2: #2c2c2e;
+  --ink-1: #f5f5f7;
+  --ink-2: rgba(235,235,245,.62);
+  --ink-3: rgba(235,235,245,.32);
+  --hairline: rgba(255,255,255,.09);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+button, a, summary { touch-action: manipulation; }
+html, body { height: 100%; }
+body {
+  touch-action: pan-y;   /* 双指捏合在 body 收口, 行内控件自带更窄的 touch-action */
+  background: var(--bg); color: var(--ink-1);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
+               "Helvetica Neue", system-ui, sans-serif;
+  font-size: 15px; display: flex; align-items: center; justify-content: center;
+  padding: env(safe-area-inset-top) 24px env(safe-area-inset-bottom);
+}
+.card {
+  width: 100%; max-width: 340px;
+  background: var(--surface); border-radius: 20px;
+  border: 1px solid var(--hairline);
+  padding: 34px 22px 26px; text-align: center;
+}
+.icon {
+  width: 64px; height: 64px; margin: 0 auto 14px; border-radius: 16px;
+  background: linear-gradient(160deg, #3987e5, #1fa349);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30px;
+}
+h1 { font-size: 21px; font-weight: 700; letter-spacing: -.3px; }
+.sub { font-size: 13px; color: var(--ink-2); margin: 5px 0 14px; }
+.steps {
+  display: flex; justify-content: center; gap: 6px; list-style: none;
+  margin: 0 0 20px;
+}
+.steps li {
+  font-size: 12px; color: var(--ink-3); padding: 3px 10px;
+  border-radius: 999px; border: 1px solid var(--hairline);
+}
+.steps li.active { color: #fff; background: #3987e5; border-color: #3987e5; }
+.steps li.done { color: #1fa349; border-color: rgba(31,163,73,.55); }
+.field {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface-2); border-radius: 12px;
+  padding: 12px 14px; margin-bottom: 10px; text-align: left;
+}
+.field label { font-size: 13px; color: var(--ink-2); flex: none; width: 3.5em; }
+.field input {
+  flex: 1; min-width: 0; border: 0; outline: 0; background: none;
+  color: var(--ink-1); font: inherit; caret-color: #3987e5;
+}
+.field input::placeholder { color: var(--ink-3); }
+.eye-btn {
+  flex: none; border: 0; background: none; padding: 4px 2px; margin: -4px -2px;
+  color: var(--ink-3); cursor: pointer; display: flex; align-items: center;
+}
+.eye-btn:active { color: var(--ink-1); }
+.eye-btn svg { width: 20px; height: 20px; display: block; }
+.hint {
+  font-size: 12px; color: var(--ink-3); line-height: 1.7;
+  margin: 0 0 12px; text-align: left;
+}
+.btn {
+  width: 100%; padding: 13px; margin-top: 14px; border: 0; border-radius: 12px;
+  background: #3987e5; color: #fff; font-size: 16px; font-weight: 600;
+  cursor: pointer; transition: opacity .15s, transform .1s;
+}
+.btn:active { transform: scale(.98); opacity: .85; }
+.btn[disabled] { opacity: .5; }
+.btn-plain {
+  width: 100%; padding: 12px; margin-top: 10px; border: 0; border-radius: 12px;
+  background: none; color: var(--ink-2); font-size: 14px; cursor: pointer;
+}
+.btn-plain:active { opacity: .6; }
+.err {
+  font-size: 13px; color: #ff6961; margin-top: 12px; min-height: 18px;
+}
+.done { padding: 20px 0 8px; }
+.done-icon { font-size: 40px; margin-bottom: 10px; }
+.done p { font-size: 14px; color: var(--ink-2); }
+.shake { animation: shake .35s; }
+@keyframes shake {
+  20% { transform: translateX(-8px); } 40% { transform: translateX(7px); }
+  60% { transform: translateX(-5px); } 80% { transform: translateX(3px); }
+}

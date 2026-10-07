@@ -172,5 +172,5 @@ def test_chargemap_gutter_covers_screen_edge(auth):
 def test_chargemap_link_in_login_whitelist(auth):
     """登录回跳白名单仍收旧充电地图路径: 2.x 存的上次停留值跳旧路径, 302
     落回壳充电地图视图, 不丢。"""
-    login_js = auth.get("/static/login.js?v=1").text
+    login_js = auth.get("/static/login.js?v=3").text
     assert "stats|chargemap|map" in login_js

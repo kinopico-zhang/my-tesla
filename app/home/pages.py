@@ -7,9 +7,11 @@
 import re
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from sqlalchemy.orm import Session
 
+from .. import account_store, database
 from . import STATIC_DIR
 
 router = APIRouter()
@@ -50,6 +52,16 @@ def tesla_login_page() -> FileResponse:
 def register_page() -> FileResponse:
     """注册页 (凭邀请令牌进入, 无需登录)。"""
     return _page("register.html")
+
+
+@router.get("/setup", response_model=None)
+def setup_page(
+        users: Session = Depends(database.get_users_db)
+        ) -> FileResponse | RedirectResponse:
+    """首启引导页 (无管理员时才是入口; 已初始化的部署直接回登录页)。"""
+    if account_store.admin_exists(users):
+        return RedirectResponse("/login", status_code=302)
+    return _page("setup.html")
 
 
 @router.get("/accounts")

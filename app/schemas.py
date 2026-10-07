@@ -38,6 +38,17 @@ class RegisterCredentials(BaseModel):
     name: str
     password: str
 
+class SetupCredentials(BaseModel):
+    """首启引导注册体: 无管理员时建立第一个管理员。"""
+
+    name: str
+    password: str
+
+class SetupStatus(BaseModel):
+    """首启引导状态 (登录页进页即查, needed 时让路给引导页)。"""
+
+    needed: bool
+
 class MeInfo(BaseModel):
     """当前会话的账号 (uuid 是内部标识, 不出接口)。"""
 

@@ -14,6 +14,7 @@ def test_versions_newest_first_and_wellformed():
     """新→老; 每版字段齐全, 文案是用户视角的一句话 (不夹技术黑话)。"""
     vs = changelog.entries()
     assert [v.version for v in vs] == [
+        "3.5.0",
         "3.4.8", "3.4.7", "3.4.6", "3.4.5", "3.4.4", "3.4.3", "3.4.2", "3.4.1", "3.4.0",
         "3.3.5", "3.3.4", "3.3.3", "3.3.2", "3.3.1", "3.3.0",
         "3.2.5", "3.2.4", "3.2.3", "3.2.2", "3.2.1", "3.2.0",
@@ -45,7 +46,8 @@ def test_changelog_entries_endpoint(auth):
         assert e["items"] == [{"kind": it.kind, "text": it.text}
                               for it in v.items]
     # 头条是主打: 新功能或修的主 bug; 纯打磨的批次整版都是改进, 不硬凑
-    # (3.4.8 整版都是改进「左缘呼出统一 + 数据来源卡排版」;
+    # (3.5.0 头条是新增「首启引导三步走」;
+    # 3.4.8 整版都是改进「左缘呼出统一 + 数据来源卡排版」;
     # 3.4.7 整版都是改进「地图设置说明折叠/掩码回显/保存闸 + 足迹地图
     # 按 Key 开闸」; 3.4.6 头条是修复「地图设置测试钮手机上总失败」;
     # 3.4.5 整版都是改进「常用地点详情右滑全屏页/行卡 + 地图设置测试钮」;
@@ -88,7 +90,7 @@ def test_changelog_link_in_settings_group(auth):
 def test_login_whitelist_keeps_old_links(auth):
     """登录回跳白名单仍收旧子页: 2.x 存的上次停留值 (localStorage 里可能
     还留着) 登录后跳旧路径, 302 落回壳对应视图, 不丢。"""
-    login_js = auth.get("/static/login.js?v=1").text
+    login_js = auth.get("/static/login.js?v=3").text
     assert "live|settings|changelog)" in login_js
 
 

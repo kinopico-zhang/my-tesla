@@ -14,6 +14,7 @@ from .invitations import (
 )
 from .passwords import hash_password, verify_password
 from .users import (
+    admin_exists,
     admin_user,
     authenticate,
     create_user,
@@ -32,6 +33,7 @@ __all__ = [
     "InvalidNameError",
     "InvitationError",
     "PasswordError",
+    "admin_exists",
     "admin_user",
     "authenticate",
     "consume_invitation",
