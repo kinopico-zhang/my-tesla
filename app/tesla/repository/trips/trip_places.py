@@ -1,17 +1,18 @@
-"""常去地点统计与改名 (2026-09-30 从 trip_stats 拆家: 那边顶到 200 行硬上
-限)。口径 2026-09-30 用户点名换停车事件 —— 「只看我停车是在哪, 而不是路
-过哪」: 挪车微程不计, 同一次停车只计一次 (详见 trip_locations)。"""
+"""常去地点统计读侧 (2026-09-30 从 trip_stats 拆家: 那边顶到 200 行硬上
+限; 2026-10-08 隐藏/改名写侧再拆 place_admin —— 这边又顶满了)。口径
+2026-09-30 用户点名换停车事件 —— 「只看我停车是在哪, 而不是路过哪」:
+挪车微程不计, 同一次停车只计一次 (详见 trip_locations)。"""
 import re
-from datetime import datetime
 from typing import Any, Iterable, Final
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ...models import Address, HiddenPlace, PlaceAlias
+from ...models import Address, PlaceAlias
 from ...schemas import TripLocRaw, TripLocSpot, TripLocStat
 from ..common import PlaceCoords, _clean_addr
 from ..place_names import place_name_map
+from .place_admin import place_hidden_set
 from .trip_stats import _trip_rows
 
 # 常去地点认定的最短行程 (km): 短于此算挪车不计 (2026-09-30 用户报「4栋
@@ -114,6 +115,24 @@ def _trip_stops(rows: list[Any],
     return trips
 
 
+def _loc_stat(shown: str, raws: list[str], counts: dict[str, int],
+              coords: dict[str, PlaceCoords],
+              aliases: dict[str, str]) -> TripLocStat:
+    """组 → 统计行: raws 就地按次数降序, 主坐标跟次数最多的原名走; 各
+    真实地点带各自坐标 (管理页详情层点行跳地图, 2026-10-04)。orig = 组里
+    被改过名的最常 raw (2026-10-04): 前端「原名」行的数据源。旧前端判据
+    「组名不在 raws 里」被撞名组打穿 —— raw 本身就叫天玑公馆, 两处别名改
+    到它名下后照样显示不出「原名」行。"""
+    raws.sort(key=lambda r: -counts[r])
+    det = [TripLocRaw(name=r, trips=counts[r],
+                      lat=(rc := coords.get(r) or PlaceCoords()).lat,
+                      lng=rc.lng) for r in raws]
+    return TripLocStat(name=shown, trips=sum(counts[r] for r in raws),
+                       lat=det[0].lat, lng=det[0].lng, raws=raws, details=det,
+                       spots=_group_spots(raws, coords),
+                       orig=next((r for r in raws if aliases.get(r)), None))
+
+
 def trip_locations(session: Session, own: Session,
                    car_id: int | None = None,
                    top: int | None = None) -> list[TripLocStat]:
@@ -151,57 +170,12 @@ def trip_locations(session: Session, own: Session,
     for shown, raws in groups.items():
         if shown in hidden:
             continue
-        raws.sort(key=lambda r: -counts[r])
-        # 各真实地点带各自坐标 (管理页详情层点行跳地图, 2026-10-04)
-        det = [TripLocRaw(name=r, trips=counts[r],
-                          lat=(rc := coords.get(r) or PlaceCoords()).lat,
-                          lng=rc.lng) for r in raws]
-        # orig = 组里被改过名的最常 raw (2026-10-04): 前端「原名」行的数据
-        # 源, 直接进构造不落局部 (trip_locations 局部数已顶满)。旧前端判据
-        # 「组名不在 raws 里」被撞名组打穿 —— raw 本身就叫天玑公馆, 两处
-        # 别名改到它名下后照样显示不出「原名」行
-        out.append(TripLocStat(name=shown, trips=sum(counts[r] for r in raws),
-                               lat=det[0].lat, lng=det[0].lng,   # 主坐标跟次数最多的原名走
-                               raws=raws, details=det,
-                               spots=_group_spots(raws, coords),
-                               orig=next((r for r in raws if aliases.get(r)),
-                                          None)))
+        out.append(_loc_stat(shown, raws, counts, coords, aliases))
     out = sorted(out, key=lambda s: (-s.trips, s.name))
     if top is not None:
-        keep = max(0, top)     # top=0 = 全瘦; 负数当 0, 不让负下标从尾翻全字段
-        out = [r if i < keep else
-               TripLocStat(name=r.name, trips=r.trips,
-                           lat=None, lng=None, raws=[])
+        # top=0 = 全瘦; 负数当 0, 不让负下标从尾翻全字段
+        out = [r if i < max(0, top) else
+               TripLocStat(name=r.name, trips=r.trips, lat=None, lng=None,
+                           raws=[])
                for i, r in enumerate(out)]
     return out
-
-
-def place_hidden_set(own: Session) -> set[str]:
-    """隐藏名单 (常用地点删除, 2026-10-03): raw 原名或组显示名, 管理页
-    「已删除」分区照单全列。"""
-    return set(own.scalars(select(HiddenPlace.place)).all())
-
-
-def set_place_hidden(own: Session, places: list[str], hidden: bool) -> None:
-    """删/恢复常用地点: hidden=True 落行 (统计读侧消失), False 删行恢复。
-    行程数据不动 —— 删除只是统计视图的开关。"""
-    if hidden:
-        for place in places:
-            own.merge(HiddenPlace(place=place))
-    else:
-        for place in places:
-            own.execute(delete(HiddenPlace).where(HiddenPlace.place == place))
-    own.commit()
-
-
-def set_place_alias(own: Session, places: list[str], alias: str) -> None:
-    """改/还原常用地点名 (统计读侧见 trip_locations; 并组多名一起改,
-    空 alias = 删行还原原名)。"""
-    if alias:
-        for place in places:
-            own.merge(PlaceAlias(place=place, alias=alias,
-                                 updated_at=datetime.now()))
-    else:
-        for place in places:
-            own.execute(delete(PlaceAlias).where(PlaceAlias.place == place))
-    own.commit()
