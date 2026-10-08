@@ -1,7 +1,7 @@
 """My Tesla 独立部署的装配: 内嵌账号体系 (app/home) + TeslaMate 展示应用 (/tesla/*)。
 
 独立仓 = 从 My Home 组合仓拆出来的自足部署: clone 下来建 .venv,
-./run.sh 即起 (部署配置全走命令行参数, python -m app --help 看全量;
+python -m app 即起 (部署配置全走命令行参数, --help 看全量;
 首启无管理员时浏览器打开 /setup 引导注册)。账号归启动方: 经 My Home
 组合仓启动时本模块不参与 —— 外层加载 app/tesla 子包挂业务路由, 账号
 用组合仓自己的门厅层 (同一枚会话 cookie); 本模块只在独立启动时生效,

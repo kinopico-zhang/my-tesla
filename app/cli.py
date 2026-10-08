@@ -1,4 +1,4 @@
-"""命令行启动器 (python -m app, ./run.sh 原样透传): 部署配置全走参数。
+"""命令行启动器 (python -m app): 部署配置全走参数。
 
 独立部署的完整配置面: 监听 / 账号种子 / TeslaMate / 高德 / 库与缓存 /
 显示口径。没给的参数回落同名环境变量 (自动化 / 测试 / 组合仓注入用),
@@ -99,10 +99,10 @@ def build_parser() -> argparse.ArgumentParser:
         description="My Tesla 独立部署启动器: 部署配置全走命令行参数",
         epilog="没给的参数回落同名环境变量 (如 --teslamate-host → TMDB_HOST),\n"
                "再回落内置默认; 显式给空串可清掉环境变量。示例:\n"
-               "  ./run.sh                                # 全默认, 浏览器打开 /setup 引导\n"
-               "  ./run.sh --port 8600 --http-port 8601\n"
-               "  ./run.sh --teslamate-host 192.168.31.5 --teslamate-password *** \\\n"
-               "             --amap-key *** --amap-security-code ***",
+               "  python -m app                           # 全默认, 浏览器打开 /setup 引导\n"
+               "  python -m app --port 8600 --http-port 8601\n"
+               "  python -m app --teslamate-host 192.168.31.5 --teslamate-password *** \\\n"
+               "                --amap-key *** --amap-security-code ***",
         formatter_class=argparse.RawDescriptionHelpFormatter)
     svc = parser.add_argument_group("服务与监听")
     svc.add_argument("--host", default="0.0.0.0", help="监听地址 (默认 0.0.0.0)")
@@ -153,13 +153,13 @@ def main(argv: Sequence[str] | None = None) -> None:
     apply_env(args)
     pair = None if args.http else cert_pair(args)
     if pair is None:
-        # 单明文进程: 本进程就是服务, 信号直通 uvicorn (与旧 run.sh 的
-        # exec 顶替同 —— 少一层父进程, systemd 视角行为不变)
+        # 单明文进程: 本进程就是服务, 信号直通 uvicorn —— 无中间壳进程,
+        # systemd 直接管到服务本体
         uvicorn.run("app.main:app", host=args.host, port=args.port)
         return
     # 有证书: 本进程退化为看护者, TLS (主入口) 与局域网明文各一个子进程
-    # —— 与旧 run.sh 双进程同构 (两个服务进程各自持有轨迹缓存与登录
-    # 限速表; 会话 cookie 无状态 HMAC 签名, 跨进程通用)。
+    # —— 双服务进程与旧版双入口部署同构 (各自持有轨迹缓存与登录限速表;
+    # 会话 cookie 无状态 HMAC 签名, 跨进程通用)。
     # 不用「本进程跑 TLS + finally 收子进程」: uvicorn 优雅退出后会恢复
     # 默认信号处置并重抛收到的信号, 进程当场死亡, finally 走不到 ——
     # 看护者只 wait 不服务, 信号转发才是稳的。

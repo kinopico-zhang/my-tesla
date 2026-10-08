@@ -354,10 +354,9 @@
             <ol>
               <li>打开 <a href="https://console.amap.com/dev/key/app" target="_blank" rel="noopener">高德开放平台控制台</a>, 创建应用</li>
               <li>添加 Key, 服务平台选择 <b>「Web端 (JS API)」</b></li>
-              <li>在服务目录创建 <code>.env</code> 文件 (参考 <code>.env.example</code>):
-                <br><code>AMAP_KEY=你的Key</code>
-                <br><code>AMAP_SECURITY_CODE=你的安全密钥</code></li>
-              <li>重启服务 (<code>./run.sh</code>) 后点击下方按钮</li>
+              <li>设置页「地图设置」里保存 Key 与安全密钥 (保存即生效), 或启动时带
+                <br><code>python -m app --amap-key 你的Key --amap-security-code 你的安全密钥</code></li>
+              <li>用参数启动的需重启服务, 然后点击下方按钮</li>
             </ol>
             <div class="retry-row">
               <button type="button" class="retry-btn" id="fp-recheck">重新检测</button>
@@ -630,10 +629,9 @@
             <ol>
               <li>打开 <a href="https://console.amap.com/dev/key/app" target="_blank" rel="noopener">高德开放平台控制台</a>, 创建应用</li>
               <li>添加 Key, 服务平台选择 <b>「Web端 (JS API)」</b></li>
-              <li>在服务目录创建 <code>.env</code> 文件 (参考 <code>.env.example</code>):
-                <br><code>AMAP_KEY=你的Key</code>
-                <br><code>AMAP_SECURITY_CODE=你的安全密钥</code></li>
-              <li>重启服务 (<code>./run.sh</code>) 后点击下方按钮</li>
+              <li>设置页「地图设置」里保存 Key 与安全密钥 (保存即生效), 或启动时带
+                <br><code>python -m app --amap-key 你的Key --amap-security-code 你的安全密钥</code></li>
+              <li>用参数启动的需重启服务, 然后点击下方按钮</li>
             </ol>
             <div class="retry-row">
               <button type="button" class="retry-btn" id="cm-recheck">重新检测</button>
