@@ -23,16 +23,31 @@
 </div>
 
 <p align="center">
-<img src="docs/screenshot-charging.png" width="300" alt="充电记录 · My Tesla (演示数据)">
-<img src="docs/screenshot-map.png" width="300" alt="足迹地图 · My Tesla (演示数据)">
+<a href="#view-charging"><img src="docs/screenshot-charging.png" width="300" alt="充电记录 · My Tesla (演示数据)"></a>
+<a href="#view-map"><img src="docs/screenshot-map.png" width="300" alt="足迹地图 · My Tesla (演示数据)"></a>
 </p>
+
+*点击任一截图, 当前页内跳到对应大图 (不新开窗口)。*
+
+<a id="shots"></a>
 
 |      |      |      |
 |:----:|:----:|:----:|
-| <img src="docs/screenshot-live.png" width="188" alt="状态 · My Tesla (演示数据)"><br>**状态** | <img src="docs/screenshot-trips.png" width="188" alt="行程列表 · My Tesla (演示数据)"><br>**行程列表** | <img src="docs/screenshot-tripstats.png" width="188" alt="行程统计 · My Tesla (演示数据)"><br>**行程统计** |
-| <img src="docs/screenshot-groups.png" width="188" alt="行程分组 · My Tesla (演示数据)"><br>**行程分组** | <img src="docs/screenshot-map.png" width="188" alt="足迹地图 · My Tesla (演示数据)"><br>**足迹地图** | <img src="docs/screenshot-charging.png" width="188" alt="充电记录 · My Tesla (演示数据)"><br>**充电记录** |
-| <img src="docs/screenshot-stats.png" width="188" alt="充电统计 · My Tesla (演示数据)"><br>**充电统计** | <img src="docs/screenshot-battery.png" width="188" alt="电池健康 · My Tesla (演示数据)"><br>**电池健康** | <img src="docs/screenshot-chargemap.png" width="188" alt="充电地图 · My Tesla (演示数据)"><br>**充电地图** |
-| <img src="docs/screenshot-changelog.png" width="188" alt="更新日志 · My Tesla (演示数据)"><br>**更新日志** |  |  |
+| <a href="#view-live"><img src="docs/screenshot-live.png" width="188" alt="状态 · My Tesla (演示数据)"></a><br>**状态** | <a href="#view-trips"><img src="docs/screenshot-trips.png" width="188" alt="行程列表 · My Tesla (演示数据)"></a><br>**行程列表** | <a href="#view-tripstats"><img src="docs/screenshot-tripstats.png" width="188" alt="行程统计 · My Tesla (演示数据)"></a><br>**行程统计** |
+| <a href="#view-groups"><img src="docs/screenshot-groups.png" width="188" alt="行程分组 · My Tesla (演示数据)"></a><br>**行程分组** | <a href="#view-map"><img src="docs/screenshot-map.png" width="188" alt="足迹地图 · My Tesla (演示数据)"></a><br>**足迹地图** | <a href="#view-charging"><img src="docs/screenshot-charging.png" width="188" alt="充电记录 · My Tesla (演示数据)"></a><br>**充电记录** |
+| <a href="#view-stats"><img src="docs/screenshot-stats.png" width="188" alt="充电统计 · My Tesla (演示数据)"></a><br>**充电统计** | <a href="#view-battery"><img src="docs/screenshot-battery.png" width="188" alt="电池健康 · My Tesla (演示数据)"></a><br>**电池健康** | <a href="#view-chargemap"><img src="docs/screenshot-chargemap.png" width="188" alt="充电地图 · My Tesla (演示数据)"></a><br>**充电地图** |
+
+## 🔍 大图视图
+
+[⬆︎ 返回缩略图](#shots)
+
+|      |      |
+|:----:|:----:|
+| <a id="view-live"></a><img src="docs/screenshot-live.png" width="400" alt="状态 · My Tesla (演示数据)"><br>**状态** · [⬆︎ 返回](#shots) | <a id="view-trips"></a><img src="docs/screenshot-trips.png" width="400" alt="行程列表 · My Tesla (演示数据)"><br>**行程列表** · [⬆︎ 返回](#shots) |
+| <a id="view-tripstats"></a><img src="docs/screenshot-tripstats.png" width="400" alt="行程统计 · My Tesla (演示数据)"><br>**行程统计** · [⬆︎ 返回](#shots) | <a id="view-groups"></a><img src="docs/screenshot-groups.png" width="400" alt="行程分组 · My Tesla (演示数据)"><br>**行程分组** · [⬆︎ 返回](#shots) |
+| <a id="view-map"></a><img src="docs/screenshot-map.png" width="400" alt="足迹地图 · My Tesla (演示数据)"><br>**足迹地图** · [⬆︎ 返回](#shots) | <a id="view-charging"></a><img src="docs/screenshot-charging.png" width="400" alt="充电记录 · My Tesla (演示数据)"><br>**充电记录** · [⬆︎ 返回](#shots) |
+| <a id="view-stats"></a><img src="docs/screenshot-stats.png" width="400" alt="充电统计 · My Tesla (演示数据)"><br>**充电统计** · [⬆︎ 返回](#shots) | <a id="view-battery"></a><img src="docs/screenshot-battery.png" width="400" alt="电池健康 · My Tesla (演示数据)"><br>**电池健康** · [⬆︎ 返回](#shots) |
+| <a id="view-chargemap"></a><img src="docs/screenshot-chargemap.png" width="400" alt="充电地图 · My Tesla (演示数据)"><br>**充电地图** · [⬆︎ 返回](#shots) |  |
 
 ## ✨ 功能
 
