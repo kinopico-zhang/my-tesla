@@ -24,6 +24,7 @@ changelog_versions_3_3_1.py (2026-09-27 拆, 主文件只留拼接与出口 —�
 地图设置说明折叠/掩码/保存闸 + 足迹地图按 Key 开闸批) /
 changelog_versions_3_4_8.py (2026-10-07 拆, 左缘呼出统一 + 数据来源卡
 排版批) / changelog_versions_3_5_0.py (同日第四批拆, 首启引导页批) /
+changelog_versions_3_5_1.py (2026-10-08 拆, 行程统计弱网提速批) /
 changelog_versions_3_1.py (2026-09-22 拆) /
 changelog_versions_3_0.py (2026-09-22 拆) /
 changelog_versions_pre_3_0.py (2026-09-21 拆), 拆家规矩与音乐 App 相同。"""
@@ -48,13 +49,15 @@ from .changelog_versions_3_4_6 import VERSIONS_3_4_6
 from .changelog_versions_3_4_7 import VERSIONS_3_4_7
 from .changelog_versions_3_4_8 import VERSIONS_3_4_8
 from .changelog_versions_3_5_0 import VERSIONS_3_5_0
+from .changelog_versions_3_5_1 import VERSIONS_3_5_1
 from .changelog_versions_3_4_3 import VERSIONS_3_4_3
 from .changelog_versions_3_4_2 import VERSIONS_3_4_2
 from .changelog_versions_pre_3_0 import VERSIONS_PRE_3_0
 from .schemas import ChangelogVersion
 
 VERSIONS: Final[list[ChangelogVersion]] = (
-    VERSIONS_3_5_0
+    VERSIONS_3_5_1
+    + VERSIONS_3_5_0
     + VERSIONS_3_4_8 + VERSIONS_3_4_7 + VERSIONS_3_4_6
     + VERSIONS_3_4_5 + VERSIONS_3_4_4 + VERSIONS_3_4_3 + VERSIONS_3_4_2
     + VERSIONS_3_4_1 + VERSIONS_3_4_0

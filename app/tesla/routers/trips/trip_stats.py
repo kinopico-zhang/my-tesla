@@ -39,13 +39,18 @@ def get_trip_stats_monthly(
 @router.get("/stats/locations")
 def get_trip_stats_locations(
         car_id: int | None = None,
+        top: int | None = None,
         db: Session = Depends(database.get_db),
         own: Session = Depends(database.get_own_db)) -> list[TripLocStat]:
     """常去地点 (起终点并计, 次数降序; 改过名的显示别名, 同别名并组,
     行带组坐标 raws/lat/lng + 组内真实地点 details —— 2026-09-30 用户点名
     点柱名弹改名框, 2026-10-03 管理页点组行展开)。隐藏名单 (左滑删除)
-    在读侧过滤, 统计页/管理页同口径。"""
-    return repository.trip_locations(db, own, car_id)
+    在读侧过滤, 统计页/管理页同口径。
+
+    top=N (2026-10-08「行程统计加载特别慢」): 只带前 N 行全字段, 其余行
+    瘦成名+次数 —— 统计页只画前 12 根柱 (改名弹层/管理页不传 top 拉全量),
+    500+ 组的全量 raws/details/spots 在弱网手机上是一路好几秒的死重。"""
+    return repository.trip_locations(db, own, car_id, top)
 
 
 @router.post("/stats/place-alias")

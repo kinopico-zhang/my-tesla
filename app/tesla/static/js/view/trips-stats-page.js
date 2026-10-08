@@ -61,12 +61,18 @@ async function loadTAll() {
   $("#ts-errbox").hidden = true;
   let err = null;
   try {
+    // locations 只带前 12 行全字段 (柱名改名弹层要 raws), 其余行瘦成
+    // 名+次数 —— 500+ 组的全量 raws/details/spots 有 146KB, 弱网手机光
+    // 这一路就拖几秒 (2026-10-08 用户实报「行程统计加载特别慢」); 副题
+    // 总数照数, 弹层/管理页要全量自己再拉 (不带 top)。
+    const sp = statsParams();
+    const lp = (sp ? sp + "&" : "") + "top=12";
     const [summary, monthly, locations, drivers, dims] = await Promise.all([
-      getJSON("/tesla/trips/api/stats/summary?" + statsParams()),
-      getJSON("/tesla/trips/api/stats/monthly?" + statsParams()),
-      getJSON("/tesla/trips/api/stats/locations?" + statsParams()),
-      getJSON("/tesla/trips/api/stats/drivers?" + statsParams()),
-      getJSON("/tesla/trips/api/stats/dimensions?" + statsParams()),
+      getJSON("/tesla/trips/api/stats/summary?" + sp),
+      getJSON("/tesla/trips/api/stats/monthly?" + sp),
+      getJSON("/tesla/trips/api/stats/locations?" + lp),
+      getJSON("/tesla/trips/api/stats/drivers?" + sp),
+      getJSON("/tesla/trips/api/stats/dimensions?" + sp),
     ]);
     tsRenderSummary(summary);
     tMonthlyData = monthly; tLocData = locations; tDrvData = drivers;

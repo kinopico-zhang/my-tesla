@@ -115,12 +115,17 @@ def _trip_stops(rows: list[Any],
 
 
 def trip_locations(session: Session, own: Session,
-                   car_id: int | None = None) -> list[TripLocStat]:
+                   car_id: int | None = None,
+                   top: int | None = None) -> list[TripLocStat]:
     """常去地点: 按停车事件计 (2026-09-30 用户点名「你应该只看我停车是在
     哪, 而不是路过哪」) —— 挪车微程 (短于 PLACE_MIN_KM) 整程不计; 同一次
     停车只计一次 (见 _count_parkings)。次数就是真正停过几回, 不再是「起终
     点地址并计」的翻倍账。全量回不截帽 (旧 [:12] 帽把副题也带成谎话),
     画几张是前端的事, 总数前端自己数。
+
+    top=N (2026-10-08): 前 N 行带全字段, 其余行瘦成名+次数 —— 统计页只
+    画前 12 根柱, 但 500+ 组的全量 raws/details/spots 有 146KB, 弱网手机
+    拖不动; 弹层名单/管理页要全量的不传 top。
 
     改名 (place_aliases): 原名替换成别名, 同别名并组; 同名并组 (地址链
     折入裸地名) 见 _same_name_canon。组主坐标取组内次数最多那名 (兼容
@@ -161,7 +166,14 @@ def trip_locations(session: Session, own: Session,
                                spots=_group_spots(raws, coords),
                                orig=next((r for r in raws if aliases.get(r)),
                                           None)))
-    return sorted(out, key=lambda s: (-s.trips, s.name))
+    out = sorted(out, key=lambda s: (-s.trips, s.name))
+    if top is not None:
+        keep = max(0, top)     # top=0 = 全瘦; 负数当 0, 不让负下标从尾翻全字段
+        out = [r if i < keep else
+               TripLocStat(name=r.name, trips=r.trips,
+                           lat=None, lng=None, raws=[])
+               for i, r in enumerate(out)]
+    return out
 
 
 def place_hidden_set(own: Session) -> set[str]:

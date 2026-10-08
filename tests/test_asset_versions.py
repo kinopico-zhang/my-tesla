@@ -179,9 +179,15 @@ def test_guard_assets_versioned_on_shell(auth):
                                                               # + renderDimBins 导出共用 (行程统计)
                                                               #   且改问 echarts 本尊 (跨视图旗号独立)
                                                               # + v7: 城市分布改竖排; v8: nameX/nameY
-                   ("js/view/trips-stats-page.js", 3),   # 行程统计视图底座; v2: 五路数据
+                   ("js/tesla-common.js", 6),      # v6: loadEcharts 版本钉 ?v=1 (echarts 从
+                                                    #   no-cache 改 immutable 长缓存 —— 弱网
+                                                    #   手机不再每次进统计页重下 1MB)
+                   ("js/view/trips-stats-page.js", 4),   # 行程统计视图底座; v2: 五路数据
                                                               #   加司机里程分布 (tDrvData); v3: 注释
-                                                              #   口径跟速度·电耗图更新
+                                                              #   口径跟速度·电耗图更新; v4: locations
+                                                              #   只带前 12 行全字段 (弱网减重)
+                   ("js/view/trips-place-dialog.js", 8),  # v8: 名单拉取 top=0 瘦身
+                                                              #   (弹层只要显示名)
                    ("js/view/trips-stats-charts.js", 12), # 行程统计图表; v12 = 气泡
                                                          #   改口「次停车」; v11 = 柱顶
                                                          #   次数标签退役; v10 = 柱名点击

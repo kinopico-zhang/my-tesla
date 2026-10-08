@@ -140,7 +140,7 @@ def test_place_dialog_and_settings_page(auth, db):
                   'id="place-save"', 'id="place-map"',
                   'data-view="settings-places"', 'id="plc-scroll"',
                   'id="plc-list"', 'id="plc-empty"',
-                  "<h2>常用地点</h2>", "trips-place-dialog.js?v=7",
+                  "<h2>常用地点</h2>", "trips-place-dialog.js?v=8",
                   "trips-place-detail.js?v=12", "settings-places.js?v=8"):
         assert token in page, f"常用地点前端缺 {token}"
     # 脚本序: 弹层在壳级拖拽件之后 (bindSheetDrag 是它的依赖)。弹层只剩
@@ -148,7 +148,7 @@ def test_place_dialog_and_settings_page(auth, db):
     # 没有谁再运行时叠它); 组详情层在左滑删除件之后 (bindSwipeDelete,
     # 详情层行上还在用) 且在管理页之前 (openPlaceDetail 是它的依赖),
     # 管理页殿后。
-    assert page.index("tesla-sheet-drag.js") < page.index("trips-place-dialog.js?v=7")
+    assert page.index("tesla-sheet-drag.js") < page.index("trips-place-dialog.js?v=8")
     assert page.index("tesla-swipe-delete.js?v=4") < \
         page.index("trips-place-detail.js?v=12") < \
         page.index("settings-places.js?v=8")

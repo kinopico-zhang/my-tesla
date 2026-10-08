@@ -79,7 +79,9 @@ async function placeSyncMap() {   // 小地图跟当前地点走 (没坐标整�
 async function placeLoadNames() {   // 已有地点名: locations 全量行的显示名 (缓存到关层)
   if (placeNames) return;           // 拉失败静默成空名单, 不拦手输
   try {
-    const all = await getJSON("/tesla/trips/api/stats/locations");
+    // top=0 = 全部行瘦成名+次数 (名单只要 name; 全量 raws/details 在弱网
+    // 上是白拖的 146KB)
+    const all = await getJSON("/tesla/trips/api/stats/locations?top=0");
     placeNames = [...new Set(all.map(r => r.name))];
   } catch (_e) { placeNames = []; }
 }

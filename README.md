@@ -12,28 +12,13 @@
 
 ![pylint](https://img.shields.io/badge/pylint-10.00%2F10-brightgreen)
 ![mypy](https://img.shields.io/badge/mypy-strict-2A6DB2)
-![pytest](https://img.shields.io/badge/pytest-430%20passed-0A9EDC?logo=pytest&logoColor=white)
+![pytest](https://img.shields.io/badge/pytest-431%20passed-0A9EDC?logo=pytest&logoColor=white)
 ![coverage](https://img.shields.io/badge/JS%20coverage-95%25%2B-brightgreen)
-
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
-![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-d71f00?logo=sqlalchemy&logoColor=white)
-![Pydantic](https://img.shields.io/badge/Pydantic-v2-e92063?logo=pydantic&logoColor=white)
-![SQLite](https://img.shields.io/badge/SQLite-3-003B57?logo=sqlite&logoColor=white)
-![ECharts](https://img.shields.io/badge/ECharts-5-AA344D?logo=apacheecharts&logoColor=white)
-![AMap](https://img.shields.io/badge/Map-AMap-1E90FF)
-![TeslaMate](https://img.shields.io/badge/TeslaMate-PostgreSQL-E82127?logo=tesla&logoColor=white)
-![frontend](https://img.shields.io/badge/frontend-zero%20deps-61DAFB)
 
 ![ESLint](https://img.shields.io/badge/ESLint-passing-4B32C3?logo=eslint&logoColor=white)
 ![tsc](https://img.shields.io/badge/tsc-checkJS-3178C6?logo=typescript&logoColor=white)
 ![stylelint](https://img.shields.io/badge/stylelint-passing-263238?logo=stylelint&logoColor=white)
 ![html-validate](https://img.shields.io/badge/html--validate-passing-brightgreen)
-
-[![stars](https://img.shields.io/github/stars/kinopico-zhang/my-tesla)](https://github.com/kinopico-zhang/my-tesla/stargazers)
-[![issues](https://img.shields.io/github/issues/kinopico-zhang/my-tesla)](https://github.com/kinopico-zhang/my-tesla/issues)
-[![last commit](https://img.shields.io/github/last-commit/kinopico-zhang/my-tesla)](https://github.com/kinopico-zhang/my-tesla/commits/main)
-[![repo size](https://img.shields.io/github/repo-size/kinopico-zhang/my-tesla)](https://github.com/kinopico-zhang/my-tesla)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/kinopico-zhang/my-tesla/pulls)
 
 </div>
 

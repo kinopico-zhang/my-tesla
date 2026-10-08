@@ -86,6 +86,24 @@ def test_trip_stats_locations(auth, db):
     ]
 
 
+def test_trip_stats_locations_top(auth, db):
+    """top=N 瘦身 (2026-10-08「行程统计加载特别慢」): 前 N 行全字段 (柱名
+    改名弹层要 raws), 其余行只剩名+次数; 不传 top 全量 (改名弹层已有名
+    单/管理页)。负数当 0 —— 不让负下标从尾部翻出全字段。"""
+    _seed_stats(db)
+    full = auth.get("/tesla/trips/api/stats/locations").json()
+    assert full[0]["raws"] and full[1]["raws"]      # 全量行带 raws
+    slim = auth.get("/tesla/trips/api/stats/locations?top=0").json()
+    assert [(r["name"], r["trips"]) for r in slim] == \
+        [(r["name"], r["trips"]) for r in full]      # 名单/次数/顺序照旧
+    assert all(r["raws"] == [] and r["details"] == [] and r["spots"] == []
+               and r["lat"] is None and r["orig"] is None for r in slim)
+    one = auth.get("/tesla/trips/api/stats/locations?top=1").json()
+    assert one[0] == full[0]                        # 次数最多的行照旧全字段
+    assert one[1] == slim[1]
+    assert auth.get("/tesla/trips/api/stats/locations?top=-3").json() == slim
+
+
 def test_trip_stats_dimensions(auth, db):
     """维度聚合: 出发时段每 2 小时一组 (本地时区), 距离/时长落档计数。
     车速两档不在此验 —— 真速度分布与各速度段电量 (positions 积分) 拆去

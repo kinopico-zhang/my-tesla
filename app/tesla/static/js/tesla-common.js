@@ -96,7 +96,11 @@ function loadEcharts() {
   if (echartsLoading) return echartsLoading;
   echartsLoading = new Promise((resolve, reject) => {
     const script = document.createElement("script");
-    script.src = "/tesla/static/echarts.min.js";
+    // ?v=1 版本钉 → immutable 长缓存: 不带版本参数的静态件只有 no-cache,
+    // 弱网手机 (隧道) 每次进统计页都可能整包重下 1MB (2026-10-08「行程
+    // 统计加载特别慢」实锤: 同一手机 4 分钟里全量拉了 3 回)。升级 echarts
+    // 换文件时, 这串同步 +1。
+    script.src = "/tesla/static/echarts.min.js?v=1";
     script.onload = () => resolve(echarts);
     script.onerror = () => {
       echartsLoading = null;

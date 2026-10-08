@@ -116,7 +116,7 @@ def test_static_versioned_assets_immutable(auth):
     """静态资源带 ?v=N (HTML 里的版本串, 门禁钉死 → 同 URL 内容永不回头)
     改发 immutable 长缓存: 重开页面不再整排 304 重校验; 不带版本参数的
     照旧 no-cache 重校验。参数名要精确是 v —— ?view=1 里没有名为 v 的参数。"""
-    r = auth.get("/tesla/static/js/tesla-common.js?v=5")
+    r = auth.get("/tesla/static/js/tesla-common.js?v=6")
     assert r.status_code == 200
     assert r.headers["cache-control"] == "public, max-age=31536000, immutable"
     assert auth.get("/tesla/static/js/tesla-common.js") \
@@ -154,5 +154,5 @@ def test_preload_vector_sweeps_corridor_once_per_session(auth):
     assert "true), seq, key);" in opn
     # 版本号随改动翻新 (老缓存不掺和)
     html = auth.get("/tesla").text
-    assert "js/tesla-common.js?v=5" in html
+    assert "js/tesla-common.js?v=6" in html
     assert "view/trips-preload-vector.js?v=3" in html
