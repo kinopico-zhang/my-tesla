@@ -1,9 +1,10 @@
 """E2E 冒烟: 起真服务子进程打真 HTTP —— CI 三平台矩阵跑的就是这套。
 
-不走 TestClient: 完整过一遍 命令行启动 → lifespan 建库种管理员 → 登录 →
-页面 / 静态资源, 与生产路径同构 (python -m app, 配置全走参数)。
-全部数据文件落在 pytest 临时目录, 不碰仓库 data/ 里的真实库; TeslaMate
-指到必拒连的本地口 (引擎懒连接 + 预热线程自兜底), e2e 不依赖真实数据源。
+不走 TestClient: 完整过一遍 命令行启动 → lifespan 建库 → /setup 引导建
+管理员 → 登录 → 页面 / 静态资源, 与生产路径同构 (python -m app, 配置
+全走参数)。全部数据文件落在 pytest 临时目录, 不碰仓库 data/ 里的真实
+库; TeslaMate 指到必拒连的本地口 (引擎懒连接 + 预热线程自兜底), e2e
+不依赖真实数据源。
 """
 import os
 import re
@@ -38,9 +39,8 @@ def server(tmp_path_factory) -> Iterator[str]:
     port = _free_port()
     proc = subprocess.Popen(  # pylint: disable=consider-using-with
         [sys.executable, "-m", "app",
-         "--http",                          # 强制明文单进程 (本机有证书也不进双开)
+         "--http",                          # 强制明文 (本机有证书也不进 TLS)
          "--host", "127.0.0.1", "--port", str(port),
-         "--auth-user", E2E_USER, "--auth-pass", E2E_PASS,
          "--users-db", str(tmp / "users.db"),
          "--secret-file", str(tmp / "session_secret"),
          "--mytesla-db", f"sqlite:///{(tmp / 'mytesla.db').as_posix()}",
@@ -62,6 +62,11 @@ def server(tmp_path_factory) -> Iterator[str]:
                 time.sleep(0.2)
         else:
             raise AssertionError("服务 30s 未就绪:\n" + _tail(log))
+        # 空库首启: 管理员走 /setup 引导建 (与生产同路径, 启动器不种账号)
+        r = httpx.post(base + "/api/setup-admin",
+                       json={"name": E2E_USER, "password": E2E_PASS},
+                       timeout=5.0)
+        assert r.status_code == 200, r.text[:200]
         yield base
     finally:
         proc.terminate()

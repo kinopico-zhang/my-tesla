@@ -14,7 +14,6 @@ repository 层 (SQLAlchemy, 方言中立); 测试通过 database.init_engine()
 /tesla/login (scope 内, 全屏 App 不弹回浏览器露地址栏), API 回 401;
 中间件在 app/home/middleware。
 """
-import sys
 import threading
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -25,7 +24,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import SQLAlchemyError
 
-from . import account_store, config, database
+from . import config, database
 from .home import STATIC_DIR as HOME_STATIC_DIR
 from .home import accounts_api, middleware as home_middleware
 from .home import pages as home_pages, session_api
@@ -51,15 +50,10 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     database.init_own_engine()
     OwnBase.metadata.create_all(database.own_engine())
     database.migrate_own_db()   # create_all 只建新表, 老库补列的配方在 database 包
-    # 账号库 (独立文件): 首启种管理员 (启动参数/env 账密, 之后走界面改)
+    # 账号库 (独立文件): 建表即可 —— 空库首启由登录页自动引去 /setup
+    # 引导注册管理员 (启动器与 env 都不再种账号)
     database.init_users_engine()
     UsersBase.metadata.create_all(database.users_engine())
-    if config.AUTH_PASS:
-        with database.users_session_factory()() as users:  # pylint: disable=not-callable
-            account_store.ensure_admin(users, config.AUTH_USER, config.AUTH_PASS)
-    else:
-        print("AUTH_PASS 未设置: 首启无管理员时, 打开 /setup 引导注册",
-              file=sys.stderr)
     with database.own_session_factory()() as own:   # pylint: disable=not-callable
         url = settings_store.engine_url(own)
     database.init_engine(url)

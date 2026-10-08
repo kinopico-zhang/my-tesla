@@ -1,26 +1,24 @@
-"""足迹地图配置与汇总测试: 环境变量透传, 汇总口径。
-拆自 test_map.py (结构化重构, 代码逐字节未动)。"""
+"""足迹地图配置与汇总测试: 高德 Key 只认设置页存库 (2026-10-08 起不走
+env), 汇总口径。拆自 test_map.py (结构化重构)。"""
 from datetime import datetime
 
 
 from tests.seed_factories import seed_addresses, seed_drive
 
 # ---------------------------------------------------------------- config
-def test_config_empty_without_env(auth, monkeypatch):
-    monkeypatch.delenv("AMAP_KEY", raising=False)
-    monkeypatch.delenv("AMAP_SECURITY_CODE", raising=False)
-    monkeypatch.delenv("AMAP_STYLE", raising=False)   # 退役的 env, 有也不再看
-    # 地图样式已随「不允许用户选择」退役 (2026-10-05): 固定幻影黑住前端
-    # 适配层, config 只发 Key 与安全码
+def test_config_empty_when_unset(auth):
+    """没在设置页配过: config 就是空 (Key 与安全码都 None)。"""
     assert auth.get("/tesla/map/api/config").json() == \
         {"amap_key": None, "security_code": None}
 
 
-def test_config_returns_env_values(auth, monkeypatch):
-    monkeypatch.setenv("AMAP_KEY", "abc123")
-    monkeypatch.setenv("AMAP_SECURITY_CODE", "sec456")
-    monkeypatch.setenv("AMAP_STYLE", "amap://styles/light")
-    monkeypatch.setenv("MAP_PROVIDER", "osm")   # 退役的 env, 有也不再看
+def test_config_reads_settings_row_not_env(auth, monkeypatch):
+    """高德 Key 只认设置页 (2026-10-08 收敛): env 里有也不看, 设置页
+    保存的即时反映 (改完即生效, 无需重启)。"""
+    monkeypatch.setenv("AMAP_KEY", "env-key")
+    monkeypatch.setenv("AMAP_SECURITY_CODE", "env-code")
+    auth.post("/tesla/api/settings",
+              json={"amap_key": "abc123", "amap_security_code": "sec456"})
     assert auth.get("/tesla/map/api/config").json() == \
         {"amap_key": "abc123", "security_code": "sec456"}
 

@@ -4,7 +4,7 @@ import httpx
 import pytest
 
 from app.tesla import place_worker, roads_amap
-from app.tesla.models import Address
+from app.tesla.models import Address, AppSetting
 from app.tesla.repository.place_names import (done_address_ids,
                                               place_name_map,
                                               place_name_row,
@@ -141,11 +141,11 @@ def _round(monkeypatch, mode="ok", key="k"):
     monkeypatch.setattr(roads_amap, "AmapClient", _FakeClient)
     _FakeClient.mode = mode
     _FakeClient.made = _FakeClient.regeo_calls = 0
-    if key is None:
-        monkeypatch.delenv("AMAP_WEB_KEY", raising=False)
-    else:
-        monkeypatch.setenv("AMAP_WEB_KEY", key)
     tesla_f, own_f = _factories()
+    if key:      # Web 服务 Key 只认设置页 (2026-10-08 收敛): 种进设置行
+        with own_f() as own:                     # pylint: disable=not-callable
+            own.merge(AppSetting(id=1, amap_web_key=key))
+            own.commit()
     return place_worker._round(tesla_f, own_f)   # pylint: disable=protected-access
 
 
@@ -197,8 +197,10 @@ def test_round_gives_up_after_three_errors(db, owndb, monkeypatch):  # pylint: d
     monkeypatch.setattr(roads_amap, "AmapClient", _FakeClient)
     _FakeClient.mode = "error"
     _FakeClient.made = _FakeClient.regeo_calls = 0
-    monkeypatch.setenv("AMAP_WEB_KEY", "k")
     tesla_f, own_f = _factories()
+    with own_f() as own:                         # pylint: disable=not-callable
+        own.merge(AppSetting(id=1, amap_web_key="k"))
+        own.commit()
     for _ in range(3):
         assert place_worker._round(tesla_f, own_f) == (False, 0.0)
     assert _FakeClient.regeo_calls == 3

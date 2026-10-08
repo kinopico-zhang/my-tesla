@@ -57,16 +57,13 @@ python3.13 -m venv .venv
 ```
 
 启动入口 `python -m app` (Windows 下 `.venv\Scripts\python -m app`), 部署
-配置全走命令行参数 (`--help` 一屏看全)。有证书 (`data/certs/`) 时 HTTPS
-与 HTTP 双开 (两个端口两个进程): HTTPS 走 `--port` (默认 8500,
-Let's Encrypt 证书), HTTP 走 `--http-port` (默认 8501, 局域网 IP 直连);
-没证书只开 `--port` 的明文, `--http` 可强制明文 (调试)。会话 cookie 是
-无状态 HMAC 签名, 两个口通用。
+配置全走命令行参数 (`--help` 一屏看全)。端口只有一个: `data/certs/` 里
+放了证书 (`fullchain.pem` + `privkey.pem`) 就走 HTTPS, 没放走 HTTP,
+`--http` 可强制明文 (调试)。
 
 打开 `http://<host>:8500/` → 自动进 `/tesla/charging`。账号库为空时
 登录页会带去 `/setup` 引导页: 注册第一个管理员, 顺路配 TeslaMate 连接
-与地图 Key, 全部可跳过、之后在设置页随时补。`--auth-pass` 是旧口径种子
-(只在空库时生效, 给了就不再进引导; 仓库是公开的, 不带默认口令)。
+与地图 Key, 全部可跳过、之后在设置页随时补。
 
 ## 📡 数据源
 
@@ -75,8 +72,8 @@ TeslaMate 连接三种给法 (优先级从高到低): 设置页里填 (存自有
 容器定位 (与 TeslaMate 同机部署时)。数据只读, 不会往 TeslaMate 库写任何
 东西。
 
-高德 Key (`--amap-key` + `--amap-security-code`, 服务平台选「Web端 JS API」,
-个人开发者免费) 未配置时地图页显示申请指引, 也可在设置页保存。
+高德 Key (服务平台选「Web端 JS API」, 个人开发者免费) 在设置页
+「地图设置」里保存, 保存即生效; 未配置时地图页显示申请指引。
 
 自有数据落在 `data/` (git 忽略): `mytesla.db` (轨迹断档补路等自产数据)
 + `users.db` 账号 + `certs/` 证书。
@@ -87,11 +84,8 @@ TeslaMate 连接三种给法 (优先级从高到低): 设置页里填 (存自有
 
 | 参数 | 默认 | 说明 |
 |---|---|---|
-| `--port` / `--http-port` | `8500` / `8501` | 主端口 (有证书走 TLS) / 局域网明文端口 |
-| `--auth-user` / `--auth-pass` | `admin` / 空 | 旧口径首启种子 (不设密码则走 `/setup` 引导; 只在空账号库时种) |
+| `--port` | `8500` | 端口: 证书目录有证书走 HTTPS, 没证书走 HTTP |
 | `--teslamate-host` 等 | docker 定位 | TeslaMate PostgreSQL (设置页里填的优先) |
-| `--amap-key` / `--amap-security-code` | 空 | 高德 Web端 JS API Key 与安全密钥 |
-| `--amap-web-key` | 空 | 高德 Web 服务 Key (足迹道路拟合 / 逆地理) |
 | `--mytesla-db` | `sqlite:///data/mytesla.db` | 自有库 (自产数据) |
 | `--users-db` / `--secret-file` | `data/users.db` / `.session_secret` | 账号库与会话密钥 |
 | `--tz` / `--currency` | `Asia/Shanghai` / `¥` | 显示口径 |
@@ -121,17 +115,10 @@ app/
   database/      三引擎: teslamate 库 / 自有库 / 账号库
   account_store/     账号库存取 (scrypt 密码 + 注册邀请)
   authentication.py  会话 cookie 签发与校验 (HMAC)
-  cli.py / __main__.py  命令行启动器 (python -m app): 参数全量清单 + 双端口编排
+  cli.py / __main__.py  命令行启动器 (python -m app): 参数全量清单 + 单端口 TLS 判定
   main.py        独立装配: 账号层挂根, 应用挂 /tesla
 tests/           pytest (真实 ORM + SQLite 临时库) + node --test (纯逻辑模块)
 ```
-
-## 🔗 相关项目
-
-| 仓 | 说明 |
-|---|---|
-| [My Money](https://github.com/kinopico-zhang/my-money) | 家庭记账 (离线 LWW 同步) |
-| [My Music](https://github.com/kinopico-zhang/my-music) | NAS 曲库听歌 (Service Worker 离线) |
 
 ## 📄 许可证
 

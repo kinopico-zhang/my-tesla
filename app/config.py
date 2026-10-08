@@ -2,9 +2,11 @@
 
 独立启动时命令行参数由启动器 (app/cli.py) 落进这些环境变量 —— 显式
 参数 > 环境变量 > 内置默认, 自动化/测试可直接注入 env。TeslaMate 连接
-可被设置页覆盖 (未设回落 env 定位 docker 容器); 自有库 / 账号库是本地
-SQLite。密码不设默认值 —— 仓库公开, 不带默认口令, 首启种子管理员只认
-给过的 AUTH_PASS。
+可被设置页覆盖 (未设回落 env 定位 docker 容器); 高德 Key 只认设置页
+(存自有库); 自有库 / 账号库是本地 SQLite。
+
+管理员账号由 /setup 首启引导创建: AUTH_USER / AUTH_PASS 不再种账号,
+只喂旧 cookie 校验的 legacy 密钥推导 (单用户时代的签名掺了账密)。
 
 My Home 组合部署时, 外层把 MYHOME_USERS_DB / MYHOME_SECRET_FILE 指到
 共享的 data/users.db 与 .session_secret (同一份账号库 + 同一枚会话
@@ -33,7 +35,8 @@ def _sqlite_url(value: str) -> str:
 LOCAL_TZ = ZoneInfo(os.environ.get("TZ_NAME", "Asia/Shanghai"))
 CUR_SYMBOL = os.environ.get("CUR_SYMBOL", "¥")
 
-# 鉴权 (env 可覆盖; AUTH_PASS 不设默认值, 首启不种管理员)
+# 鉴权 (AUTH_USER/AUTH_PASS 只用于旧 cookie 的 legacy 密钥推导, 不种账号;
+# 管理员由 /setup 首启引导创建)
 AUTH_USER = os.environ.get("AUTH_USER", "admin")
 AUTH_PASS = os.environ.get("AUTH_PASS", "")
 SESSION_DAYS = int(os.environ.get("SESSION_DAYS", "90"))

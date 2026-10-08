@@ -8,7 +8,7 @@ uvicorn 线程起来后, 把 TeslaMate 引擎换成灌好假数据的 SQLite: �
 
 用法: .venv/bin/python shots/seed_server.py [端口]   (默认 8901)
 环境: SHOTLAB 工作目录 (默认 /tmp/shotlab; 种子库/缓存落 SHOTLAB/tesla/)
-      MYHOME_ENV 根仓 .env 路径 (取高德 Key, 默认 ../.env 即根仓)
+      MYHOME_ENV 根仓 .env 路径 (取高德 Key 种进演示设置行, 默认根仓 .env)
       MYHOME_PROD_DB 生产 mytesla.db (只读取 amap_web_key 拟合道路用)
 注意: 首次跑要对高德做 ~34 段驾车规划 (真实 Web 服务 Key, 几分钟 + 要网);
 之后 SHOTLAB/tesla/ 留着就不用重规划。绝不动子仓 data/ 下的生产缓存
@@ -39,7 +39,6 @@ if ROOT_ENV_PATH.exists():
             ROOT_ENV[k.strip()] = v.strip()
 
 os.environ.update({
-    "AUTH_PASS": "shot-pass-123",
     "MYHOME_USERS_DB": str(TMP / "users.db"),
     "MYHOME_SECRET_FILE": str(TMP / "secret"),
     "MYTESLA_DB": f"sqlite:///{(TMP / 'mytesla.db').as_posix()}",
@@ -51,12 +50,9 @@ os.environ.update({
     "TMDB_USER": "teslamate", "TMDB_PASS": "demo-pass-2026",
     "TMDB_NAME": "teslamate",
 })
-for k in ("AMAP_KEY", "AMAP_SECURITY_CODE"):
-    if ROOT_ENV.get(k):
-        os.environ[k] = ROOT_ENV[k]
 
 import uvicorn  # noqa: E402
-from app import database, main as app_main  # noqa: E402
+from app import account_store, database, main as app_main  # noqa: E402
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8901
 
@@ -66,6 +62,11 @@ thread = threading.Thread(target=server.run, daemon=True)
 thread.start()
 while not server.started:
     time.sleep(0.1)
+
+# 账号库种 admin (lifespan 只建表不种账号 —— 引导归 /setup, 截图要现成登录;
+# 高德 Key 同理不再走 env, 下面种进演示 app_settings 行)
+with database.users_session_factory()() as users:  # pylint: disable=not-callable
+    account_store.ensure_admin(users, "admin", "shot-pass-123")
 
 # ---- 引擎换成种子 SQLite (lifespan 已按 env 建好库表, 这里只换镜像库) ----
 from app.tesla.models.teslamate_tables import Base  # noqa: E402
@@ -409,7 +410,9 @@ with database.own_session_factory()() as own:  # pylint: disable=not-callable
     own.merge(AppSetting(
         id=1, tmdb_host="192.168.31.5", tmdb_port="5432",
         tmdb_user="teslamate", tmdb_password="demo-pass-2026",
-        tmdb_name="teslamate", amap_web_key=web_key))
+        tmdb_name="teslamate", amap_web_key=web_key,
+        amap_key=ROOT_ENV.get("AMAP_KEY", ""),
+        amap_security_code=ROOT_ENV.get("AMAP_SECURITY_CODE", "")))
     own.commit()
     print(f"own: {len(roads_rows)} roads, 2 drivers, "
           f"妈妈标注 {sum(1 for i in range(1, did + 1) if i % 3 == 0)} 程, "

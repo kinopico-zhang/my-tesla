@@ -5,6 +5,7 @@ v2 ok 无推断行直采不重拟合 / 配额歇一小时 / 网络错误同程 3
 from datetime import date, datetime, timedelta
 
 from app.tesla import roads_amap, roads_worker
+from app.tesla.models import AppSetting
 from app.tesla.repository.map_roads import (RoadLite, done_drive_ids, road_row,
                                             roads_lite, save_road)
 from app.tesla.roads_fit import ROAD_FIT_V
@@ -64,11 +65,11 @@ def _round(monkeypatch, mode="ok", key="k"):
     monkeypatch.setattr(roads_amap, "AmapClient", _FakeClient)
     _FakeClient.mode = mode
     _FakeClient.made = _FakeClient.grasp_calls = 0
-    if key is None:
-        monkeypatch.delenv("AMAP_WEB_KEY", raising=False)
-    else:
-        monkeypatch.setenv("AMAP_WEB_KEY", key)
     tesla_f, own_f = _factories()
+    if key:      # Web 服务 Key 只认设置页 (2026-10-08 收敛): 种进设置行
+        with own_f() as own:                     # pylint: disable=not-callable
+            own.merge(AppSetting(id=1, amap_web_key=key))
+            own.commit()
     return roads_worker._round(tesla_f, own_f)   # pylint: disable=protected-access
 
 
@@ -133,8 +134,10 @@ def test_round_gives_up_after_three_errors(db, owndb, monkeypatch):  # pylint: d
     monkeypatch.setattr(roads_amap, "AmapClient", _FakeClient)
     _FakeClient.mode = "error"
     _FakeClient.made = _FakeClient.grasp_calls = 0
-    monkeypatch.setenv("AMAP_WEB_KEY", "k")
     tesla_f, own_f = _factories()
+    with own_f() as own:                         # pylint: disable=not-callable
+        own.merge(AppSetting(id=1, amap_web_key="k"))
+        own.commit()
     for _ in range(3):
         assert roads_worker._round(tesla_f, own_f) == (False, 0.0)
     assert _FakeClient.grasp_calls == 3
@@ -164,8 +167,7 @@ def test_roll_day_clears_yesterdays_cap(db, owndb, monkeypatch):
 
 
 # ---------------------------------------------------------------- 生命周期
-def test_start_reset_lifecycle(monkeypatch):
-    monkeypatch.delenv("AMAP_WEB_KEY", raising=False)
+def test_start_reset_lifecycle():
     tesla_f, own_f = _factories()
     roads_worker.start(tesla_f, own_f)
     roads_worker.start(tesla_f, own_f)                  # 幂等: 不另起

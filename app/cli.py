@@ -1,15 +1,16 @@
 """命令行启动器 (python -m app): 部署配置全走参数。
 
-独立部署的完整配置面: 监听 / 账号种子 / TeslaMate / 高德 / 库与缓存 /
-显示口径。没给的参数回落同名环境变量 (自动化 / 测试 / 组合仓注入用),
-再回落各消费模块的内置默认 —— 显式参数 > 环境变量 > 默认值; 参数显式
-给空串 = 清掉对应环境变量。
+独立部署的完整配置面: 监听 / TeslaMate / 库与缓存 / 显示口径。没给的
+参数回落同名环境变量 (自动化 / 测试 / 组合仓注入用), 再回落各消费模块
+的内置默认 —— 显式参数 > 环境变量 > 默认值; 参数显式给空串 = 清掉对应
+环境变量。
 
-证书目录 (默认 data/certs) 里有 fullchain.pem + privkey.pem 时双端口
-双进程: TLS 走 --port (Let's Encrypt 证书由 WSL 上的 acme.sh 签发续期),
-局域网明文走 --http-port, 本进程退化为看护者 (转发信号, 任一子进程退出
-就全组收); --http 或没证书时单明文进程, 本进程直接就是服务。会话
-cookie 是无状态 HMAC 签名, 两个口通用。
+单端口: 证书目录 (默认 data/certs) 里有 fullchain.pem + privkey.pem 时
+该端口走 TLS (Let's Encrypt 证书由 WSL 上的 acme.sh 签发续期), 没证书
+走明文; --http 可强制明文 (忽略证书, 调试用)。
+
+账号与高德 Key 不走参数: 空账号库首启由登录页自动引去 /setup 引导注册
+管理员, 高德 Key 在设置页「地图设置」里保存 (存自有库)。
 
 My Home 组合部署不走本模块 —— 账号归启动方: 外层装配用组合仓自己的
 门厅层, 本模块只服务本仓独立启动 (自带账号层)。
@@ -18,11 +19,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import signal
-import subprocess
-import sys
-import time
-import types
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -45,17 +41,13 @@ class _Knob:
 
     @property
     def dest(self) -> str:
-        """argparse 目标属性名 (--auth-user → auth_user)。"""
+        """argparse 目标属性名 (--teslamate-host → teslamate_host)。"""
         return self.flag[2:].replace("-", "_")
 
 
 _GROUPS: tuple[tuple[str, tuple[_Knob, ...]], ...] = (
-    ("账号体系 (独立部署自带; My Home 组合部署由外层统一)",
-     (_Knob("--auth-user", "AUTH_USER",
-            "首启种子管理员用户名 (默认 admin, 只在空账号库时种)"),
-      _Knob("--auth-pass", "AUTH_PASS",
-            "首启种子密码 (不设则浏览器打开 /setup 引导注册)"),
-      _Knob("--users-db", "MYHOME_USERS_DB",
+    ("账号体系 (账号库与会话; 组合部署由外层统一)",
+     (_Knob("--users-db", "MYHOME_USERS_DB",
             "账号库 (默认 data/users.db; 裸路径相对仓根, 也认 sqlite:///… URL)"),
       _Knob("--secret-file", "MYHOME_SECRET_FILE",
             "会话签名密钥文件 (默认 .session_secret; 与组合仓共用同一枚)"),
@@ -72,13 +64,6 @@ _GROUPS: tuple[tuple[str, tuple[_Knob, ...]], ...] = (
             "docker 容器名兜底定位 (默认 teslamate_cn_database_1)"),
       _Knob("--docker-bin", "DOCKER_BIN",
             "docker 可执行文件 (默认 PATH 里依次找)"))),
-    ("高德开放平台 (个人开发者免费, console.amap.com; 也可设置页里保存)",
-     (_Knob("--amap-key", "AMAP_KEY",
-            "Web端 (JS API) Key —— 服务平台必须选「Web端 (JS API)」"),
-      _Knob("--amap-security-code", "AMAP_SECURITY_CODE",
-            "安全密钥 (Key 详情页)"),
-      _Knob("--amap-web-key", "AMAP_WEB_KEY",
-            "Web 服务 Key (足迹道路拟合 / 逆地理, 与 JS Key 是两种)"))),
     ("数据与缓存",
      (_Knob("--mytesla-db", "MYTESLA_DB",
             "自有库, 轨迹断档补路等自产数据 (默认 sqlite:///data/mytesla.db)"),
@@ -100,21 +85,18 @@ def build_parser() -> argparse.ArgumentParser:
         epilog="没给的参数回落同名环境变量 (如 --teslamate-host → TMDB_HOST),\n"
                "再回落内置默认; 显式给空串可清掉环境变量。示例:\n"
                "  python -m app                           # 全默认, 浏览器打开 /setup 引导\n"
-               "  python -m app --port 8600 --http-port 8601\n"
-               "  python -m app --teslamate-host 192.168.31.5 --teslamate-password *** \\\n"
-               "                --amap-key *** --amap-security-code ***",
+               "  python -m app --port 8600\n"
+               "  python -m app --teslamate-host 192.168.31.5 --teslamate-password ***",
         formatter_class=argparse.RawDescriptionHelpFormatter)
     svc = parser.add_argument_group("服务与监听")
     svc.add_argument("--host", default="0.0.0.0", help="监听地址 (默认 0.0.0.0)")
     svc.add_argument("--port", type=int, default=8500,
-                     help="主端口: 有证书走 TLS, 没证书走明文 (默认 8500)")
-    svc.add_argument("--http-port", type=int, default=8501,
-                     help="局域网明文端口, 有证书时与主端口双开 (默认 8501)")
+                     help="端口: 有证书走 TLS, 没证书走明文 (默认 8500)")
     svc.add_argument("--cert-dir", default="data/certs",
                      help="TLS 证书目录 (默认 data/certs; 内含 fullchain.pem 与 "
                           "privkey.pem 即启用 HTTPS)")
     svc.add_argument("--http", action="store_true",
-                     help="强制明文单开, 忽略证书 (调试用)")
+                     help="强制明文, 忽略证书 (调试用)")
     for title, knobs in _GROUPS:
         group = parser.add_argument_group(title)
         for knob in knobs:
@@ -139,7 +121,7 @@ def apply_env(args: argparse.Namespace) -> None:
 
 
 def cert_pair(args: argparse.Namespace) -> tuple[Path, Path] | None:
-    """证书对 (私钥, 证书); 目录里不齐 → None (单明文开)。"""
+    """证书对 (私钥, 证书); 目录里不齐 → None (明文开)。"""
     directory = Path(args.cert_dir)
     if not directory.is_absolute():
         directory = PROJECT_DIR / directory
@@ -148,43 +130,12 @@ def cert_pair(args: argparse.Namespace) -> tuple[Path, Path] | None:
 
 
 def main(argv: Sequence[str] | None = None) -> None:
-    """解析参数 → 落环境 → 单进程明文直跑, 有证书时看护双进程。"""
+    """解析参数 → 落环境 → 单进程单端口起服务 (有证书走 TLS, 否则明文)。"""
     args = build_parser().parse_args(argv)
     apply_env(args)
     pair = None if args.http else cert_pair(args)
     if pair is None:
-        # 单明文进程: 本进程就是服务, 信号直通 uvicorn —— 无中间壳进程,
-        # systemd 直接管到服务本体
         uvicorn.run("app.main:app", host=args.host, port=args.port)
-        return
-    # 有证书: 本进程退化为看护者, TLS (主入口) 与局域网明文各一个子进程
-    # —— 双服务进程与旧版双入口部署同构 (各自持有轨迹缓存与登录限速表;
-    # 会话 cookie 无状态 HMAC 签名, 跨进程通用)。
-    # 不用「本进程跑 TLS + finally 收子进程」: uvicorn 优雅退出后会恢复
-    # 默认信号处置并重抛收到的信号, 进程当场死亡, finally 走不到 ——
-    # 看护者只 wait 不服务, 信号转发才是稳的。
-    base = [sys.executable, "-m", "uvicorn", "app.main:app",
-            "--host", args.host]
-    commands = [
-        base + ["--port", str(args.port),
-                "--ssl-keyfile", str(pair[0]), "--ssl-certfile", str(pair[1])],
-        base + ["--port", str(args.http_port)]]
-    procs = [subprocess.Popen(cmd, cwd=str(PROJECT_DIR))  # pylint: disable=consider-using-with
-             for cmd in commands]
-
-    def _forward(signum: int, _frame: types.FrameType | None) -> None:
-        """看护者收到信号 → 转发给两个子进程再退 (不留孤儿)。"""
-        for proc in procs:
-            if proc.poll() is None:
-                proc.send_signal(signum)
-        sys.exit(128 + signum)
-
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        signal.signal(sig, _forward)
-    try:
-        while all(proc.poll() is None for proc in procs):
-            time.sleep(0.2)     # 任一子进程先退 (崩溃/被停) 就全组收
-    finally:
-        for proc in procs:
-            if proc.poll() is None:
-                proc.terminate()
+    else:
+        uvicorn.run("app.main:app", host=args.host, port=args.port,
+                    ssl_keyfile=str(pair[0]), ssl_certfile=str(pair[1]))

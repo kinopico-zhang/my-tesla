@@ -23,23 +23,20 @@ def rebuild_recorder(monkeypatch):
 
 
 def test_settings_get_defaults_from_env(auth, monkeypatch):
-    """未保存过: 现值回落 env; 秘密不回显 (Key 打码, 密码只报在用)。"""
+    """未保存过: TeslaMate 现值回落 env; 高德 Key 只认设置页 (没配就是空)。"""
     monkeypatch.setenv("TMDB_HOST", "10.0.0.8")
     monkeypatch.setenv("TMDB_USER", "tmuser")
-    monkeypatch.setenv("AMAP_KEY", "test-amap-key-123456")
     d = auth.get("/tesla/api/settings").json()
     assert d["tmdb"] == {"host": "10.0.0.8", "port": "5432", "user": "tmuser",
                          "name": "teslamate", "password_set": False}
-    assert d["amap"]["key_masked"] == "test****3456"
-    # 安全码也头尾掩码回显 (2026-10-06 用户点名「安全码也是显示头尾, 中间
-    # mask 掉」) —— 未设就是空串, 不再是「在用」布尔
+    # 高德 Key 只认设置页存库 (2026-10-08 收敛, 不再走 env): 没配就是空串;
+    # 安全码也是头尾掩码回显 (2026-10-06, 未设空串, 不再是「在用」布尔)
+    assert d["amap"]["key_masked"] == ""
     assert d["amap"]["security_code_masked"] == ""
 
 
-def test_settings_save_amap_and_map_config_reflects(auth, monkeypatch):
+def test_settings_save_amap_and_map_config_reflects(auth):
     """高德 Key 存自有库, map config 端点即时反映 (改完即生效, 无需重启)。"""
-    monkeypatch.delenv("AMAP_KEY", raising=False)
-    monkeypatch.delenv("AMAP_SECURITY_CODE", raising=False)
     r = auth.post("/tesla/api/settings",
                   json={"amap_key": "abcd1234efgh5678", "amap_security_code": "9182ac3b"})
     assert r.status_code == 200
@@ -149,11 +146,12 @@ def test_web_key_test_verdicts(auth, monkeypatch):
                     lambda request: httpx.Response(200, json=payload)))
         return make
 
-    monkeypatch.delenv("AMAP_WEB_KEY", raising=False)
+    monkeypatch.delenv("AMAP_WEB_KEY", raising=False)   # env 已不是通道, 双保险
     assert auth.post("/tesla/map/api/web-key-test").json() == \
         {"ok": False, "detail": "还没填 Web 服务 Key"}
 
-    monkeypatch.setenv("AMAP_WEB_KEY", "webkey-123")
+    # 现值只认设置页存库 (2026-10-08 收敛): 保存后「测试」测它
+    auth.post("/tesla/api/settings", json={"amap_web_key": "webkey-123"})
     monkeypatch.setattr("app.tesla.routers.map.AmapClient",
                         fake_client({"status": "1", "info": "OK",
                                      "infocode": "10000",

@@ -1,4 +1,5 @@
-"""运行时设置 (自有库): 设置页可改, 未设字段回落 env 默认值。
+"""运行时设置 (自有库): 设置页可改; TeslaMate 未设字段回落 env, 高德
+Key 只认设置页 (存库, 不走 env)。
 驾驶员 CRUD 在 drivers_store (拆模块)。
 
 TeslaMate 连接改动会换引擎重连 (database.rebuild_engine) 并实测 SELECT 1,
@@ -76,33 +77,30 @@ def engine_url(own: Session) -> str:
 
 
 def amap_values(own: Session) -> tuple[str | None, str | None]:
-    """高德 Key 现值 (设置行 > env): map config 端点每次现读, 改完即生效。"""
+    """高德 Key 现值 (只认设置页存的): map config 端点每次现读, 改完即生效。"""
     row = _row(own)
-    return (row.amap_key or os.environ.get("AMAP_KEY") or None,
-            row.amap_security_code or os.environ.get("AMAP_SECURITY_CODE") or None)
+    return (row.amap_key or None, row.amap_security_code or None)
 
 
 def amap_web_key_value(own: Session) -> str:
-    """高德 Web 服务 key 现值 (设置行 > env): 足迹道路拟合 worker 每轮现读,
-    换 key 不用重启。与 JS 端 Key 分开 —— 纠偏/规划是服务端 REST, 要 Web 服务
-    类型的 key (个人实名认证后 1 万次/天)。"""
-    return _row(own).amap_web_key or os.environ.get("AMAP_WEB_KEY", "")
+    """高德 Web 服务 key 现值 (只认设置页存的): 足迹道路拟合 worker 每轮
+    现读, 换 key 不用重启。与 JS 端 Key 分开 —— 纠偏/规划是服务端 REST,
+    要 Web 服务类型的 key (个人实名认证后 1 万次/天)。"""
+    return _row(own).amap_web_key or ""
 
 
 def settings_state(own: Session) -> SettingsState:
-    """设置页状态: 各字段现值 (回落 env 后的效果), 秘密只报在用/打码。"""
+    """设置页状态: 各字段现值 (TeslaMate 回落 env), 秘密只报打码。"""
     eff = effective_tmdb(own)
     row = _row(own)
-    key = row.amap_key or os.environ.get("AMAP_KEY", "")
-    code = row.amap_security_code or os.environ.get("AMAP_SECURITY_CODE", "")
     return SettingsState(
         tmdb=TeslaMateSettings(
             host=eff.host, port=eff.port, user=eff.user,
             name=eff.name, password_set=bool(eff.password)),
         amap=AmapSettings(
-            key_masked=_masked(key), security_code_masked=_masked(code),
-            web_key_masked=_masked(_row(own).amap_web_key
-                                   or os.environ.get("AMAP_WEB_KEY", ""))))
+            key_masked=_masked(row.amap_key),
+            security_code_masked=_masked(row.amap_security_code),
+            web_key_masked=_masked(row.amap_web_key)))
 
 
 def save_settings(own: Session, body: SettingsUpdate) -> tuple[SettingsState, bool]:
