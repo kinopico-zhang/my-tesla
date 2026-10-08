@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🚗 My Tesla
+# <img src="https://cdn.simpleicons.org/tesla/E82127" height="26" alt="Tesla"> My Tesla
 
 **TeslaMate 行车数据的自托管展示应用** — 充电 · 足迹 · 行程 · 实时位置
 
