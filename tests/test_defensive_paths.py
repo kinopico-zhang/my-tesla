@@ -10,7 +10,6 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app import (authentication, config, database)  # pylint: disable=wrong-import-position
 from app.tesla import repository, settings_store, tracks_cache  # pylint: disable=wrong-import-position
-import app.main as main_module  # pylint: disable=wrong-import-position
 from app.tesla.models import Driver  # pylint: disable=wrong-import-position
 from tests.seed_factories import seed_drive  # pylint: disable=wrong-import-position
 
@@ -84,11 +83,11 @@ def test_migrate_own_db_adds_amap_style_column():
             "CREATE TABLE app_settings (id INTEGER PRIMARY KEY, tmdb_host TEXT,"
             " tmdb_port TEXT, tmdb_user TEXT, tmdb_password TEXT, tmdb_name TEXT,"
             " amap_key TEXT, amap_security_code TEXT, updated_at DATETIME)")
-    main_module._migrate_own_db()  # pylint: disable=protected-access
+    database.migrate_own_db()
     with database.own_engine().connect() as conn:
         cols = {r[1] for r in conn.exec_driver_sql("PRAGMA table_info(app_settings)")}
     assert "amap_style" in cols
-    main_module._migrate_own_db()  # pylint: disable=protected-access  # 再跑不炸
+    database.migrate_own_db()  # 再跑不炸
 
 
 def test_migrate_own_db_adds_map_provider_column():
@@ -100,11 +99,11 @@ def test_migrate_own_db_adds_map_provider_column():
             " tmdb_port TEXT, tmdb_user TEXT, tmdb_password TEXT, tmdb_name TEXT,"
             " amap_key TEXT, amap_security_code TEXT, amap_style TEXT,"
             " updated_at DATETIME)")
-    main_module._migrate_own_db()  # pylint: disable=protected-access
+    database.migrate_own_db()
     with database.own_engine().connect() as conn:
         cols = {r[1] for r in conn.exec_driver_sql("PRAGMA table_info(app_settings)")}
     assert "map_provider" in cols and "amap_style" in cols
-    main_module._migrate_own_db()  # pylint: disable=protected-access  # 再跑不炸
+    database.migrate_own_db()  # 再跑不炸
 
 
 # ---------------------------------------------------------------- 统一错误契约

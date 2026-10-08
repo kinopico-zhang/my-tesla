@@ -1,8 +1,10 @@
-"""环境变量配置 (见 .env.example), 集中读取避免散落各处。
+"""环境变量配置, 集中读取避免散落各处。
 
-独立仓口径: TeslaMate 连接可被设置页覆盖 (未设回落 env 定位 docker
-容器); 自有库 / 账号库是本地 SQLite。密码不设默认值 —— 仓库公开,
-不带默认口令, 首启种子管理员只认 .env 里设过的 AUTH_PASS。
+独立启动时命令行参数由启动器 (app/cli.py) 落进这些环境变量 —— 显式
+参数 > 环境变量 > 内置默认, 自动化/测试可直接注入 env。TeslaMate 连接
+可被设置页覆盖 (未设回落 env 定位 docker 容器); 自有库 / 账号库是本地
+SQLite。密码不设默认值 —— 仓库公开, 不带默认口令, 首启种子管理员只认
+给过的 AUTH_PASS。
 
 My Home 组合部署时, 外层把 MYHOME_USERS_DB / MYHOME_SECRET_FILE 指到
 共享的 data/users.db 与 .session_secret (同一份账号库 + 同一枚会话
@@ -19,7 +21,7 @@ STATIC_DIR = APP_DIR / "tesla" / "static"
 
 def _sqlite_url(value: str) -> str:
     """env 值 → SQLAlchemy URL: 裸路径当仓内 SQLite 文件 (相对仓根),
-    带协议 (sqlite:///…) 的原样 —— .env 里两种写法都认。"""
+    带协议 (sqlite:///…) 的原样 —— 参数与 env 里两种写法都认。"""
     if "://" in value:
         return value
     path = Path(value)
@@ -48,7 +50,7 @@ OWN_DB_URL = (os.environ.get("MYTESLA_DB")
               or f"sqlite:///{PROJECT_DIR / 'data' / 'mytesla.db'}")
 
 # 账号库 (SQLite, 与业务库分开的独立文件): 用户 + 注册邀请
-# (裸路径相对仓根; 旧名 MYTESLA_USERS_DB 也认, 组合仓的 .env 兼容)
+# (裸路径相对仓根; 旧名 MYTESLA_USERS_DB 也认, 组合仓注入兼容)
 USERS_DB_URL = _sqlite_url(
     os.environ.get("MYHOME_USERS_DB")
     or os.environ.get("MYTESLA_USERS_DB")

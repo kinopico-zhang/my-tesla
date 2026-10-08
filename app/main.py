@@ -1,9 +1,11 @@
 """My Tesla 独立部署的装配: 内嵌账号体系 (app/home) + TeslaMate 展示应用 (/tesla/*)。
 
 独立仓 = 从 My Home 组合仓拆出来的自足部署: clone 下来建 .venv,
-./run.sh 即起 (首启无管理员时浏览器打开 /setup 引导注册, 见 .env.example)。My Home 组合
-部署时本模块不参与 —— 外层加载 app/tesla 子包挂自己的路由, 账号体系
-用组合仓自己的门厅层 (同一枚会话 cookie)。
+./run.sh 即起 (部署配置全走命令行参数, python -m app --help 看全量;
+首启无管理员时浏览器打开 /setup 引导注册)。账号归启动方: 经 My Home
+组合仓启动时本模块不参与 —— 外层加载 app/tesla 子包挂业务路由, 账号
+用组合仓自己的门厅层 (同一枚会话 cookie); 本模块只在独立启动时生效,
+自带账号层全量挂上。
 
 数据源: teslamate_cn (PostgreSQL, TeslaMate 标准表结构), 查询全部在
 repository 层 (SQLAlchemy, 方言中立); 测试通过 database.init_engine()
@@ -39,26 +41,6 @@ from .tesla.routers import (charging as charging_routes,
                             trips as trips_routes)
 
 
-def _migrate_own_db() -> None:
-    """create_all 只建新表不改旧表: 已有生产库要补的列写在这里 (幂等)。"""
-    with database.own_engine().begin() as conn:
-        cols = {r[1] for r in conn.exec_driver_sql("PRAGMA table_info(app_settings)")}
-        if "amap_style" not in cols:   # v: 高德地图样式 (设置页可换, 三页地图共用)
-            conn.exec_driver_sql(
-                "ALTER TABLE app_settings ADD COLUMN amap_style TEXT NOT NULL DEFAULT ''")
-        if "map_provider" not in cols:  # v: 地图服务商 (2026-09-25 起只留高德,
-            # 列不再读写; 已装库的列留着, 迁移测试仍盖着加列路径)
-            conn.exec_driver_sql(
-                "ALTER TABLE app_settings ADD COLUMN map_provider TEXT NOT NULL DEFAULT ''")
-        if "amap_web_key" not in cols:  # v: 高德 Web 服务 key (足迹道路拟合)
-            conn.exec_driver_sql(
-                "ALTER TABLE app_settings ADD COLUMN amap_web_key TEXT NOT NULL DEFAULT ''")
-        rcols = {r[1] for r in conn.exec_driver_sql("PRAGMA table_info(drive_roads)")}
-        if "gaps" not in rcols:  # v: 推断层顶点区间 (可能走过, 虚线渲染)
-            conn.exec_driver_sql(
-                "ALTER TABLE drive_roads ADD COLUMN gaps VARCHAR NOT NULL DEFAULT '[]'")
-
-
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """启动时建引擎 + 后台预热缓存, 关闭时释放连接池。
@@ -68,8 +50,8 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     # 先建自有库再读设置: TeslaMate 连接可被设置页覆盖 (未设回落 env 定位)
     database.init_own_engine()
     OwnBase.metadata.create_all(database.own_engine())
-    _migrate_own_db()
-    # 账号库 (独立文件): 首启种管理员 (env 账密, 之后走界面改)
+    database.migrate_own_db()   # create_all 只建新表, 老库补列的配方在 database 包
+    # 账号库 (独立文件): 首启种管理员 (启动参数/env 账密, 之后走界面改)
     database.init_users_engine()
     UsersBase.metadata.create_all(database.users_engine())
     if config.AUTH_PASS:

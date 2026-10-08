@@ -1,9 +1,9 @@
-"""E2E 冒烟: 起真 uvicorn 子进程打真 HTTP —— CI 三平台矩阵跑的就是这套。
+"""E2E 冒烟: 起真服务子进程打真 HTTP —— CI 三平台矩阵跑的就是这套。
 
-不走 TestClient: 完整过一遍 进程启动 → lifespan 建库种管理员 → 登录 →
-页面 / 静态资源, 与 ./run.sh 生产路径同构 (uvicorn app.main:app)。全部
-数据文件落在 pytest 临时目录, 不碰仓库 data/ 里的真实库; TeslaMate 指到
-必拒连的本地口 (引擎懒连接 + 预热线程自兜底), e2e 不依赖真实数据源。
+不走 TestClient: 完整过一遍 命令行启动 → lifespan 建库种管理员 → 登录 →
+页面 / 静态资源, 与 ./run.sh 生产路径同构 (python -m app, 配置全走参数)。
+全部数据文件落在 pytest 临时目录, 不碰仓库 data/ 里的真实库; TeslaMate
+指到必拒连的本地口 (引擎懒连接 + 预热线程自兜底), e2e 不依赖真实数据源。
 """
 import os
 import re
@@ -35,22 +35,21 @@ def server(tmp_path_factory) -> Iterator[str]:
     """起一个真服务, 就绪后返回 base_url; 整模块共享, 收尾硬收进程。"""
     tmp = tmp_path_factory.mktemp("e2e")
     log = open(tmp / "server.log", "w+b")           # pylint: disable=consider-using-with
-    env = {
-        **os.environ,
-        "AUTH_USER": E2E_USER,
-        "AUTH_PASS": E2E_PASS,
-        "MYHOME_USERS_DB": str(tmp / "users.db"),
-        "MYHOME_SECRET_FILE": str(tmp / "session_secret"),
-        "MYTESLA_DB": f"sqlite:///{(tmp / 'mytesla.db').as_posix()}",
-        # TeslaMate 指到必拒连的本地口: 不探 docker, 永不碰真实库
-        "TMDB_HOST": "127.0.0.1", "TMDB_PORT": "1",
-        "TMDB_USER": "e2e", "TMDB_PASS": "e2e", "TMDB_NAME": "e2e",
-    }
     port = _free_port()
     proc = subprocess.Popen(  # pylint: disable=consider-using-with
-        [sys.executable, "-m", "uvicorn", "app.main:app",
-         "--host", "127.0.0.1", "--port", str(port), "--log-level", "warning"],
-        cwd=str(ROOT), env=env, stdout=log, stderr=subprocess.STDOUT)
+        [sys.executable, "-m", "app",
+         "--http",                          # 强制明文单进程 (本机有证书也不进双开)
+         "--host", "127.0.0.1", "--port", str(port),
+         "--auth-user", E2E_USER, "--auth-pass", E2E_PASS,
+         "--users-db", str(tmp / "users.db"),
+         "--secret-file", str(tmp / "session_secret"),
+         "--mytesla-db", f"sqlite:///{(tmp / 'mytesla.db').as_posix()}",
+         # TeslaMate 指到必拒连的本地口: 不探 docker, 永不碰真实库
+         "--teslamate-host", "127.0.0.1", "--teslamate-port", "1",
+         "--teslamate-user", "e2e", "--teslamate-password", "e2e",
+         "--teslamate-db", "e2e"],
+        cwd=str(ROOT), env={**os.environ},
+        stdout=log, stderr=subprocess.STDOUT)
     base = f"http://127.0.0.1:{port}"
     deadline = time.monotonic() + 30.0
     try:

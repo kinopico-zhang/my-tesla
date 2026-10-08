@@ -31,6 +31,29 @@ def init_own_engine(url: str | None = None) -> None:
                                            expire_on_commit=False)
 
 
+def migrate_own_db() -> None:
+    """create_all 只建新表不改旧表: 已有生产库要补的列写在这里 (幂等)。
+
+    配方单一来源 —— My Home 组合仓的 lifespan 起同一份自有库时调的也是
+    它 (组合部署 / 单仓部署共用同一个 data/mytesla.db, 补列只记一处)。"""
+    with own_engine().begin() as conn:
+        cols = {r[1] for r in conn.exec_driver_sql("PRAGMA table_info(app_settings)")}
+        if "amap_style" not in cols:   # v: 高德地图样式 (设置页可换, 三页地图共用)
+            conn.exec_driver_sql(
+                "ALTER TABLE app_settings ADD COLUMN amap_style TEXT NOT NULL DEFAULT ''")
+        if "map_provider" not in cols:  # v: 地图服务商 (2026-09-25 起只留高德,
+            # 列不再读写; 已装库的列留着, 迁移测试仍盖着加列路径)
+            conn.exec_driver_sql(
+                "ALTER TABLE app_settings ADD COLUMN map_provider TEXT NOT NULL DEFAULT ''")
+        if "amap_web_key" not in cols:  # v: 高德 Web 服务 key (足迹道路拟合)
+            conn.exec_driver_sql(
+                "ALTER TABLE app_settings ADD COLUMN amap_web_key TEXT NOT NULL DEFAULT ''")
+        rcols = {r[1] for r in conn.exec_driver_sql("PRAGMA table_info(drive_roads)")}
+        if "gaps" not in rcols:  # v: 推断层顶点区间 (可能走过, 虚线渲染)
+            conn.exec_driver_sql(
+                "ALTER TABLE drive_roads ADD COLUMN gaps VARCHAR NOT NULL DEFAULT '[]'")
+
+
 def dispose_own_engine() -> None:
     """释放自有库连接池 (测试隔离也用它)。"""
     if _OwnEngineState.engine is not None:

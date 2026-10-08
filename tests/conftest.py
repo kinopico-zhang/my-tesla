@@ -24,7 +24,7 @@ from app.tesla.models import Base, OwnBase  # pylint: disable=wrong-import-posit
 import app.main as m  # pylint: disable=wrong-import-position
 
 # 测试口径的账密 (isolate 里种进账号库, auth 夹具按它登录;
-# 生产首启种管理员读 .env 的 AUTH_PASS, 测试不依赖环境)
+# 生产首启种管理员读启动参数/env 的 AUTH_PASS, 测试不依赖环境)
 TEST_USER = "admin"
 TEST_PASS = "unit-test-pass"
 

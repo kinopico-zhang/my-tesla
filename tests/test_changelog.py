@@ -17,6 +17,7 @@ def test_versions_newest_first_and_wellformed():
     """新→老; 每版字段齐全, 文案是用户视角的一句话 (不夹技术黑话)。"""
     vs = changelog.entries()
     assert [v.version for v in vs] == [
+        "3.6.0",
         "3.5.1",
         "3.5.0",
         "3.4.8", "3.4.7", "3.4.6", "3.4.5", "3.4.4", "3.4.3", "3.4.2", "3.4.1", "3.4.0",
@@ -45,7 +46,7 @@ def test_version_data_lives_in_json_dir():
     里, app/ 下不再有 changelog_versions_*.py —— 新批次 = 加一个 json。"""
     data_dir = Path(changelog.__file__).parent / "changelog_data"
     files = sorted(data_dir.glob("*.json"))
-    assert len(files) == 23                       # 拆分时代的 23 个批次
+    assert len(files) == 24                       # 拆分时代 23 批 + 3.6.0
     assert not list((data_dir.parent).glob("changelog_versions_*.py"))
     loaded = {v.version for v in changelog.entries()}
     for f in files:                               # 每个文件都被装载 (无孤儿)
@@ -63,7 +64,8 @@ def test_changelog_entries_endpoint(auth):
         assert e["items"] == [{"kind": it.kind, "text": it.text}
                               for it in v.items]
     # 头条是主打: 新功能或修的主 bug; 纯打磨的批次整版都是改进, 不硬凑
-    # (3.5.1 头条是修复「行程统计弱网打开慢」;
+    # (3.6.0 头条是新增「启动配置走命令行参数」;
+    # 3.5.1 头条是修复「行程统计弱网打开慢」;
     # 3.5.0 头条是新增「首启引导三步走」;
     # 3.4.8 整版都是改进「左缘呼出统一 + 数据来源卡排版」;
     # 3.4.7 整版都是改进「地图设置说明折叠/掩码回显/保存闸 + 足迹地图

@@ -48,7 +48,7 @@ class TripGroup(OwnBase):
 class AppSetting(OwnBase):
     """运行时设置 (设置页改, 存自有库; 恒单行 id=1)。
 
-    未设 (空串) 字段回落 env/.env 默认值; 密码/Key 只存不回显
+    未设 (空串) 字段回落 env 默认值; 密码/Key 只存不回显
     (GET 打码, 前端留空 = 保持现值)。"""
 
     __tablename__ = "app_settings"

@@ -12,7 +12,7 @@
 
 ![pylint](https://img.shields.io/badge/pylint-10.00%2F10-brightgreen)
 ![mypy](https://img.shields.io/badge/mypy-strict-2A6DB2)
-![pytest](https://img.shields.io/badge/pytest-431%20passed-0A9EDC?logo=pytest&logoColor=white)
+![pytest](https://img.shields.io/badge/pytest-439%20passed-0A9EDC?logo=pytest&logoColor=white)
 ![coverage](https://img.shields.io/badge/JS%20coverage-95%25%2B-brightgreen)
 
 ![ESLint](https://img.shields.io/badge/ESLint-passing-4B32C3?logo=eslint&logoColor=white)
@@ -51,7 +51,7 @@
 - 🚙 **多车切换** — 车辆选择住抽屉顶, 全视图跟着切
 - 🧭 **单壳移动优先 UI** — 左缘右划呼出抽屉, 手势导航 (任意页通用)
 - ⚙️ **应用内设置** — TeslaMate 连接 · 高德 Key · 驾驶员 · 常用地点, 改完即生效
-- 🔄 **双部署模式** — 独立部署自带账号层; 或挂 My Home 组合仓共享账号单点登录
+- 🔄 **双部署模式** — 账号归启动方: 独立部署自带账号层; 挂 My Home 组合仓则共用其账号单点登录
 
 ## 🚀 快速开始
 
@@ -61,20 +61,19 @@
 ```sh
 python3.13 -m venv .venv
 .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
-cp .env.example .env      # 可全留空, 首启走 /setup 引导; TeslaMate 连接也可后填
-./run.sh
+./run.sh                  # 配置全走命令行参数 (./run.sh --help 看全量); 全默认首启走 /setup 引导
 ```
 
-`run.sh` 有证书时 HTTPS 与 HTTP 双开 (两个端口两个进程): HTTPS 走
-`PORT` (默认 8500, 域名 + Let's Encrypt 证书), HTTP 走 `HTTP_PORT`
-(默认 8501, 局域网 IP 直连); 没证书只开 `PORT` 的明文。会话 cookie 是
-无状态 HMAC 签名, 两个口通用。
+`run.sh` 是 `python -m app` 的透传壳, 部署配置全走命令行参数 (`./run.sh
+--help` 一屏看全)。有证书 (`data/certs/`) 时 HTTPS 与 HTTP 双开 (两个端口
+两个进程): HTTPS 走 `--port` (默认 8500, Let's Encrypt 证书), HTTP 走
+`--http-port` (默认 8501, 局域网 IP 直连); 没证书只开 `--port` 的明文,
+`--http` 可强制明文 (调试)。会话 cookie 是无状态 HMAC 签名, 两个口通用。
 
 打开 `http://<host>:8500/` → 自动进 `/tesla/charging`。账号库为空时
 登录页会带去 `/setup` 引导页: 注册第一个管理员, 顺路配 TeslaMate 连接
-与地图 Key, 全部可跳过、之后在设置页随时补。`.env` 里设 `AUTH_PASS`
-是旧口径种子 (只在空库时生效, 设了就不再进引导; 仓库是公开的, 不带
-默认口令)。
+与地图 Key, 全部可跳过、之后在设置页随时补。`--auth-pass` 是旧口径种子
+(只在空库时生效, 给了就不再进引导; 仓库是公开的, 不带默认口令)。
 
 ## 🌐 页面与 URL
 
@@ -97,29 +96,33 @@ cp .env.example .env      # 可全留空, 首启走 /setup 引导; TeslaMate 连
 ## 📡 数据源
 
 TeslaMate 连接三种给法 (优先级从高到低): 设置页里填 (存自有库, 改完热
-重连实测) → `.env` 里的 `TMDB_*` → docker 容器定位 (与 TeslaMate 同机部署
-时)。数据只读, 不会往 TeslaMate 库写任何东西。
+重连实测) → 启动参数 `--teslamate-*` (回落环境变量 `TMDB_*`) → docker
+容器定位 (与 TeslaMate 同机部署时)。数据只读, 不会往 TeslaMate 库写任何
+东西。
 
-高德 Key (`AMAP_KEY` + `AMAP_SECURITY_CODE`, 服务平台选「Web端 JS API」,
+高德 Key (`--amap-key` + `--amap-security-code`, 服务平台选「Web端 JS API」,
 个人开发者免费) 未配置时地图页显示申请指引, 也可在设置页保存。
 
 自有数据落在 `data/` (git 忽略): `mytesla.db` (轨迹断档补路等自产数据)
 + `users.db` 账号 + `certs/` 证书。
 
-## ⚙️ 环境变量
+## ⚙️ 启动参数
 
-完整清单见 [.env.example](.env.example), 常用项:
+全量清单 `./run.sh --help` (分组帮助即部署文档), 常用项:
 
-| 变量 | 默认 | 说明 |
+| 参数 | 默认 | 说明 |
 |---|---|---|
-| `AUTH_USER` / `AUTH_PASS` | `admin` / 空 | 旧口径首启种子 (不设则走 `/setup` 引导; 只在空账号库时种) |
-| `PORT` / `HTTP_PORT` / `HTTP` | `8500` / `8501` | 双端口; `HTTP=1` 强制明文 (调试) |
-| `TMDB_HOST` 等 | docker 定位 | TeslaMate PostgreSQL (设置页里填的优先) |
-| `AMAP_KEY` / `AMAP_SECURITY_CODE` | 空 | 高德 Web端 JS API Key |
-| `AMAP_STYLE` | `amap://styles/dark` | 地图样式 |
-| `MYTESLA_DB` | `sqlite:///data/mytesla.db` | 自有库 (自产数据) |
-| `MYHOME_USERS_DB` / `MYHOME_SECRET_FILE` | `data/users.db` / `.session_secret` | 账号库与会话密钥 (组合部署指到共享文件) |
-| `TZ_NAME` / `CUR_SYMBOL` | `Asia/Shanghai` / `¥` | 显示口径 |
+| `--port` / `--http-port` | `8500` / `8501` | 主端口 (有证书走 TLS) / 局域网明文端口 |
+| `--auth-user` / `--auth-pass` | `admin` / 空 | 旧口径首启种子 (不设密码则走 `/setup` 引导; 只在空账号库时种) |
+| `--teslamate-host` 等 | docker 定位 | TeslaMate PostgreSQL (设置页里填的优先) |
+| `--amap-key` / `--amap-security-code` | 空 | 高德 Web端 JS API Key 与安全密钥 |
+| `--amap-web-key` | 空 | 高德 Web 服务 Key (足迹道路拟合 / 逆地理) |
+| `--mytesla-db` | `sqlite:///data/mytesla.db` | 自有库 (自产数据) |
+| `--users-db` / `--secret-file` | `data/users.db` / `.session_secret` | 账号库与会话密钥 (组合部署指到共享文件) |
+| `--tz` / `--currency` | `Asia/Shanghai` / `¥` | 显示口径 |
+
+参数没给的回落同名环境变量 (如 `--teslamate-host` → `TMDB_HOST`), 再回落
+内置默认 —— 显式参数 > 环境变量 > 默认, 自动化与容器注入仍可走环境变量。
 
 ## 🧪 测试与质量门禁
 
@@ -128,7 +131,7 @@ npm install               # 前端工具链 (eslint/tsc/stylelint/html-validate/
 ./run_tests.sh            # pylint + mypy + pytest + 前端全套 + 覆盖率门禁
 ```
 
-门禁全绿才算过: pylint 10.00/10 (app 严检) · mypy 严格模式 · pytest 417 例
+门禁全绿才算过: pylint 10.00/10 (app 严检) · mypy 严格模式 · pytest 439 例
 (真实 ORM + SQLite 临时库, 不碰真实数据; 含 e2e 冒烟: 起真 uvicorn
 子进程打真 HTTP —— 登录 → 页面 → 静态资源, 与 ./run.sh 生产路径同构) · ESLint / tsc --checkJs /
 stylelint / html-validate / node --test · c8 覆盖率 ≥95% (纯逻辑模块)。
@@ -146,6 +149,7 @@ app/
   database/      三引擎: teslamate 库 / 自有库 / 账号库
   account_store/     账号库存取 (scrypt 密码 + 注册邀请)
   authentication.py  会话 cookie 签发与校验 (HMAC)
+  cli.py / __main__.py  命令行启动器 (python -m app): 参数全量清单 + 双端口编排
   main.py        独立装配: 账号层挂根, 应用挂 /tesla
 tests/           pytest (真实 ORM + SQLite 临时库) + node --test (纯逻辑模块)
 ```

@@ -1,34 +1,17 @@
 #!/bin/sh
-# 启动服务: 有证书时 HTTPS 与 HTTP 双开 (两个端口两个进程), 没证书只开 HTTP。
-#   HTTPS  → PORT      (默认 8500, Let's Encrypt 证书由 WSL 上的 acme.sh 签发
-#                       续期, reloadcmd 调组合仓根 deploy/local/reload-cert.sh)
-#   HTTP   → HTTP_PORT (默认 8501, 局域网 IP 直连明文访问)
-# 存在 .env 时自动加载 (AMAP_KEY / HTTP_PORT 等, 见 .env.example)。
-# HTTP=1 ./run.sh 可临时只开明文 (跳过 TLS, 单进程, 调试用)。
+# 启动服务: 部署配置全走命令行参数, 本脚本只是 python -m app 的透传壳
+# (全量清单 ./run.sh --help; 旧版读 .env 的方式已退役 —— 参数没给的
+# 回落同名环境变量, 再回落内置默认)。
+#   有证书 (默认 data/certs/) → HTTPS 走 --port (默认 8500, Let's Encrypt
+#     证书由 WSL 上的 acme.sh 签发续期, reloadcmd 调组合仓根
+#     deploy/local/reload-cert.sh) + 局域网明文走 --http-port (默认 8501),
+#     双端口双进程
+#   没证书 → 只开 --port 的明文; --http 可强制明文 (忽略证书, 调试用)
 cd "$(dirname "$0")" || exit 1
-if [ -f .env ]; then
-  set -a
-  . ./.env
-  set +a
-fi
 
 PY=.venv/bin/python
-HOST=0.0.0.0
-PORT="${PORT:-8500}"
-
-# 没证书 (或显式 HTTP=1): 单明文进程, exec 顶替 shell (与旧版行为一致)
-if [ ! -f data/certs/fullchain.pem ] || [ "${HTTP:-0}" = "1" ]; then
-  exec $PY -m uvicorn app.main:app --host "$HOST" --port "$PORT"
+if [ ! -x "$PY" ]; then
+  echo "缺 $PY: 先 python3.13 -m venv .venv 装依赖 (见 README 快速开始)" >&2
+  exit 1
 fi
-
-# 有证书: HTTPS (主入口) + HTTP (局域网明文) 双开。
-# 两个进程各自持有轨迹缓存与登录限速表 (会话 cookie 是无状态 HMAC 签名,
-# 跨进程通用); systemd 停服务时整个组一起收。
-HTTP_PORT="${HTTP_PORT:-8501}"
-$PY -m uvicorn app.main:app --host "$HOST" --port "$PORT" \
-  --ssl-keyfile data/certs/privkey.pem --ssl-certfile data/certs/fullchain.pem &
-TLS_PID=$!
-$PY -m uvicorn app.main:app --host "$HOST" --port "$HTTP_PORT" &
-PLAIN_PID=$!
-trap 'kill $TLS_PID $PLAIN_PID 2>/dev/null' TERM INT
-wait $TLS_PID $PLAIN_PID
+exec "$PY" -m app "$@"

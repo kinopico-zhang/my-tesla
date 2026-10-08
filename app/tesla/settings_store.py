@@ -1,4 +1,4 @@
-"""运行时设置 (自有库): 设置页可改, 未设字段回落 env/.env 默认值。
+"""运行时设置 (自有库): 设置页可改, 未设字段回落 env 默认值。
 驾驶员 CRUD 在 drivers_store (拆模块)。
 
 TeslaMate 连接改动会换引擎重连 (database.rebuild_engine) 并实测 SELECT 1,
