@@ -4,68 +4,51 @@
 x 大改版 · y 新功能 · z 问题修复, 新批次加在最上面 (新→老)。
 只记 My Tesla 自己的版本线; My Music / My Money 的变化在各自应用的
 日志页看 (2026-09-14 起各自独立)。
-3.2.0 与更老的批次按纪元归档: changelog_versions_3_2.py
-(2026-09-24 拆; 2026-09-26 纪元归档满, 3.2.0 再拆去 changelog_versions_3_2_0,
-同日 3.2.3 也拆过去) / changelog_versions_3_2_5.py (2026-09-26 拆; 2026-09-27 3.2.4 从主文件
-并入, 又是 3.3.1 批顶上限) / changelog_versions_3_3_0.py (2026-09-27 拆) /
-changelog_versions_3_3_1.py (2026-09-27 拆, 主文件只留拼接与出口 —— 3.3.1 批
-修复/新增再进门又顶 200 行上限) / changelog_versions_3_3_2.py (2026-09-28 拆,
-3.3.2 批仪表盘等再进门, 3.3.1 文件已 199 行贴顶) / changelog_versions_3_3_3.py
-(2026-09-29 拆, 足迹地图「走过的路」批) / changelog_versions_3_3_4.py
-(2026-10-02 拆, 足迹地图性能与播放条布局批) / changelog_versions_3_3_5.py
-(2026-10-02 拆, 常去地点改问高德批) / changelog_versions_3_4_0.py
-(2026-10-03 拆, 常用地点管理升级批) / changelog_versions_3_4_1.py
-(2026-10-04 拆, 常用地点组详情层批) / changelog_versions_3_4_2.py
-(2026-10-05 拆, 充电地图屏缘缝条批; 同日第二批 3_4_3 常用地点交互+异步, 第三
-批 3_4_4 账号三卡+Key 掩码+地点删除搬详情层底; 3_3_3 起各批文案重写为使用
-者视角) / changelog_versions_3_4_5.py (2026-10-06 拆, 常用地点详情改右滑
-全屏页批) / changelog_versions_3_4_6.py (同日第二批拆, 地图
-设置「测试」钮手机端根修批) / changelog_versions_3_4_7.py (同日第三批拆,
-地图设置说明折叠/掩码/保存闸 + 足迹地图按 Key 开闸批) /
-changelog_versions_3_4_8.py (2026-10-07 拆, 左缘呼出统一 + 数据来源卡
-排版批) / changelog_versions_3_5_0.py (同日第四批拆, 首启引导页批) /
-changelog_versions_3_5_1.py (2026-10-08 拆, 行程统计弱网提速批) /
-changelog_versions_3_1.py (2026-09-22 拆) /
-changelog_versions_3_0.py (2026-09-22 拆) /
-changelog_versions_pre_3_0.py (2026-09-21 拆), 拆家规矩与音乐 App 相同。"""
+3.2.0 与更老的批次按纪元归档, 拆分史 (2026-09-21 起为 200 行模块上限
+所迫, 每顶上限拆一批): pre_3_0 (2026-09-21) / 3_0、3_1 (2026-09-22) /
+3_2 (2026-09-24) / 3_2_0 (2026-09-26, 3.2.0 与 3.2.3 同日并入) /
+3_2_5 (2026-09-26, 3.2.4 次日并入) / 3_3_0、3_3_1 (2026-09-27) /
+3_3_2 (2026-09-28) / 3_3_3 足迹地图批 (2026-09-29) / 3_3_4 足迹地图性
+能与播放条布局批 (2026-10-02) / 3_3_5 常去地点改问高德批 (同日) /
+3_4_0 常用地点管理升级批 (2026-10-03) / 3_4_1 组详情层批 (2026-10-04) /
+3_4_2 屏缘缝条批、3_4_3 交互+异步批、3_4_4 账号三卡+Key 掩码批
+(2026-10-05) / 3_4_5 详情右滑全屏页批、3_4_6 测试钮手机端根修批、
+3_4_7 说明折叠/掩码/保存闸批 (2026-10-06) / 3_4_8 左缘呼出统一批、
+3_5_0 首启引导页批 (2026-10-07) / 3_5_1 行程统计弱网提速批 (2026-10-08)。
+2026-10-08 数据/代码分离: 上述批次 .py 全部转成 changelog_data/ 目录下
+的同名 .json (纯数据, 文案一字未动), 本文件只留装载逻辑 —— 全局按版本
+号降序拼装; 新批次 = 目录里加一个 json, 代码零改动 (拆文件的规矩对数据
+文件退役, 与音乐 App 相同的规矩也到此对齐)。"""
+import json
+from pathlib import Path
 from typing import Final
 
-from .changelog_versions_3_0 import VERSIONS_3_0
-from .changelog_versions_3_1 import VERSIONS_3_1
-from .changelog_versions_3_2 import VERSIONS_3_2
-from .changelog_versions_3_2_0 import VERSIONS_3_2_0
-from .changelog_versions_3_2_5 import VERSIONS_3_2_5
-from .changelog_versions_3_3_0 import VERSIONS_3_3_0
-from .changelog_versions_3_3_1 import VERSIONS_3_3_1
-from .changelog_versions_3_3_2 import VERSIONS_3_3_2
-from .changelog_versions_3_3_3 import VERSIONS_3_3_3
-from .changelog_versions_3_3_4 import VERSIONS_3_3_4
-from .changelog_versions_3_3_5 import VERSIONS_3_3_5
-from .changelog_versions_3_4_0 import VERSIONS_3_4_0
-from .changelog_versions_3_4_1 import VERSIONS_3_4_1
-from .changelog_versions_3_4_4 import VERSIONS_3_4_4
-from .changelog_versions_3_4_5 import VERSIONS_3_4_5
-from .changelog_versions_3_4_6 import VERSIONS_3_4_6
-from .changelog_versions_3_4_7 import VERSIONS_3_4_7
-from .changelog_versions_3_4_8 import VERSIONS_3_4_8
-from .changelog_versions_3_5_0 import VERSIONS_3_5_0
-from .changelog_versions_3_5_1 import VERSIONS_3_5_1
-from .changelog_versions_3_4_3 import VERSIONS_3_4_3
-from .changelog_versions_3_4_2 import VERSIONS_3_4_2
-from .changelog_versions_pre_3_0 import VERSIONS_PRE_3_0
-from .schemas import ChangelogVersion
+from .schemas import ChangelogItem, ChangelogVersion
 
-VERSIONS: Final[list[ChangelogVersion]] = (
-    VERSIONS_3_5_1
-    + VERSIONS_3_5_0
-    + VERSIONS_3_4_8 + VERSIONS_3_4_7 + VERSIONS_3_4_6
-    + VERSIONS_3_4_5 + VERSIONS_3_4_4 + VERSIONS_3_4_3 + VERSIONS_3_4_2
-    + VERSIONS_3_4_1 + VERSIONS_3_4_0
-    + VERSIONS_3_3_5
-    + VERSIONS_3_3_4 + VERSIONS_3_3_3
-    + VERSIONS_3_3_2 + VERSIONS_3_3_1 + VERSIONS_3_3_0 + VERSIONS_3_2_5
-    + VERSIONS_3_2 + VERSIONS_3_2_0 + VERSIONS_3_1 + VERSIONS_3_0
-    + VERSIONS_PRE_3_0)
+_DATA_DIR = Path(__file__).parent / "changelog_data"
+
+
+def _vkey(version: str) -> tuple[int, ...]:
+    """「3.5.10」→ (3, 5, 10), 版本号降序的排序键。"""
+    return tuple(int(p) for p in version.split("."))
+
+
+def _load_all() -> list[ChangelogVersion]:
+    """读 changelog_data/*.json (每文件一批, 文件内新→老), 全局按版本号
+    降序 —— 与拆分时代 changelog.py 的拼接顺序一致 (test_changelog 钉着
+    43 版全表)。键名手写取值, json 里写错键当场 KeyError, 不静默吞。"""
+    out: list[ChangelogVersion] = []
+    for f in sorted(_DATA_DIR.glob("*.json")):
+        for raw in json.loads(f.read_text(encoding="utf-8")):
+            out.append(ChangelogVersion(
+                version=raw["version"], date=raw["date"],
+                items=[ChangelogItem(kind=i["kind"], text=i["text"])
+                       for i in raw["items"]]))
+    out.sort(key=lambda v: _vkey(v.version), reverse=True)
+    return out
+
+
+VERSIONS: Final[list[ChangelogVersion]] = _load_all()
 
 
 def entries() -> list[ChangelogVersion]:

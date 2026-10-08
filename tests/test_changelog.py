@@ -3,6 +3,9 @@
 版本号 x.y.z —— x 大改版, y 新功能, z 问题修复; 一个版本 = 一批改动的合并
 (可以同时含新增/改进/修复), 不逐提交记版本。条目按新→老输出。
 """
+import json
+from pathlib import Path
+
 from app import changelog
 from tests.tesla_static_files import page_js, served_page
 
@@ -35,6 +38,19 @@ def test_versions_newest_first_and_wellformed():
     # 可以只有一类 —— 2.6.0 只有菜单显示账号这一件事, 硬凑修复反而失真)
     kinds = {it.kind for it in vs[0].items}
     assert kinds <= {"新增", "改进", "修复"}
+
+
+def test_version_data_lives_in_json_dir():
+    """数据/代码分离 (2026-10-08): 版本数据只在 changelog_data/ 的 json
+    里, app/ 下不再有 changelog_versions_*.py —— 新批次 = 加一个 json。"""
+    data_dir = Path(changelog.__file__).parent / "changelog_data"
+    files = sorted(data_dir.glob("*.json"))
+    assert len(files) == 23                       # 拆分时代的 23 个批次
+    assert not list((data_dir.parent).glob("changelog_versions_*.py"))
+    loaded = {v.version for v in changelog.entries()}
+    for f in files:                               # 每个文件都被装载 (无孤儿)
+        for raw in json.loads(f.read_text(encoding="utf-8")):
+            assert raw["version"] in loaded
 
 
 # ---------------------------------------------------------------- 接口
