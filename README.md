@@ -31,6 +31,16 @@
 <img src="docs/screenshot-map.png" width="300" alt="足迹地图 · My Tesla (演示数据)">
 </p>
 
+全部 15 个视图 (iPhone 17 Pro 官方设备框, 演示数据, 复刻管线在 [`shots/`](shots/README.md)):
+
+|      |      |      |
+|:----:|:----:|:----:|
+| <img src="docs/screenshot-live.png" width="188" alt="状态 · My Tesla (演示数据)"><br>**状态** | <img src="docs/screenshot-trips.png" width="188" alt="行程列表 · My Tesla (演示数据)"><br>**行程列表** | <img src="docs/screenshot-tripstats.png" width="188" alt="行程统计 · My Tesla (演示数据)"><br>**行程统计** |
+| <img src="docs/screenshot-groups.png" width="188" alt="行程分组 · My Tesla (演示数据)"><br>**行程分组** | <img src="docs/screenshot-map.png" width="188" alt="足迹地图 · My Tesla (演示数据)"><br>**足迹地图** | <img src="docs/screenshot-charging.png" width="188" alt="充电记录 · My Tesla (演示数据)"><br>**充电记录** |
+| <img src="docs/screenshot-stats.png" width="188" alt="充电统计 · My Tesla (演示数据)"><br>**充电统计** | <img src="docs/screenshot-battery.png" width="188" alt="电池健康 · My Tesla (演示数据)"><br>**电池健康** | <img src="docs/screenshot-chargemap.png" width="188" alt="充电地图 · My Tesla (演示数据)"><br>**充电地图** |
+| <img src="docs/screenshot-settings-account.png" width="188" alt="账号设置 · My Tesla (演示数据)"><br>**账号设置** | <img src="docs/screenshot-settings-db.png" width="188" alt="数据来源 · My Tesla (演示数据)"><br>**数据来源** | <img src="docs/screenshot-settings-map.png" width="188" alt="地图设置 · My Tesla (演示数据)"><br>**地图设置** |
+| <img src="docs/screenshot-settings-drivers.png" width="188" alt="驾驶员 · My Tesla (演示数据)"><br>**驾驶员** | <img src="docs/screenshot-settings-places.png" width="188" alt="常用地点 · My Tesla (演示数据)"><br>**常用地点** | <img src="docs/screenshot-changelog.png" width="188" alt="更新日志 · My Tesla (演示数据)"><br>**更新日志** |
+
 ## ✨ 功能
 
 - 🔋 **充电** — 充电记录 (费用 / 区域统计) · 充电统计 · 充电地图
