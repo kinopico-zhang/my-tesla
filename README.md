@@ -22,16 +22,10 @@
 
 </div>
 
-> 从 [My Home](https://github.com/kinopico-zhang/my-home) 组合仓拆出来的独立仓:
-> 账号体系 (登录/注册/账号管理) 内嵌在 `app/home/`, 单独 clone 本仓即可部署,
-> 不需要组合仓。
-
 <p align="center">
 <img src="docs/screenshot-charging.png" width="300" alt="充电记录 · My Tesla (演示数据)">
 <img src="docs/screenshot-map.png" width="300" alt="足迹地图 · My Tesla (演示数据)">
 </p>
-
-全部 15 个视图 (iPhone 17 Pro 官方设备框, 演示数据, 复刻管线在 [`shots/`](shots/README.md)):
 
 |      |      |      |
 |:----:|:----:|:----:|
