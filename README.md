@@ -22,43 +22,58 @@
 
 </div>
 
-<p align="center">
-<a href="#view-charging"><img src="docs/screenshot-charging.png" width="300" alt="充电记录 · My Tesla (演示数据)"></a>
-<a href="#view-map"><img src="docs/screenshot-map.png" width="300" alt="足迹地图 · My Tesla (演示数据)"></a>
-</p>
-
-*点击任一截图, 当前页内跳到对应大图 (不新开窗口)。*
-
-<a id="shots"></a>
-
-|      |      |      |
-|:----:|:----:|:----:|
-| <a href="#view-live"><img src="docs/screenshot-live.png" width="188" alt="状态 · My Tesla (演示数据)"></a><br>**状态** | <a href="#view-trips"><img src="docs/screenshot-trips.png" width="188" alt="行程列表 · My Tesla (演示数据)"></a><br>**行程列表** | <a href="#view-tripstats"><img src="docs/screenshot-tripstats.png" width="188" alt="行程统计 · My Tesla (演示数据)"></a><br>**行程统计** |
-| <a href="#view-groups"><img src="docs/screenshot-groups.png" width="188" alt="行程分组 · My Tesla (演示数据)"></a><br>**行程分组** | <a href="#view-map"><img src="docs/screenshot-map.png" width="188" alt="足迹地图 · My Tesla (演示数据)"></a><br>**足迹地图** | <a href="#view-charging"><img src="docs/screenshot-charging.png" width="188" alt="充电记录 · My Tesla (演示数据)"></a><br>**充电记录** |
-| <a href="#view-stats"><img src="docs/screenshot-stats.png" width="188" alt="充电统计 · My Tesla (演示数据)"></a><br>**充电统计** | <a href="#view-battery"><img src="docs/screenshot-battery.png" width="188" alt="电池健康 · My Tesla (演示数据)"></a><br>**电池健康** | <a href="#view-chargemap"><img src="docs/screenshot-chargemap.png" width="188" alt="充电地图 · My Tesla (演示数据)"></a><br>**充电地图** |
-
-## 🔍 大图视图
-
-[⬆︎ 返回缩略图](#shots)
-
-|      |      |
-|:----:|:----:|
-| <a id="view-live"></a><img src="docs/screenshot-live.png" width="400" alt="状态 · My Tesla (演示数据)"><br>**状态** · [⬆︎ 返回](#shots) | <a id="view-trips"></a><img src="docs/screenshot-trips.png" width="400" alt="行程列表 · My Tesla (演示数据)"><br>**行程列表** · [⬆︎ 返回](#shots) |
-| <a id="view-tripstats"></a><img src="docs/screenshot-tripstats.png" width="400" alt="行程统计 · My Tesla (演示数据)"><br>**行程统计** · [⬆︎ 返回](#shots) | <a id="view-groups"></a><img src="docs/screenshot-groups.png" width="400" alt="行程分组 · My Tesla (演示数据)"><br>**行程分组** · [⬆︎ 返回](#shots) |
-| <a id="view-map"></a><img src="docs/screenshot-map.png" width="400" alt="足迹地图 · My Tesla (演示数据)"><br>**足迹地图** · [⬆︎ 返回](#shots) | <a id="view-charging"></a><img src="docs/screenshot-charging.png" width="400" alt="充电记录 · My Tesla (演示数据)"><br>**充电记录** · [⬆︎ 返回](#shots) |
-| <a id="view-stats"></a><img src="docs/screenshot-stats.png" width="400" alt="充电统计 · My Tesla (演示数据)"><br>**充电统计** · [⬆︎ 返回](#shots) | <a id="view-battery"></a><img src="docs/screenshot-battery.png" width="400" alt="电池健康 · My Tesla (演示数据)"><br>**电池健康** · [⬆︎ 返回](#shots) |
-| <a id="view-chargemap"></a><img src="docs/screenshot-chargemap.png" width="400" alt="充电地图 · My Tesla (演示数据)"><br>**充电地图** · [⬆︎ 返回](#shots) |  |
-
 ## ✨ 功能
 
-- 🔋 **充电** — 充电记录 (费用 / 区域统计) · 充电统计 · 充电地图
-- 🗺️ **足迹地图** — 行车轨迹 + 道路拟合 (WGS-84 → GCJ-02 纠偏), 轨迹断档自动补路
-- 🎬 **行程** — 行程列表 · 行程统计 · 行程分组 · 轨迹回放动画
-- 🚗 **实时位置** — 当前驾驶状态
-- 🩺 **电池健康**
-- 🚙 **多车切换** — 车辆选择住抽屉顶, 全视图跟着切
-- 🧭 **单壳移动优先 UI** — 左缘右划呼出抽屉, 手势导航 (任意页通用)
-- ⚙️ **应用内设置** — TeslaMate 连接 · 高德 Key · 驾驶员 · 常用地点, 改完即生效
+<p align="center">
+<a name="shot-live"><img src="docs/screenshot-live.png" width="280" alt="状态 · My Tesla (演示数据)"></a>
+<br><b>状态</b> — 实时位置与当前驾驶状态, 电量续航一目了然
+</p>
+
+<p align="center">
+<a name="shot-trips"><img src="docs/screenshot-trips.png" width="280" alt="行程轨迹 · My Tesla (演示数据)"></a>
+<br><b>行程轨迹</b> — 每次出行的里程/时长/能耗, 详情带轨迹回放动画
+</p>
+
+<p align="center">
+<a name="shot-tripstats"><img src="docs/screenshot-tripstats.png" width="280" alt="行程统计 · My Tesla (演示数据)"></a>
+<br><b>行程统计</b> — 里程/时长/电耗的趋势与分布
+</p>
+
+<p align="center">
+<a name="shot-groups"><img src="docs/screenshot-groups.png" width="280" alt="行程分组 · My Tesla (演示数据)"></a>
+<br><b>行程分组</b> — 多次行程归成一册 (出差/周末), 分组看统计
+</p>
+
+<p align="center">
+<a name="shot-map"><img src="docs/screenshot-map.png" width="280" alt="足迹地图 · My Tesla (演示数据)"></a>
+<br><b>足迹地图</b> — 行车轨迹 + 道路拟合纠偏 (WGS-84 → GCJ-02), 断档自动补路
+</p>
+
+<p align="center">
+<a name="shot-charging"><img src="docs/screenshot-charging.png" width="280" alt="充电记录 · My Tesla (演示数据)"></a>
+<br><b>充电记录</b> — 每次充电的费用/电量/地点, 可按区域筛选
+</p>
+
+<p align="center">
+<a name="shot-stats"><img src="docs/screenshot-stats.png" width="280" alt="充电统计 · My Tesla (演示数据)"></a>
+<br><b>充电统计</b> — 充电费用与电量的统计趋势
+</p>
+
+<p align="center">
+<a name="shot-battery"><img src="docs/screenshot-battery.png" width="280" alt="电池健康 · My Tesla (演示数据)"></a>
+<br><b>电池健康</b> — 电池容量衰减趋势
+</p>
+
+<p align="center">
+<a name="shot-chargemap"><img src="docs/screenshot-chargemap.png" width="280" alt="充电地图 · My Tesla (演示数据)"></a>
+<br><b>充电地图</b> — 常去充电点的地图分布
+</p>
+
+任意页通用:
+
+- **多车切换** — 车辆选择住抽屉顶, 全视图跟着切
+- **单壳移动优先 UI** — 左缘右划呼出抽屉, 手势导航 (任意页通用)
+- **应用内设置** — TeslaMate 连接 · 高德 Key · 驾驶员 · 常用地点, 改完即生效
 
 ## 🚀 快速开始
 
