@@ -74,12 +74,6 @@
 <br><b>充电地图</b> — 常去充电点的地图分布
 </p>
 
-任意页通用:
-
-- **多车切换** — 车辆选择住抽屉顶, 全视图跟着切
-- **单壳移动优先 UI** — 左缘右划呼出抽屉, 手势导航 (任意页通用)
-- **应用内设置** — TeslaMate 连接 · 高德 Key · 驾驶员 · 常用地点, 改完即生效
-
 ## 🚀 快速开始
 
 需要 Python 3.13+ (venv) 与一个能连上的
@@ -127,33 +121,6 @@ TeslaMate 连接三种给法 (优先级从高到低): 设置页里填 (存自有
 
 参数没给的回落同名环境变量 (如 `--teslamate-host` → `TMDB_HOST`), 再回落
 内置默认 —— 显式参数 > 环境变量 > 默认, 自动化与容器注入仍可走环境变量。
-
-## 🧪 测试与质量门禁
-
-```sh
-npm install               # 前端工具链 (eslint/tsc/stylelint/html-validate/c8)
-./run_tests.sh            # pylint + mypy + pytest + 前端全套 + 覆盖率门禁
-```
-
-门禁全绿才算过: pylint 10.00/10 (app 严检) · mypy 严格模式 · pytest 439 例
-(真实 ORM + SQLite 临时库, 不碰真实数据; 含 e2e 冒烟: 起真 uvicorn
-子进程打真 HTTP —— 登录 → 页面 → 静态资源, 与 python -m app 生产路径同构) · ESLint / tsc --checkJs /
-stylelint / html-validate / node --test · c8 覆盖率 ≥95% (纯逻辑模块)。
-CI 在 GitHub Actions 三平台跑同一套门禁。
-
-## 📁 项目结构
-
-```
-app/
-  tesla/         Tesla 应用本体 (repository 查询层 + routers 路由与页面)
-  home/          账号层 (登录/注册/账号管理页面 + /api 会话接口 + 中间件)
-  database/      三引擎: teslamate 库 / 自有库 / 账号库
-  account_store/     账号库存取 (scrypt 密码 + 注册邀请)
-  authentication.py  会话 cookie 签发与校验 (HMAC)
-  cli.py / __main__.py  命令行启动器 (python -m app): 参数全量清单 + 单端口 TLS 判定
-  main.py        独立装配: 账号层挂根, 应用挂 /tesla
-tests/           pytest (真实 ORM + SQLite 临时库) + node --test (纯逻辑模块)
-```
 
 ## 📄 许可证
 
