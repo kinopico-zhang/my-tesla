@@ -12,14 +12,20 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" type="image/png" sizes="32" href="/static/favicon-32.png">
 <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-<link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v=1">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v=2">
   <link rel="manifest" href="/static/manifest.json">
   <title>初始化 · My Tesla</title>
-<link rel="stylesheet" href="/static/css/setup-page.css?v=2">
+<link rel="stylesheet" href="/static/css/setup-page.css?v=3">
 </head>
 <body data-done="/tesla">
 <div class="card" id="card">
-  <div class="icon">⚡</div>
+  <!-- 品牌图标 = Tesla T 标 (与应用壳 /favicon 同一枚, 2026-10-09 起统一;
+       拆仓时门厅层原样拷自 My Home 的 ⚡ 退役) -->
+  <div class="icon">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#fff" d="M12 5.362l2.475-3.026s4.245.09 8.471 2.054c-1.082 1.636-3.231 2.438-3.231 2.438-.146-1.439-1.154-1.79-4.354-1.79L12 24 8.619 5.034c-3.18 0-4.188.354-4.335 1.792 0 0-2.146-.795-3.229-2.43C5.28 2.431 9.525 2.34 9.525 2.34L12 5.362l-.004.002H12v-.002zm0-3.899c3.415-.03 7.326.528 11.328 2.28.535-.968.672-1.395.672-1.395C19.625.612 15.528.015 12 0 8.472.015 4.375.61 0 2.349c0 0 .195.525.672 1.396C4.674 1.989 8.585 1.435 12 1.46v.003z"/>
+    </svg>
+  </div>
   <h1>My Tesla</h1>
   <div class="sub">首次使用 · 三步配齐才能进入</div>
   <ol class="steps" id="steps">
@@ -100,7 +106,7 @@
       <input id="amap-code" type="text" autocapitalize="off" autocorrect="off"
              placeholder="未设置">
     </div>
-    <button class="btn" type="submit">保存</button>
+    <button class="btn" type="submit">保存并进入应用</button>
     <div class="err"></div>
   </form>
   <div class="done" id="done" hidden>

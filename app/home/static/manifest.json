@@ -1,7 +1,7 @@
 {
-  "name": "My Home",
-  "short_name": "My Home",
-  "description": "家里的服务门厅: My Tesla 与 My Money",
+  "name": "My Tesla",
+  "short_name": "My Tesla",
+  "description": "Tesla 充电 / 足迹 / 行程",
   "id": "/",
   "start_url": "/",
   "scope": "/",

@@ -50,7 +50,7 @@ async function deliverLink(link) {
   if (await copyText(link)) return "copied";
   if (typeof navigator.share === "function") {
     try {
-      await navigator.share({ text: "My Home 注册邀请:", url: link });
+      await navigator.share({ text: "My Tesla 注册邀请:", url: link });
       return "shared";
     } catch (_e) { return "cancelled"; }   // 用户自己关了面板
   }

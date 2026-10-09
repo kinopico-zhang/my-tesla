@@ -12,7 +12,7 @@
 
 ![pylint](https://img.shields.io/badge/pylint-10.00%2F10-brightgreen)
 ![mypy](https://img.shields.io/badge/mypy-strict-2A6DB2)
-![pytest](https://img.shields.io/badge/pytest-445%20passed-0A9EDC?logo=pytest&logoColor=white)
+![pytest](https://img.shields.io/badge/pytest-446%20passed-0A9EDC?logo=pytest&logoColor=white)
 ![coverage](https://img.shields.io/badge/JS%20coverage-95%25%2B-brightgreen)
 
 ![ESLint](https://img.shields.io/badge/ESLint-passing-4B32C3?logo=eslint&logoColor=white)
@@ -83,15 +83,17 @@
 PostgreSQL, 不往回写任何东西。数据链路:
 
 ```mermaid
+%%{init: {"theme":"base","flowchart":{"curve":"basis","nodeSpacing":44,"rankSpacing":64},"themeVariables":{"fontSize":"14px","primaryColor":"#1b1b1e","primaryTextColor":"#f5f5f7","primaryBorderColor":"#4a4a4e","lineColor":"#8e8e93","edgeLabelBackground":"#1b1b1e","clusterBkg":"#111113","clusterBorder":"#3a3a3e"}}}%%
 flowchart LR
-    subgraph tmhost["TeslaMate 所在机器 · docker compose"]
-        tm["TeslaMate"] -- "行车数据落库" --> pg[("PostgreSQL<br/>库名 / 账号 / 密码<br/>= .env 里的 POSTGRES_*")]
+    subgraph tmhost["🖥️ TeslaMate 所在机器 · docker compose"]
+        tm["TeslaMate"] -- "行车数据落库" --> pg[("PostgreSQL<br/>.env 的 POSTGRES_*")]
     end
-    car["特斯拉车辆"] -- "Tesla 账号" --> tm
-    web["浏览器 / 手机"] --> app["My Tesla (本项目)"]
+    car["🚗 特斯拉车辆"] -- "Tesla 账号" --> tm
+    web["📱 浏览器 / 手机"] --> app["My Tesla"]
     app -. "只读查询 · 向导第二步填五项" .-> pg
-    app -- "地图瓦片 / 道路拟合" --> amap["高德开放平台"]
+    app -- "地图瓦片 · 道路拟合" --> amap["🗺️ 高德开放平台"]
     app -- "账号 · 设置 · Key" --> own[("自有 SQLite<br/>data/mytesla.db")]
+    style app fill:#e82127,stroke:#5a1a1c,stroke-width:1.5px,color:#ffffff
 ```
 
 首启向导第二步 (或之后的 设置 → 数据库) 要填的五项, 全部在 TeslaMate
@@ -158,7 +160,7 @@ python3.13 -m venv .venv          # Windows: py -3.13 -m venv .venv
 <a name="shot-setup-2"><img src="docs/screenshot-setup-2.png" width="240" alt="向导第二步 · 填 TeslaMate 连接"></a>
 <a name="shot-setup-3"><img src="docs/screenshot-setup-3.png" width="240" alt="向导第三步 · 填高德 Key"></a>
 <br><b>① 建立管理员</b> — 注册即登录 · <b>② 数据源</b> — 五项按上表抄
-TeslaMate 那台机器 · <b>③ 地图</b> — 高德 Key, 配完自动进应用
+TeslaMate 那台机器 · <b>③ 地图</b> — 高德 Key, 保存并进入应用
 </p>
 
 ## 📡 数据源

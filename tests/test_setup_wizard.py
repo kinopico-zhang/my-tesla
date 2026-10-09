@@ -5,6 +5,7 @@ isolate autouse 种了管理员 + 高德 Key (已初始化口径), 这里用 fir
 env 的死路正是引导页要救的场景)。本仓是三步版页面 (管理员 → 数据源 →
 地图), 数据源/地图的保存走既有 /tesla/api/settings (test_settings.py 已
 深测), 这里测引导层的接线、缺口清单与应用门 (/tesla 的 302)。"""
+import json
 import re
 from pathlib import Path
 
@@ -176,6 +177,7 @@ def test_setup_page_standards(  # pylint: disable=redefined-outer-name
     assert "[hidden] { display: none !important; }" in css
     assert "touch-action: manipulation" in css
     assert "touch-action: pan-y" in css
+    assert "align-items: flex-start" in css   # 三张步页顶端对齐, 切步不跳版
 
 
 def test_setup_page_wiring(  # pylint: disable=redefined-outer-name
@@ -190,6 +192,8 @@ def test_setup_page_wiring(  # pylint: disable=redefined-outer-name
     assert "btn-plain" not in html
     assert re.search(r'id="tm-host"[^>]*required', html)
     assert re.search(r'id="amap-key"[^>]*required', html)
+    # 第三步是收尾步: 按钮写明存完即进应用 (2026-10-09 用户口径)
+    assert "保存并进入应用" in html
     # 取参指引 (2026-10-09 用户点名「会用的必然装了 TeslaMate, 重要的是
     # 五个参数去哪儿抄」): 第二步的提示直接写明抄哪儿
     assert "POSTGRES_PASSWORD" in html
@@ -209,3 +213,24 @@ def test_login_js_probes_setup(client):
     assert '"/api/setup-status"' in js
     assert 'missing.includes("account")' in js
     assert '"/setup"' in js
+
+
+def test_standalone_branding():
+    """独立部署的门厅图标与字样 = Tesla 品牌 (2026-10-09 统一): 拆仓时从
+    My Home 原样拷来的房子图标退役 (旧 manifest 还写着 My Home, 引用的
+    icon-192/512 甚至不存在 = PWA 装 404); 登录/注册页的标题与大标题
+    也曾是 My Home 字样。"""
+    svg = (STATIC_DIR / "favicon.svg").read_text(encoding="utf-8")
+    assert "E82127" in svg                  # Tesla 红 T, 与应用壳同一枚
+    manifest = json.loads(
+        (STATIC_DIR / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["name"] == "My Tesla"
+    assert manifest["start_url"] == "/"     # 门厅层罩全站 (应用壳那份才是 /tesla)
+    for icon in manifest["icons"]:          # 引用的图标必须真存在 (404 即红)
+        assert (STATIC_DIR / icon["src"].removeprefix("/static/")).is_file()
+    for page, what in (("login.html", "登录"), ("register.html", "注册")):
+        text = (STATIC_DIR / page).read_text(encoding="utf-8")
+        assert f"{what} · My Tesla" in text     # 页面标题随仓
+        assert "<h1>My Tesla</h1>" in text      # 卡片大标题
+    assert '"My Tesla 注册邀请:"' in \
+        (STATIC_DIR / "link-delivery.js").read_text(encoding="utf-8")

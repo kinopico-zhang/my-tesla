@@ -1,4 +1,6 @@
-/* setup-page — 首启引导页样式 (register 页为底 + 步骤条/提示/完成)。 */
+/* setup-page — 首启引导页样式 (register 页为底 + 步骤条/提示/完成)。
+   本仓与 My Home 组合仓的同名文件 2026-10-09 起品牌分家: 这份多两处 ——
+   卡片顶端对齐 (两仓同款) + 图标底 Tesla 红 (本仓专属, 组合仓保留蓝绿)。 */
 :root {
   color-scheme: dark;
   --bg: #000;
@@ -18,8 +20,11 @@ body {
   background: var(--bg); color: var(--ink-1);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
                "Helvetica Neue", system-ui, sans-serif;
-  font-size: 15px; display: flex; align-items: center; justify-content: center;
-  padding: env(safe-area-inset-top) 24px env(safe-area-inset-bottom);
+  font-size: 15px; display: flex; align-items: flex-start; justify-content: center;
+  /* 顶端对齐 (2026-10-09): 三张步页高矮不一, 垂直居中会让卡片随步骤上下
+     跳; 顶对齐后图标/标题/步骤条钉在同一高度, 矮屏溢出也改为向下可滚
+     (居中溢出会裁掉顶上且滚不回来) */
+  padding: max(env(safe-area-inset-top), 6vh) 24px env(safe-area-inset-bottom);
 }
 .card {
   width: 100%; max-width: 340px;
@@ -29,10 +34,10 @@ body {
 }
 .icon {
   width: 64px; height: 64px; margin: 0 auto 14px; border-radius: 16px;
-  background: linear-gradient(160deg, #3987e5, #1fa349);
+  background: linear-gradient(160deg, #f23a40, #b3121a);   /* Tesla 红 (T 标底) */
   display: flex; align-items: center; justify-content: center;
-  font-size: 30px;
 }
+.icon svg { width: 36px; height: 36px; display: block; }
 h1 { font-size: 21px; font-weight: 700; letter-spacing: -.3px; }
 .sub { font-size: 13px; color: var(--ink-2); margin: 5px 0 14px; }
 .steps {
