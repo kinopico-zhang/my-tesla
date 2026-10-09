@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 540" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei','Noto Sans CJK SC',sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 465" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei','Noto Sans CJK SC',sans-serif">
   <title>My Tesla 数据链路</title>
   <defs>
     <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -13,11 +13,11 @@
   </defs>
 
   <!-- 画布卡片 (浅色底) -->
-  <rect x="0.5" y="0.5" width="899" height="539" rx="18" fill="#ffffff" stroke="#d8d8de"/>
+  <rect x="0.5" y="0.5" width="899" height="464" rx="18" fill="#ffffff" stroke="#d8d8de"/>
 
   <!-- ── 底排分组框 (垫底: 连线画在其上, 组内线段才不被盖住) ── -->
   <g id="n-group">
-    <rect x="280" y="300" width="375" height="200" rx="14" fill="#fafafc" stroke="#c2c2ca" stroke-width="1.2" stroke-dasharray="5 4"/>
+    <rect x="280" y="300" width="360" height="124" rx="14" fill="#fafafc" stroke="#c2c2ca" stroke-width="1.2" stroke-dasharray="5 4"/>
     <text id="t-group" x="296" y="324" data-max="328" font-size="12" fill="#6e6e73" text-anchor="start" dominant-baseline="central">🖥 TeslaMate 所在机器 · docker compose</text>
   </g>
 
@@ -32,27 +32,27 @@
   <path id="e6" d="M 505 194 L 505 262 L 557.5 262 L 557.5 330" fill="none" stroke="#7d7d86"
         stroke-width="1.6" stroke-dasharray="7 6" marker-end="url(#ahd)"/>
 
-  <!-- 连线标签 (胶囊底 + 文字; 画在连线上层, 压线的胶囊遮住自己那条线) -->
+  <!-- 连线标签 (胶囊底 + 文字; 全部悬在线上方或立于线旁, 不遮任何线) -->
   <g>
     <g id="l-e2">
-      <rect x="196" y="345" width="78" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
-      <text x="235" y="355" data-max="68" font-size="12" fill="#55555c" text-anchor="middle" dominant-baseline="central">Tesla 账号</text>
+      <rect x="184" y="345" width="92" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
+      <text x="230" y="355" data-max="84" font-size="11" fill="#55555c" text-anchor="middle" dominant-baseline="central">Tesla 实时数据</text>
     </g>
     <g id="l-e3">
       <rect x="409" y="345" width="82" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
       <text x="450" y="355" data-max="72" font-size="11" fill="#55555c" text-anchor="middle" dominant-baseline="central">行车数据落库</text>
     </g>
     <g id="l-e4">
-      <rect x="220.5" y="157" width="130" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
-      <text x="285.5" y="167" data-max="120" font-size="12" fill="#55555c" text-anchor="middle" dominant-baseline="central">地图瓦片 · 道路拟合</text>
+      <rect x="220.5" y="145" width="130" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
+      <text x="285.5" y="155" data-max="120" font-size="12" fill="#55555c" text-anchor="middle" dominant-baseline="central">地图瓦片 · 道路拟合</text>
     </g>
     <g id="l-e5">
-      <rect x="543.5" y="157" width="110" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
-      <text x="598.5" y="167" data-max="100" font-size="12" fill="#55555c" text-anchor="middle" dominant-baseline="central">账号 · 设置 · Key</text>
+      <rect x="543.5" y="145" width="110" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
+      <text x="598.5" y="155" data-max="100" font-size="12" fill="#55555c" text-anchor="middle" dominant-baseline="central">账号 · 设置 · Key</text>
     </g>
     <g id="l-e6">
-      <rect x="469.5" y="252" width="176" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
-      <text x="557.5" y="262" data-max="166" font-size="12" fill="#55555c" text-anchor="middle" dominant-baseline="central">只读查询 · 向导第二步填五项</text>
+      <rect x="513" y="218" width="68" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
+      <text x="547" y="228" data-max="56" font-size="12" fill="#55555c" text-anchor="middle" dominant-baseline="central">只读查询</text>
     </g>
   </g>
 
@@ -97,7 +97,6 @@
   <g id="n-pg">
     <path d="M 500 345 L 500 393 A 57.5 9 0 0 0 615 393 L 615 345" fill="#f4f4f7" stroke="#c8c8cf" stroke-width="1.2"/>
     <ellipse cx="557.5" cy="345" rx="57.5" ry="9" fill="#e8e8ec" stroke="#c8c8cf" stroke-width="1.2"/>
-    <text id="t-pg1" x="557.5" y="367" data-max="97" font-size="13" font-weight="500" fill="#1d1d1f" text-anchor="middle" dominant-baseline="central">PostgreSQL</text>
-    <text id="t-pg2" x="557.5" y="384" data-max="97" font-size="9.5" fill="#6e6e73" text-anchor="middle" dominant-baseline="central">.env 的 POSTGRES_*</text>
+    <text id="t-pg1" x="557.5" y="369" data-max="97" font-size="13" font-weight="500" fill="#1d1d1f" text-anchor="middle" dominant-baseline="central">PostgreSQL</text>
   </g>
 </svg>
