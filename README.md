@@ -83,7 +83,7 @@
 PostgreSQL, 不往回写任何东西。数据链路:
 
 <p align="center">
-<a name="arch"><img src="docs/architecture.svg?v=2" width="800" alt="My Tesla 数据链路"></a>
+<a name="arch"><img src="docs/architecture.svg?v=3" width="800" alt="My Tesla 数据链路"></a>
 </p>
 
 首启向导第二步 (或之后的 设置 → 数据库) 要填的五项, 全部在 TeslaMate
