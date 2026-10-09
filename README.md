@@ -2,7 +2,7 @@
 
 # <img src="https://cdn.simpleicons.org/tesla/E82127" height="26" alt="Tesla"> My Tesla
 
-**TeslaMate 行车数据的自托管展示应用** — 充电 · 足迹 · 行程 · 实时位置
+**TeslaMate 可视化工具**
 
 [![CI](https://github.com/kinopico-zhang/my-tesla/actions/workflows/ci.yml/badge.svg)](https://github.com/kinopico-zhang/my-tesla/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/kinopico-zhang/my-tesla)](./LICENSE)
@@ -32,6 +32,11 @@
 <p align="center">
 <a name="shot-trips"><img src="docs/screenshot-trips.png" width="280" alt="行程轨迹 · My Tesla (演示数据)"></a>
 <br><b>行程轨迹</b> — 每次出行的里程/时长/能耗, 详情带轨迹回放动画
+</p>
+
+<p align="center">
+<a name="shot-trip"><img src="docs/screenshot-trip.png" width="280" alt="单个行程 · My Tesla (演示数据)"></a>
+<br><b>单个行程</b> — 轨迹回放定格 (随速红绿线), 横滑切动态曲线与速度直方图
 </p>
 
 <p align="center">
