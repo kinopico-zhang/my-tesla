@@ -18,6 +18,7 @@ from ..schemas import (
     SetupCredentials,
     SetupStatus,
 )
+from . import setup_gate
 
 api = APIRouter(prefix="/api")
 
@@ -115,8 +116,13 @@ def register(creds: RegisterCredentials, request: Request,
 
 @api.get("/setup-status", response_model=SetupStatus)
 def setup_status(users: Session = Depends(database.get_users_db)) -> SetupStatus:
-    """首启引导是否需要 (登录页进页即查; 公开, 只暴露 needed 一个布尔)。"""
-    return SetupStatus(needed=not account_store.admin_exists(users))
+    """首启引导还差哪几步 (登录页/引导页进页即查; 公开, 缺口清单而已)。
+
+    账号一步在本仓账号库上判; 数据源/地图两步走 setup_gate (本仓查 Tesla
+    设置, 两个非 Tesla 子应用仓恒空)。三步全配齐之前引导是唯一入口。"""
+    missing = [] if account_store.admin_exists(users) else ["account"]
+    missing += setup_gate.wizard_missing()
+    return SetupStatus(needed=bool(missing), missing=missing)
 
 
 @api.post("/setup-admin", response_model=OkResponse)

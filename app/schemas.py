@@ -45,9 +45,11 @@ class SetupCredentials(BaseModel):
     password: str
 
 class SetupStatus(BaseModel):
-    """首启引导状态 (登录页进页即查, needed 时让路给引导页)。"""
+    """首启引导状态 (登录页/引导页进页即查): missing 列出还差的步骤
+    ("account" / "teslamate" / "amap"), 引导页按它决定从哪步接着走。"""
 
     needed: bool
+    missing: list[str] = []
 
 class MeInfo(BaseModel):
     """当前会话的账号 (uuid 是内部标识, 不出接口)。"""

@@ -20,7 +20,7 @@ from app import account_store, authentication, config, database  # pylint: disab
 from app.tesla import place_worker, roads_worker  # pylint: disable=wrong-import-position
 from app.tesla import speed_hist_cache, tracks_cache  # pylint: disable=wrong-import-position
 from app.models import UsersBase  # pylint: disable=wrong-import-position
-from app.tesla.models import Base, OwnBase  # pylint: disable=wrong-import-position
+from app.tesla.models import Base, OwnBase, AppSetting  # pylint: disable=wrong-import-position
 import app.main as m  # pylint: disable=wrong-import-position
 
 # 测试口径的账密 (isolate 里种进账号库, auth 夹具按它登录;
@@ -44,6 +44,12 @@ def isolate(tmp_path, monkeypatch):
     Base.metadata.create_all(database.engine())
     database.init_own_engine(f"sqlite:///{tmp_path / 'mytesla.db'}")
     OwnBase.metadata.create_all(database.own_engine())
+    # 首启引导完成口径: 高德 Key 是三步之一, 种上让「已初始化」成立
+    # (否则打 /tesla 的页面测试全被应用门 302 去 /setup; TeslaMate 连接
+    # 同理由下面的 TMDB_HOST env 顶上)。要「没配」口径的用例自己清。
+    with database.own_session_factory()() as own:  # pylint: disable=not-callable
+        own.add(AppSetting(id=1, amap_key="test-amap-key"))
+        own.commit()
     database.init_users_engine(f"sqlite:///{tmp_path / 'users.db'}")
     UsersBase.metadata.create_all(database.users_engine())
     # 管理员种子 (生产在 lifespan 里做, TestClient 不触发 lifespan);

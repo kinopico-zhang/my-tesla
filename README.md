@@ -12,7 +12,7 @@
 
 ![pylint](https://img.shields.io/badge/pylint-10.00%2F10-brightgreen)
 ![mypy](https://img.shields.io/badge/mypy-strict-2A6DB2)
-![pytest](https://img.shields.io/badge/pytest-439%20passed-0A9EDC?logo=pytest&logoColor=white)
+![pytest](https://img.shields.io/badge/pytest-442%20passed-0A9EDC?logo=pytest&logoColor=white)
 ![coverage](https://img.shields.io/badge/JS%20coverage-95%25%2B-brightgreen)
 
 ![ESLint](https://img.shields.io/badge/ESLint-passing-4B32C3?logo=eslint&logoColor=white)
@@ -74,35 +74,82 @@
 <br><b>充电地图</b> — 常去充电点的地理分布, 陌生地方先看哪里充过电
 </p>
 
-## 🚀 快速开始
+## 🚀 部署
 
-需要 Python 3.13+ (venv) 与一个能连上的
-[TeslaMate](https://docs.teslamate.org/) PostgreSQL 库:
+### 准备 · TeslaMate (数据源)
 
-```sh
-python3.13 -m venv .venv
-.venv/bin/pip install -r requirements.txt -r requirements-dev.txt
-.venv/bin/python -m app   # 配置全走命令行参数 (--help 看全量); 全默认首启走 /setup 引导
+My Tesla 读 TeslaMate 的 PostgreSQL 库 (只读, 不往回写)。还没有的话,
+官方推荐 docker compose 部署 (完整文档
+[docs.teslamate.org](https://docs.teslamate.org/)):
+
+```yaml
+# docker-compose.yml —— 三处「改成」务必换成自己的随机值
+services:
+  teslamate:
+    image: teslamate/teslamate:latest
+    restart: always
+    environment:
+      - ENCRYPTION_KEY=改成随机串
+      - DATABASE_USER=teslamate
+      - DATABASE_PASS=改成密码
+      - DATABASE_NAME=teslamate
+      - DATABASE_HOST=database
+      - TZ=Asia/Shanghai
+    ports:
+      - 4000:4000
+    depends_on:
+      - database
+  database:
+    image: postgres:17
+    restart: always
+    environment:
+      - POSTGRES_USER=teslamate
+      - POSTGRES_PASSWORD=改成密码
+      - POSTGRES_DB=teslamate
+    volumes:
+      - teslamate-db:/var/lib/postgresql/data
+volumes:
+  teslamate-db:
 ```
 
-启动入口 `python -m app` (Windows 下 `.venv\Scripts\python -m app`), 部署
-配置全走命令行参数 (`--help` 一屏看全)。端口只有一个: `data/certs/` 里
-放了证书 (`fullchain.pem` + `privkey.pem`) 就走 HTTPS, 没放走 HTTP,
-`--http` 可强制明文 (调试)。
+`docker compose up -d` 后打开 `http://<host>:4000`, 登录 Tesla 账号并
+添加车辆, 行驶/充电数据即开始落库。My Tesla 部署在别的机器时, 给
+`database` 加 `ports: ["5432:5432"]` 把 PostgreSQL 发布出去。
 
-打开 `http://<host>:8500/` → 自动进 `/tesla/charging`。账号库为空时
-登录页会带去 `/setup` 引导页: 注册第一个管理员, 顺路配 TeslaMate 连接
-与地图 Key, 全部可跳过、之后在设置页随时补。
+### 准备 · Python 环境
+
+需要 Python 3.13+:
+
+```sh
+python3.13 -m venv .venv          # Windows: py -3.13 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+```
+
+### 启动
+
+```sh
+.venv/bin/python -m app           # Windows: .venv\Scripts\python -m app
+```
+
+配置全走命令行参数 (`--help` 一屏看全), 端口只有一个 `8500`, 分两种情况:
+
+- **有证书**: `fullchain.pem` + `privkey.pem` 放进 `data/certs/` 再启动,
+  走 `https://<host>:8500/`;
+- **没证书**: 直接启动, 走 `http://<host>:8500/` (`--http` 可强制明文,
+  调试用)。
+
+打开后自动进 `/tesla/charging`。首次打开先走设置向导, 三步: 注册管理员
+账号 → 填 TeslaMate 的 PostgreSQL 连接 (主机/端口/账号/密码/库名, 保存即
+实测连通) → 填高德 Key。三步配齐才能进应用, 一步不能跳; 中途关掉下次
+从缺的那步接着配。之后想改, 设置页随时改。
 
 ## 📡 数据源
 
-TeslaMate 连接三种给法 (优先级从高到低): 设置页里填 (存自有库, 改完热
-重连实测) → 启动参数 `--teslamate-*` (回落环境变量 `TMDB_*`) → docker
-容器定位 (与 TeslaMate 同机部署时)。数据只读, 不会往 TeslaMate 库写任何
-东西。
+TeslaMate 连接只有一条路: 首启向导 (或之后的设置页) 里填, 保存即热重连
+实测。数据只读, 不会往 TeslaMate 库写任何东西。
 
-高德 Key (服务平台选「Web端 JS API」, 个人开发者免费) 在设置页
-「地图设置」里保存, 保存即生效; 未配置时地图页显示申请指引。
+高德 Key (服务平台选「Web端 JS API」, 个人开发者免费) 未配置时地图页
+显示申请指引。
 
 自有数据落在 `data/` (git 忽略): `mytesla.db` (轨迹断档补路等自产数据)
 + `users.db` 账号 + `certs/` 证书。
@@ -114,13 +161,12 @@ TeslaMate 连接三种给法 (优先级从高到低): 设置页里填 (存自有
 | 参数 | 默认 | 说明 |
 |---|---|---|
 | `--port` | `8500` | 端口: 证书目录有证书走 HTTPS, 没证书走 HTTP |
-| `--teslamate-host` 等 | docker 定位 | TeslaMate PostgreSQL (设置页里填的优先) |
 | `--mytesla-db` | `sqlite:///data/mytesla.db` | 自有库 (自产数据) |
 | `--users-db` / `--secret-file` | `data/users.db` / `.session_secret` | 账号库与会话密钥 |
 | `--tz` / `--currency` | `Asia/Shanghai` / `¥` | 显示口径 |
 
-参数没给的回落同名环境变量 (如 `--teslamate-host` → `TMDB_HOST`), 再回落
-内置默认 —— 显式参数 > 环境变量 > 默认, 自动化与容器注入仍可走环境变量。
+参数没给的回落同名环境变量, 再回落内置默认 —— 显式参数 > 环境变量 >
+默认, 自动化与容器注入仍可走环境变量。
 
 ## 📄 许可证
 

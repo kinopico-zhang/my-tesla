@@ -5,19 +5,28 @@ app, 原先的下掉): /tesla 是唯一页面; 壳的 P2-P6 开发地址 /tesla/
 (充电地图的度量 ?view= → ?metric=, ?view= 让给视图选择)。"""
 from urllib.parse import urlencode
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse, RedirectResponse
+from sqlalchemy.orm import Session
 from starlette.requests import Request
 
+from ... import database
+from .. import settings_store
 from ._common import page_response
 
 
 router = APIRouter()
 
 
-@router.get("/tesla")
-def shell_page() -> FileResponse:
-    """3.0 单壳: 全部 11 个视图的宿主 (充电 3 + 行程 3 + 驾驶 1 + 设置 4)。"""
+@router.get("/tesla", response_model=None)
+def shell_page(own: Session = Depends(database.get_own_db)
+               ) -> FileResponse | RedirectResponse:
+    """3.0 单壳: 全部 11 个视图的宿主 (充电 3 + 行程 3 + 驾驶 1 + 设置 4)。
+
+    首启引导没走完 (TeslaMate 连接或高德 Key 还缺) 一律 302 回 /setup ——
+    引导不允许跳过, 三步配齐才放行 (组合仓部署共用这个门)。"""
+    if settings_store.wizard_missing(own):
+        return RedirectResponse("/setup", status_code=302)
     return page_response("app.html")
 
 

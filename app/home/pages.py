@@ -7,12 +7,12 @@
 import re
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from .. import account_store, database
-from . import STATIC_DIR
+from . import STATIC_DIR, setup_gate
 
 router = APIRouter()
 
@@ -55,12 +55,18 @@ def register_page() -> FileResponse:
 
 
 @router.get("/setup", response_model=None)
-def setup_page(
-        users: Session = Depends(database.get_users_db)
-        ) -> FileResponse | RedirectResponse:
-    """首启引导页 (无管理员时才是入口; 已初始化的部署直接回登录页)。"""
+def setup_page(request: Request,
+               users: Session = Depends(database.get_users_db)
+               ) -> FileResponse | RedirectResponse:
+    """首启引导页: 三步 (管理员 → 数据源 → 地图) 没走完之前是唯一入口,
+    不允许跳过。全配齐的部署回登录页; 管理员已在 (中途退出的续走) 而
+    未登录的访客, 先去登录页拿会话再回来 —— 后两步的保存接口要会话。"""
     if account_store.admin_exists(users):
-        return RedirectResponse("/login", status_code=302)
+        if not setup_gate.wizard_missing():
+            return RedirectResponse("/login", status_code=302)
+        if account_store.user_for_cookie(
+                request.cookies.get("auth", ""), users) is None:
+            return RedirectResponse("/login?next=/setup", status_code=302)
     return _page("setup.html")
 
 

@@ -17,6 +17,7 @@ def test_versions_newest_first_and_wellformed():
     """新→老; 每版字段齐全, 文案是用户视角的一句话 (不夹技术黑话)。"""
     vs = changelog.entries()
     assert [v.version for v in vs] == [
+        "3.7.0",
         "3.6.0",
         "3.5.1",
         "3.5.0",
@@ -26,7 +27,7 @@ def test_versions_newest_first_and_wellformed():
         "3.1.6", "3.1.5", "3.1.4", "3.1.3", "3.1.2", "3.1.1",
         "3.1.0", "3.0.2", "3.0.1", "3.0.0", "2.6.0", "2.5.1", "2.5.0", "2.4.0",
         "2.3.0", "2.2.0", "2.1.0", "2.0.0", "1.1.0", "1.0.0"]
-    assert vs[0].date == "2026-10-08" and vs[-1].date == "2026-09-08"
+    assert vs[0].date == "2026-10-09" and vs[-1].date == "2026-09-08"
     for v in vs:
         assert v.items                                  # 每版至少一条
         assert len(v.date) == 10 and v.date[4] == "-"   # YYYY-MM-DD
@@ -46,7 +47,7 @@ def test_version_data_lives_in_json_dir():
     里, app/ 下不再有 changelog_versions_*.py —— 新批次 = 加一个 json。"""
     data_dir = Path(changelog.__file__).parent / "changelog_data"
     files = sorted(data_dir.glob("*.json"))
-    assert len(files) == 24                       # 拆分时代 23 批 + 3.6.0
+    assert len(files) == 25              # 拆分时代 23 批 + 3.6.0、3.7.0
     assert not list((data_dir.parent).glob("changelog_versions_*.py"))
     loaded = {v.version for v in changelog.entries()}
     for f in files:                               # 每个文件都被装载 (无孤儿)
@@ -64,7 +65,8 @@ def test_changelog_entries_endpoint(auth):
         assert e["items"] == [{"kind": it.kind, "text": it.text}
                               for it in v.items]
     # 头条是主打: 新功能或修的主 bug; 纯打磨的批次整版都是改进, 不硬凑
-    # (3.6.0 头条是新增「启动配置走命令行参数」;
+    # (3.7.0 头条是新增「首启门: 三步配齐才能进应用」;
+    # 3.6.0 头条是新增「启动配置走命令行参数」;
     # 3.5.1 头条是修复「行程统计弱网打开慢」;
     # 3.5.0 头条是新增「首启引导三步走」;
     # 3.4.8 整版都是改进「左缘呼出统一 + 数据来源卡排版」;
@@ -110,7 +112,7 @@ def test_changelog_link_in_settings_group(auth):
 def test_login_whitelist_keeps_old_links(auth):
     """登录回跳白名单仍收旧子页: 2.x 存的上次停留值 (localStorage 里可能
     还留着) 登录后跳旧路径, 302 落回壳对应视图, 不丢。"""
-    login_js = auth.get("/static/login.js?v=3").text
+    login_js = auth.get("/static/login.js?v=4").text
     assert "live|settings|changelog)" in login_js
 
 

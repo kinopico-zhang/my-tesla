@@ -11,6 +11,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app import database
 from app.tesla import roads_amap
+from app.tesla.models import AppSetting
 from tests.tesla_static_files import served_page
 
 
@@ -22,8 +23,11 @@ def rebuild_recorder(monkeypatch):
     return calls
 
 
-def test_settings_get_defaults_from_env(auth, monkeypatch):
+def test_settings_get_defaults_from_env(auth, owndb, monkeypatch):
     """未保存过: TeslaMate 现值回落 env; 高德 Key 只认设置页 (没配就是空)。"""
+    row = owndb.get(AppSetting, 1)
+    row.amap_key = ""     # conftest 种的引导完成口径撤掉, 回到「没配」
+    owndb.commit()
     monkeypatch.setenv("TMDB_HOST", "10.0.0.8")
     monkeypatch.setenv("TMDB_USER", "tmuser")
     d = auth.get("/tesla/api/settings").json()

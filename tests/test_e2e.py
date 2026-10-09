@@ -112,9 +112,14 @@ def test_wrong_password_rejected(client):  # pylint: disable=redefined-outer-nam
 
 
 def test_login_session_and_app_page(client):  # pylint: disable=redefined-outer-name
-    """正确登录种 cookie → 业务页 200 / /api/me 报账号。"""
+    """正确登录种 cookie → 引导没走完时应用门拦回 /setup, 补上高德 Key
+    (引导最后一步) 后业务页 200 / /api/me 报账号。"""
     r = client.post("/api/login", json={"user": E2E_USER, "password": E2E_PASS})
     assert r.status_code == 200, r.text[:200]
+    gate = client.get(APP_PATH, follow_redirects=False)
+    assert (gate.status_code, gate.headers["location"]) == (302, "/setup")
+    assert client.post("/tesla/api/settings",
+                       json={"amap_key": "e2e-amap-key"}).status_code == 200
     r = client.get(APP_PATH)
     assert r.status_code == 200
     assert "html" in r.headers["content-type"]

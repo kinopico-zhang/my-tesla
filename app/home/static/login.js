@@ -91,14 +91,16 @@ form.addEventListener("submit", async e => {
 document.getElementById("user").focus();
 
 // 首启引导: 库里还没有管理员时, 登录页让位给引导页 (注册第一个管理员,
-// 顺路配数据源/地图 Key)。已初始化 (needed=false) 或查询失败都静默留在
-// 本页 —— 引导是首启增强, 不挡正常登录。
+// 顺路配数据源/地图 Key)。管理员已在 (只差后两步配置) 的部署照常登录 ——
+// 登录后应用页的门会把人送去 /setup 续走; 这里不抢, 否则未登录的访客会在
+// /setup 与 /login 之间来回弹。查询失败静默留在本页。
 (async () => {
   try {
     const r = await fetch("/api/setup-status", { cache: "no-store" });
     if (!r.ok) return;
     const d = await r.json();
-    if (d && d.needed) location.replace("/setup");
+    if (d && d.missing && d.missing.includes("account"))
+      location.replace("/setup");
   } catch (_e) {}
 })();
 

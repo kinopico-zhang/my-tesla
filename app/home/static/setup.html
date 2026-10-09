@@ -2,28 +2,30 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<!-- 首启引导页: 库里还没有管理员时才是入口 (服务端自判, 已初始化的部署
-     /setup 一律 302 回登录页); 页面本身免登录, 建管理员即种会话 cookie -->
+<!-- 首启引导页: 三步 (管理员/TeslaMate/高德 Key) 配齐之前是唯一入口,
+     不允许跳过 —— 应用页的门 (/tesla) 会把人送回来; 中途退出下次从缺口
+     步接着走 (起步步数由 setup.js 查 /api/setup-status 决定)。页面本身
+     免登录, 建管理员即种会话 cookie -->
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
+<link rel="icon" type="image/png" sizes="32" href="/static/favicon-32.png">
 <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v=1">
   <link rel="manifest" href="/static/manifest.json">
   <title>初始化 · My Tesla</title>
-<link rel="stylesheet" href="/static/css/setup-page.css?v=1">
+<link rel="stylesheet" href="/static/css/setup-page.css?v=2">
 </head>
 <body data-done="/tesla">
 <div class="card" id="card">
   <div class="icon">⚡</div>
   <h1>My Tesla</h1>
-  <div class="sub">首次使用 · 三步完成初始化</div>
+  <div class="sub">首次使用 · 三步配齐才能进入</div>
   <ol class="steps" id="steps">
-    <li class="active">管理员</li><li>数据源</li><li>地图</li>
+    <li>管理员</li><li>数据源</li><li>地图</li>
   </ol>
-  <form id="form1" autocomplete="on">
+  <form id="form1" hidden autocomplete="on">
     <div class="field">
       <label for="su-name">名称</label>
       <input id="su-name" name="name" type="text" autocapitalize="off"
@@ -57,11 +59,11 @@
   </form>
   <form id="form2" hidden>
     <p class="hint">TeslaMate 行车数据库的连接参数; 保存时自动验证, 连不上
-    会原样退回可重试。没有可先跳过, 以后在 设置 → 数据来源 里配。</p>
+    会原样退回可重试。</p>
     <div class="field">
       <label for="tm-host">地址</label>
       <input id="tm-host" type="text" autocapitalize="off" autocorrect="off"
-             placeholder="TeslaMate PostgreSQL 主机">
+             placeholder="TeslaMate PostgreSQL 主机" required>
     </div>
     <div class="field">
       <label for="tm-port">端口</label>
@@ -82,16 +84,15 @@
              placeholder="teslamate">
     </div>
     <button class="btn" type="submit">保存并连接</button>
-    <button class="btn-plain skip" type="button">跳过, 以后再配</button>
     <div class="err"></div>
   </form>
   <form id="form3" hidden>
     <p class="hint">高德开放平台的应用 Key 与安全码 (地图显示用); 足迹道路
-    拟合的 Web 服务 Key 在 设置 → 地图设置 里另配。可先跳过, 以后随时配。</p>
+    拟合的 Web 服务 Key 在 设置 → 地图设置 里另配。</p>
     <div class="field">
       <label for="amap-key">Key</label>
       <input id="amap-key" type="text" autocapitalize="off" autocorrect="off"
-             placeholder="未设置">
+             placeholder="未设置" required>
     </div>
     <div class="field">
       <label for="amap-code">安全码</label>
@@ -99,7 +100,6 @@
              placeholder="未设置">
     </div>
     <button class="btn" type="submit">保存</button>
-    <button class="btn-plain skip" type="button">跳过, 以后再配</button>
     <div class="err"></div>
   </form>
   <div class="done" id="done" hidden>
@@ -107,6 +107,6 @@
     <p>初始化完成, 正在进入…</p>
   </div>
 </div>
-<script src="/static/setup.js?v=1"></script>
+<script src="/static/setup.js?v=2"></script>
 </body>
 </html>

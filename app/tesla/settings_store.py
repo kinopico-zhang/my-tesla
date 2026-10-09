@@ -89,6 +89,21 @@ def amap_web_key_value(own: Session) -> str:
     return _row(own).amap_web_key or ""
 
 
+def wizard_missing(own: Session) -> list[str]:
+    """首启引导 (三步版) 还差的配置步: "teslamate" / "amap"。
+
+    判据与设置页同源: 连接看现值拼不拼得出明确指向 (设置行 > env > docker
+    容器定位, 哪来的都算配过 —— 能连上就是配过); 高德 Key 只认设置行。
+    引导页与应用页的门都问它: 全配齐之前 /tesla 一律 302 回 /setup
+    (2026-10-09 用户点名「向导不允许跳过, 必须都配置了才能进入 app」)。"""
+    missing: list[str] = []
+    if not effective_tmdb(own).host:
+        missing.append("teslamate")
+    if not amap_values(own)[0]:
+        missing.append("amap")
+    return missing
+
+
 def settings_state(own: Session) -> SettingsState:
     """设置页状态: 各字段现值 (TeslaMate 回落 env), 秘密只报打码。"""
     eff = effective_tmdb(own)

@@ -1,7 +1,9 @@
-// setup.js — 首启引导: 第一步建管理员 (注册即登录, 后续接口都带会话);
-// 带数据源/地图步骤的部署 (My Home / My Tesla) 顺路配 TeslaMate 与高德
-// Key, 一步变体 (My Money / My Music) 建完即完成。完成跳转读 body 的
-// data-done; 步骤按 DOM 现状收集, 同一份脚本服务两种页面。
+// setup.js — 首启引导: 三步全走完才能进应用, 不允许跳过。第一步建管理
+// 员 (注册即登录, 后续接口都带会话); 带数据源/地图步骤的部署 (My Home /
+// My Tesla) 顺路配 TeslaMate 与高德 Key, 一步变体 (My Money / My Music)
+// 建完即完成。起步步数由 /api/setup-status 的 missing 决定 —— 中途退出
+// 的续走 (管理员已在, 从缺口步接着); 完成跳转读 body 的 data-done;
+// 步骤按 DOM 现状收集, 同一份脚本服务两种页面。
 "use strict";
 const card = document.getElementById("card");
 const doneUrl = document.body.dataset.done || "/";
@@ -24,6 +26,8 @@ const showStep = index => {
       li.classList.toggle("done", i < index);
     });
   }
+  const first = forms[index] && forms[index].querySelector("input");
+  if (first) first.focus();
 };
 
 const finish = () => {
@@ -129,7 +133,6 @@ if (forms[1]) {
     }
     btn.disabled = false;
   });
-  forms[1].querySelector(".skip").addEventListener("click", () => advance(1));
 }
 
 // 第三步 (有则存在): 高德 Key + 安全码 (留空=保持现值)
@@ -155,7 +158,20 @@ if (forms[2]) {
     }
     btn.disabled = false;
   });
-  forms[2].querySelector(".skip").addEventListener("click", () => advance(2));
 }
 
-document.getElementById("su-name").focus();
+// 起步步数: 管理员没建 → 从头; 建过 (中途退出的续走) → 从第一个缺口步
+// 接着 (服务端只对「管理员在 + 有会话」的访客放行续走, 缺口步的表单一定
+// 在场)。查不到状态就从第一步走 —— 保存接口会给出真实的缺口。
+(async () => {
+  let start = 0;
+  try {
+    const r = await fetch("/api/setup-status", { cache: "no-store" });
+    const d = r.ok ? await r.json() : null;
+    const missing = (d && d.missing) || [];
+    if (!missing.includes("account"))
+      start = missing.includes("teslamate") ? 1 : 2;
+  } catch (_e) { /* 网络坏掉: 从第一步走 */ }
+  showStep(Math.min(start, forms.length - 1));
+  if (start >= 1) prefillSettings();
+})();

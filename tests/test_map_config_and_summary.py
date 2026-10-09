@@ -3,11 +3,15 @@ env), 汇总口径。拆自 test_map.py (结构化重构)。"""
 from datetime import datetime
 
 
+from app.tesla.models import AppSetting
 from tests.seed_factories import seed_addresses, seed_drive
 
 # ---------------------------------------------------------------- config
-def test_config_empty_when_unset(auth):
+def test_config_empty_when_unset(auth, owndb):
     """没在设置页配过: config 就是空 (Key 与安全码都 None)。"""
+    row = owndb.get(AppSetting, 1)
+    row.amap_key = ""     # conftest 种的引导完成口径撤掉, 回到「没配」
+    owndb.commit()
     assert auth.get("/tesla/map/api/config").json() == \
         {"amap_key": None, "security_code": None}
 
