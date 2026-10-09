@@ -21,15 +21,15 @@
     <text id="t-group" x="296" y="324" data-max="328" font-size="12" fill="#6e6e73" text-anchor="start" dominant-baseline="central">🖥 TeslaMate 所在机器 · docker compose</text>
   </g>
 
-  <!-- ── 连线 ─────────────────────────────────────────── -->
+  <!-- ── 连线 (全部横平竖直) ─────────────────────────── -->
   <g fill="none" stroke="#8f8f98" stroke-width="1.6">
     <path id="e1" d="M 450 94 L 450 133" marker-end="url(#ah)"/>
     <path id="e2" d="M 180 368 L 283 368" marker-end="url(#ah)"/>
     <path id="e3" d="M 400 368 L 493 368" marker-end="url(#ah)"/>
-    <path id="e4" d="M 375 166 Q 290 160 196 167" marker-end="url(#ah)"/>
-    <path id="e5" d="M 525 166 Q 588 160 672 172" marker-end="url(#ah)"/>
+    <path id="e4" d="M 375 167 L 196 167" marker-end="url(#ah)"/>
+    <path id="e5" d="M 525 167 L 672 167" marker-end="url(#ah)"/>
   </g>
-  <path id="e6" d="M 505 194 C 600 235 595 305 560 330" fill="none" stroke="#7d7d86"
+  <path id="e6" d="M 505 194 L 505 262 L 557.5 262 L 557.5 330" fill="none" stroke="#7d7d86"
         stroke-width="1.6" stroke-dasharray="7 6" marker-end="url(#ahd)"/>
 
   <!-- 连线标签 (胶囊底 + 文字; 画在连线上层, 压线的胶囊遮住自己那条线) -->
@@ -43,16 +43,16 @@
       <text x="450" y="355" data-max="72" font-size="11" fill="#55555c" text-anchor="middle" dominant-baseline="central">行车数据落库</text>
     </g>
     <g id="l-e4">
-      <rect x="223" y="153" width="130" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
-      <text x="288" y="163" data-max="120" font-size="12" fill="#55555c" text-anchor="middle" dominant-baseline="central">地图瓦片 · 道路拟合</text>
+      <rect x="220.5" y="157" width="130" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
+      <text x="285.5" y="167" data-max="120" font-size="12" fill="#55555c" text-anchor="middle" dominant-baseline="central">地图瓦片 · 道路拟合</text>
     </g>
     <g id="l-e5">
-      <rect x="545" y="155" width="110" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
-      <text x="600" y="165" data-max="100" font-size="12" fill="#55555c" text-anchor="middle" dominant-baseline="central">账号 · 设置 · Key</text>
+      <rect x="543.5" y="157" width="110" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
+      <text x="598.5" y="167" data-max="100" font-size="12" fill="#55555c" text-anchor="middle" dominant-baseline="central">账号 · 设置 · Key</text>
     </g>
     <g id="l-e6">
-      <rect x="490" y="248" width="176" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
-      <text x="578" y="258" data-max="166" font-size="12" fill="#55555c" text-anchor="middle" dominant-baseline="central">只读查询 · 向导第二步填五项</text>
+      <rect x="469.5" y="252" width="176" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
+      <text x="557.5" y="262" data-max="166" font-size="12" fill="#55555c" text-anchor="middle" dominant-baseline="central">只读查询 · 向导第二步填五项</text>
     </g>
   </g>
 
