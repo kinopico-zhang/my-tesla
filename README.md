@@ -26,7 +26,7 @@
 
 <p align="center">
 <a name="shot-live"><img src="docs/screenshot-live.png" width="280" alt="状态 · My Tesla (演示数据)"></a>
-<br><b>状态</b> — 车停在哪、还剩多少电、还能跑多远, 打开即见
+<br><b>状态</b> — 车开到哪、还剩多少电、还能跑多远, 打开即见; 行驶中蓝点实时跟车
 </p>
 
 <p align="center">
@@ -82,19 +82,9 @@
 [docs.teslamate.org](https://docs.teslamate.org/))。My Tesla 只读它的
 PostgreSQL, 不往回写任何东西。数据链路:
 
-```mermaid
-%%{init: {"theme":"base","flowchart":{"curve":"basis","nodeSpacing":44,"rankSpacing":64},"themeVariables":{"fontSize":"14px","primaryColor":"#1b1b1e","primaryTextColor":"#f5f5f7","primaryBorderColor":"#4a4a4e","lineColor":"#8e8e93","edgeLabelBackground":"#1b1b1e","clusterBkg":"#111113","clusterBorder":"#3a3a3e"}}}%%
-flowchart LR
-    subgraph tmhost["🖥️ TeslaMate 所在机器 · docker compose"]
-        tm["TeslaMate"] -- "行车数据落库" --> pg[("PostgreSQL<br/>.env 的 POSTGRES_*")]
-    end
-    car["🚗 特斯拉车辆"] -- "Tesla 账号" --> tm
-    web["📱 浏览器 / 手机"] --> app["My Tesla"]
-    app -. "只读查询 · 向导第二步填五项" .-> pg
-    app -- "地图瓦片 · 道路拟合" --> amap["🗺️ 高德开放平台"]
-    app -- "账号 · 设置 · Key" --> own[("自有 SQLite<br/>data/mytesla.db")]
-    style app fill:#e82127,stroke:#5a1a1c,stroke-width:1.5px,color:#ffffff
-```
+<p align="center">
+<a name="arch"><img src="docs/architecture.svg" width="800" alt="My Tesla 数据链路"></a>
+</p>
 
 首启向导第二步 (或之后的 设置 → 数据库) 要填的五项, 全部在 TeslaMate
 那台机器的 `docker-compose.yml` / `.env` 里:

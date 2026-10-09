@@ -119,9 +119,10 @@ READY = {
     "changelog": "document.querySelectorAll('#cl-list > *').length > 0 "
                  "&& document.querySelector('#loading').hidden",
 }
-# 各视图收尾缓冲 (地图/图表类要等贴图和 canvas 动画)
+# 各视图收尾缓冲 (地图/图表类要等贴图和 canvas 动画); live 是驾驶态地图
+# (LIVE_DRIVE=1 起服): 蓝点 + 速度色轨迹 + 瓦片, 与行程弹层同款缓冲
 EXTRA = {"charging": 3000, "chargemap": 2500, "tripstats": 2000,
-         "stats": 2000, "battery": 1500}
+         "stats": 2000, "battery": 1500, "live": 3500}
 
 
 async def tesla_map(browser):

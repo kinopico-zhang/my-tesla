@@ -28,7 +28,10 @@
 #    首次跑要对高德做 ~34 段驾车规划 (真实 Web 服务 Key, 几分钟 + 要网),
 #    种子库一次成型: teslamate.db 已在即整库复用直接起服
 #    (重建: 删 SHOTLAB 库或 SHOT_RESEED=1)。
-.venv/bin/python shots/seed_server.py 8901
+#    状态页要「行驶中」观感 (README 口径): LIVE_DRIVE=1 起服 —— 借一段
+#    华为→家的既有轨迹挂一条进行中行程 (每次起服先清旧再挂新, 起服不带
+#    该环境变量即回到驻车态, 其它视图零污染)。
+LIVE_DRIVE=1 .venv/bin/python shots/seed_server.py 8901
 
 # 2. 射手: 16 个视图各一张 (开场动画一律等收完; 足迹地图与行程弹层都是
 #    手动定格回放终帧的特例流程, 后者过滤词 sheet)。
@@ -46,7 +49,7 @@ LD_LIBRARY_PATH=... PYTHONPATH=<Pillow 所在> /tmp/pw-verify/bin/python shots/c
 
 | 文件 | 职责 |
 |---|---|
-| `seed_server.py` | 假数据实例: 充电 ~280 条跨 15 个月 (月度柱状图铺满 12 个月滑窗; 满充带额定续航采样, 331→322km 缓降喂电池健康曲线) + ~1000 程「一笔画」路网 (~两万公里, 近/中/远频次分层) + 双驾驶员 + 行程分组 + 地址坐标 (充电地图圆标) + 演示 app_settings (设置页回显) |
+| `seed_server.py` | 假数据实例: 充电 ~280 条跨 15 个月 (月度柱状图铺满 12 个月滑窗; 满充带额定续航采样, 331→322km 缓降喂电池健康曲线) + ~1000 程「一笔画」路网 (~两万公里, 近/中/远频次分层) + 双驾驶员 + 行程分组 + 地址坐标 (充电地图圆标) + 演示 app_settings (设置页回显); `LIVE_DRIVE=1` 时另挂一段华为→家「进行中」行程给状态页拍行驶观感 |
 | `shoot.py` | 16 视图射手: 每视图独立 context (localStorage 预置视图), 等数据锚点 + 动画收尾; 足迹地图与行程弹层 (深链直开 + skipAnim 定格) 是手动定格回放终帧的特例流程 |
 | `composite.py` | 官方 bezel 合成: 预乘缩放 (透明留白 RGB 不渗边) + 洞形蒙版 (方角内容出不了圆角开窗) + 底部 34px 安全区拉伸补齐 |
 | `undmg.py` | Apple dmg → PNG carver (解 UDIF blkx, carve 内嵌 PNG) |

@@ -13,6 +13,8 @@ admin/shot-pass-123。打印 READY 后存活。
 环境: SHOTLAB 工作目录 (默认 ~/shotlab; 种子库/缓存落 SHOTLAB/tesla/)
       MYHOME_ENV 根仓 .env 路径 (取高德 Key 种进演示设置行, 默认根仓 .env)
       MYHOME_PROD_DB 生产 mytesla.db (只读取 amap_web_key 拟合道路用)
+      LIVE_DRIVE=1 状态页挂一段「进行中」演示行程 (拍行驶中截图用,
+      见 refresh_live_drive; 默认不挂, 状态页是驻车态)
 注意: 首次跑要对高德做 ~34 段驾车规划 (真实 Web 服务 Key, 几分钟 + 要网);
 种子库一次成型 —— teslamate.db 已在时整库复用, 免重规划免重播种直接起服
 (重建: 删 SHOTLAB 库或 SHOT_RESEED=1)。绝不动子仓 data/ 下的生产缓存
@@ -21,7 +23,7 @@ import os
 import sys
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -82,6 +84,63 @@ RESEED = bool(os.environ.get("SHOT_RESEED")) or not DB_PATH.exists()
 database.init_engine(DB)
 Base.metadata.create_all(database.engine())
 
+LIVE_ID = 99999     # 「进行中」演示行程的哨兵 id (种子链 ~972, 留足余量)
+
+
+def refresh_live_drive():
+    """状态页「行驶中」演示行程 (2026-10-09 用户点名「当前状态的截图最好
+    是行驶中的截图」): 种子行程链全部已结束 (链尾 2026-10-06), 默认起服
+    状态页是驻车态。LIVE_DRIVE=1 时借一段华为→家的既有轨迹重挂一条
+    「进行中」行程 —— end_date 空, 位置点止于 40s 前, 落在 live_status
+    的 10 分钟新鲜度判据内, 状态页即入驾驶态 (蓝点 + 速度色轨迹 + 仪表)。
+    每次起服先清上一轮的演示行程: 默认起服不带它, 而行程列表/统计/足迹
+    只认已结束行程, 对其它视图零污染。"""
+    from sqlalchemy import delete, select
+
+    from app.tesla.models import Drive, Position
+    from app.tesla.roads_geom import wgs_km
+    with database.session_factory()() as mir:  # pylint: disable=not-callable
+        mir.execute(delete(Position).where(Position.drive_id == LIVE_ID))
+        mir.execute(delete(Drive).where(Drive.id == LIVE_ID))
+        if not os.environ.get("LIVE_DRIVE"):
+            mir.commit()
+            return
+        src_id = mir.execute(
+            select(Drive.id).where(Drive.start_address_id == 2,
+                                   Drive.end_address_id == 1)
+            .order_by(Drive.start_date.desc()).limit(1)).scalar_one_or_none()
+        assert src_id, "找不到华为→家的种子行程 (重播种: SHOT_RESEED=1)"
+        src = mir.scalars(select(Position).where(
+            Position.drive_id == src_id).order_by(Position.date)).all()
+        # 车要「开在半路」: 只借前 3/4 的点 —— 原样全量重挂会把当前位置
+        # 落在原行程终点 (家的锚点), 驾驶态的车停在小区里就穿了帮
+        src = src[:max(2, round(len(src) * 0.75))]
+        span = (src[-1].date - src[0].date).total_seconds()
+        end = (datetime.now(timezone.utc).replace(tzinfo=None)
+               - timedelta(seconds=40))          # 位置点止于 40s 前 (新鲜度内)
+        rows, cum = [], 0.0
+        for i, p in enumerate(src):
+            if i:
+                cum += wgs_km((src[i - 1].longitude, src[i - 1].latitude),
+                              (p.longitude, p.latitude))
+            f = i / (len(src) - 1)               # 沿程进度 → 电量/续航内插
+            rows.append({
+                "date": end - timedelta(seconds=span * (1 - f)),
+                "longitude": p.longitude, "latitude": p.latitude,
+                "speed": p.speed, "power": p.power,
+                "battery_level": round(63 - 5 * f),
+                "rated_battery_range_km": round(209 - 19 * f, 1),
+                "odometer": round(52341.2 + cum, 3)})
+        mir.add(Drive(id=LIVE_ID, car_id=1, start_date=rows[0]["date"],
+                      end_date=None,
+                      speed_max=round(max(r["speed"] for r in rows)),
+                      start_address_id=2))
+        mir.add_all(Position(drive_id=LIVE_ID, car_id=1, **r) for r in rows)
+        mir.commit()
+        print(f"live drive: 华为→家进行中, {len(rows)} 点 {cum:.1f}km "
+              f"已开 {span / 60:.0f} 分钟 (id {LIVE_ID})", flush=True)
+
+
 if not RESEED:
     # 种子库一次成型, 整库复用 (2026-10-09 用户点名「搞一个虚假的
     # teslamate db, 每次都用这个截图」): 已在时免重规划免重播种直接起服;
@@ -89,6 +148,7 @@ if not RESEED:
     # SHOT_RESEED=1 重来
     print(f"种子库已就位 {DB_PATH}, 免重播种直接起服 "
           "(重建: 删 SHOTLAB 库或 SHOT_RESEED=1)", flush=True)
+    refresh_live_drive()
     print("READY", flush=True)
     while thread.is_alive():
         time.sleep(1)
@@ -513,6 +573,7 @@ with database.own_session_factory()() as own:  # pylint: disable=not-callable
           f"妈妈标注 {sum(1 for i in range(1, did + 1) if i % 3 == 0)} 程, "
           f"{len(TRIP_GROUPS)} 分组, app_settings 演示行", flush=True)
 
+refresh_live_drive()
 print("READY", flush=True)
 while thread.is_alive():
     time.sleep(1)
