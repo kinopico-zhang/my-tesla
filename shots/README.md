@@ -25,7 +25,8 @@
 ```bash
 # 1. 种子服务器: 假数据实例 (账号 admin/shot-pass-123), 打印 READY 后保持存活。
 #    首次跑要对高德做 ~34 段驾车规划 (真实 Web 服务 Key, 几分钟 + 要网),
-#    之后 $SHOTLAB/tesla/ 留着即免重规划。
+#    种子库一次成型: teslamate.db 已在即整库复用直接起服
+#    (重建: 删 SHOTLAB 库或 SHOT_RESEED=1)。
 .venv/bin/python shots/seed_server.py 8901
 
 # 2. 射手: 15 个视图各一张 (开场动画一律等收完; 足迹地图手动定格回放终帧)。
@@ -43,7 +44,7 @@ LD_LIBRARY_PATH=... PYTHONPATH=<Pillow 所在> /tmp/pw-verify/bin/python shots/c
 
 | 文件 | 职责 |
 |---|---|
-| `seed_server.py` | 假数据实例: 22 条充电 + ~1000 程「一笔画」路网 (~两万公里, 近/中/远频次分层) + 双驾驶员 + 行程分组 + 地址坐标 (充电地图圆标) + 演示 app_settings (设置页回显) |
+| `seed_server.py` | 假数据实例: 充电 ~280 条跨 15 个月 (月度柱状图铺满 12 个月滑窗; 满充带额定续航采样, 331→322km 缓降喂电池健康曲线) + ~1000 程「一笔画」路网 (~两万公里, 近/中/远频次分层) + 双驾驶员 + 行程分组 + 地址坐标 (充电地图圆标) + 演示 app_settings (设置页回显) |
 | `shoot.py` | 15 视图射手: 每视图独立 context (localStorage 预置视图), 等数据锚点 + 动画收尾; 地图是手动定格回放终帧的特例流程 |
 | `composite.py` | 官方 bezel 合成: 预乘缩放 (透明留白 RGB 不渗边) + 洞形蒙版 (方角内容出不了圆角开窗) + 底部 34px 安全区拉伸补齐 |
 | `undmg.py` | Apple dmg → PNG carver (解 UDIF blkx, carve 内嵌 PNG) |

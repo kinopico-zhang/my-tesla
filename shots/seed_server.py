@@ -1,17 +1,21 @@
 """起一个「种子假数据」的 my-tesla 实例给 README 截图用 (shots/ 管线)。
 
-uvicorn 线程起来后, 把 TeslaMate 引擎换成灌好假数据的 SQLite: 充电 22 条
-+ ~1000 程 / ~两万公里「一笔画」路网 (17 锚点驾车链, 段段首尾相接, 近/
-中/远三档频次分层喂 log 色阶) + 双驾驶员 + 地址坐标 (充电地图圆标) +
-演示用 app_settings 行 (设置页回显), 账号库种 admin/shot-pass-123。
-打印 READY 后存活。
+uvicorn 线程起来后, 把 TeslaMate 引擎换成灌好假数据的 SQLite: 充电 ~290 条
+跨 15 个月 (月度柱状图铺满 12 个月滑窗; 家充满充带额定续航采样, 331→322km
+缓降当电池健康衰减曲线) + ~1000 程 / ~两万公里「一笔画」路网 (17 锚点驾车
+链, 段段首尾相接, 近/中/远三档频次分层喂 log 色阶; 行程带额定续航差、
+点位带电量/续航 —— 行程统计的电耗与状态页的电量续航有数据) + 双驾驶员
++ 地址坐标
+(充电地图圆标) + 演示用 app_settings 行 (设置页回显), 账号库种
+admin/shot-pass-123。打印 READY 后存活。
 
 用法: .venv/bin/python shots/seed_server.py [端口]   (默认 8901)
 环境: SHOTLAB 工作目录 (默认 /tmp/shotlab; 种子库/缓存落 SHOTLAB/tesla/)
       MYHOME_ENV 根仓 .env 路径 (取高德 Key 种进演示设置行, 默认根仓 .env)
       MYHOME_PROD_DB 生产 mytesla.db (只读取 amap_web_key 拟合道路用)
 注意: 首次跑要对高德做 ~34 段驾车规划 (真实 Web 服务 Key, 几分钟 + 要网);
-之后 SHOTLAB/tesla/ 留着就不用重规划。绝不动子仓 data/ 下的生产缓存
+种子库一次成型 —— teslamate.db 已在时整库复用, 免重规划免重播种直接起服
+(重建: 删 SHOTLAB 库或 SHOT_RESEED=1)。绝不动子仓 data/ 下的生产缓存
 (盘缓存重定向到 SHOTLAB/tesla/)。"""
 import os
 import sys
@@ -71,9 +75,23 @@ with database.users_session_factory()() as users:  # pylint: disable=not-callabl
 # ---- 引擎换成种子 SQLite (lifespan 已按 env 建好库表, 这里只换镜像库) ----
 from app.tesla.models.teslamate_tables import Base  # noqa: E402
 
-DB = f"sqlite:///{(TMP / 'teslamate.db').as_posix()}"
+DB_PATH = TMP / "teslamate.db"
+DB = f"sqlite:///{DB_PATH.as_posix()}"
+RESEED = bool(os.environ.get("SHOT_RESEED")) or not DB_PATH.exists()
 database.init_engine(DB)
 Base.metadata.create_all(database.engine())
+
+if not RESEED:
+    # 种子库一次成型, 整库复用 (2026-10-09 用户点名「搞一个虚假的
+    # teslamate db, 每次都用这个截图」): 已在时免重规划免重播种直接起服;
+    # 重建 = 删 $SHOTLAB/tesla/teslamate.db (连 mytesla/users 一起) 或
+    # SHOT_RESEED=1 重来
+    print(f"种子库已就位 {DB_PATH}, 免重播种直接起服 "
+          "(重建: 删 SHOTLAB 库或 SHOT_RESEED=1)", flush=True)
+    print("READY", flush=True)
+    while thread.is_alive():
+        time.sleep(1)
+    raise SystemExit(0)
 
 from tests.seed_factories import (  # noqa: E402
     seed_car, seed_charge, seed_charging, seed_drive, seed_positions)
@@ -163,18 +181,25 @@ with database.session_factory()() as db:  # pylint: disable=not-callable
     ])
     db.commit()
 
-    # ---- 充电记录: 近 4 周 22 条, 家充慢充/超充快充/第三方快充混排 ----
+    # ---- 充电记录: 2025-08 起 15 个月 (近 4 周手排 22 条 + 历史段程序化) ----
+    # 历史段 8 天一循环 5 充 (隔两循环加一充): 家充满充 + 超充 + 家充部分充
+    # + 第三方快充 + 家充部分充 —— 月度柱状图铺满前端 12 个月滑窗
+    # (2026-10-09 用户点名「最起码要 12 个」)。家充满充是电池健康页的唯一
+    # 数据源 (只采结尾 100% 的过程, 同日用户点名「电池健康度截图没有数据」):
+    # 每 10% 一个采样带额定续航, 满充额定 331.5km 线性缓降 ~3%/14 个月当
+    # 衰减曲线; 近 4 周保持手排 (列表页观感不动), 其中两条家充同样升满
+    # 100% 把曲线接到「现在」。
     now = datetime(2026, 10, 7, 6, 0)   # UTC 口径 (库里是 UTC)
-    plan = [  # (天前, 小时, 分钟, addr, 快充, kWh, cost, 起止电量)
+    plan = [  # (天前, 小时, 分钟, addr, 快充, kWh, cost, 起止电量) —— 近 4 周
         (1, 1, 10, 1, False, 41.2, 14.8, (32, 88)),
         (2, 16, 40, 3, True, 32.5, 48.2, (18, 70)),
         (3, 22, 5, 1, False, 38.0, 13.7, (28, 84)),
         (4, 12, 30, 4, True, 45.6, 71.1, (12, 82)),
-        (5, 19, 50, 1, False, 22.4, 8.1, (55, 90)),
+        (5, 19, 50, 1, False, 33.1, 11.9, (55, 100)),   # 满充 → 电池健康
         (7, 3, 15, 5, True, 28.3, 41.6, (25, 66)),
         (8, 21, 30, 1, False, 40.9, 14.7, (30, 87)),
         (9, 13, 45, 3, True, 36.8, 54.3, (15, 72)),
-        (10, 20, 10, 1, False, 18.7, 6.7, (60, 90)),
+        (10, 20, 10, 1, False, 29.4, 10.6, (60, 100)),  # 满充 → 电池健康
         (12, 9, 25, 4, True, 48.2, 74.9, (8, 85)),
         (13, 17, 55, 1, False, 35.6, 12.8, (35, 86)),
         (14, 23, 40, 6, True, 30.1, 46.7, (22, 65)),
@@ -189,20 +214,75 @@ with database.session_factory()() as db:  # pylint: disable=not-callable
         (29, 15, 55, 6, True, 42.8, 66.4, (14, 83)),
         (31, 5, 45, 1, False, 31.5, 11.3, (40, 90)),
     ]
+
+    def full_rated(day):
+        """当天的满充额定续航 km (100% 表显): 331.5 线性缓降, 14 个月 ~3%。"""
+        return 331.5 - (day - datetime(2025, 8, 12)).days * 0.0225
+
+    def at(base, d, h, m):
+        return base.replace(hour=h, minute=m) + timedelta(days=d)
+
+    hist = []                     # (start, addr, 快充, b0, b1)
+    day = datetime(2025, 8, 12)   # 与行程时间链同期起步; 止于手排版前一循环
+    cyc = 0
+    while day <= now - timedelta(days=39):
+        cyc += 1
+        hist += [
+            (at(day, 0, 12 + cyc % 4, 25), 1, False, 34 + cyc % 5, 100),
+            (at(day, 1, 2 + cyc % 7, 40), (3, 4, 6)[cyc % 3], True,
+             18 + cyc % 5, 62 + cyc % 4),
+            (at(day, 3, 14 + cyc % 5, 10), 1, False, 44 + cyc % 6, 82 + cyc % 5),
+            (at(day, 5, 1 + cyc % 6, 5), 5 if cyc % 2 else 6, True,
+             26 + cyc % 7, 70 + cyc % 6),
+            (at(day, 7, 19 + cyc % 5, 30), 1, False, 52 + cyc % 4, 90),
+        ]
+        if cyc % 3 == 0:          # 隔两循环加一充, 月度柱状图高矮错落
+            hist.append((at(day, 6, 11 + cyc % 3, 45), 4, True,
+                         14 + cyc % 3, 58))
+        day += timedelta(days=8)
+
+    def fill(start, addr, fast, b0, b1):
+        """历史条目补 kWh/费用: ~0.74 kWh/% + 家充 0.36 / 快充 1.45 ¥/kWh。"""
+        kwh = round((b1 - b0) * 0.74, 1)
+        return (start, addr, fast, kwh,
+                round(kwh * (1.45 if fast else 0.36), 1), b0, b1)
+
+    rows = [[(now - timedelta(days=d)).replace(hour=h, minute=m),
+             addr, fast, kwh, cost, b0, b1]
+            for d, h, m, addr, fast, kwh, cost, (b0, b1) in plan]
+    rows += [fill(*h) for h in hist]
+
     pid = 0
-    for days_ago, h, m, addr, fast, kwh, cost, (b0, b1) in plan:
+    for start, addr, fast, kwh, cost, b0, b1 in rows:
         pid += 1
-        start = now - timedelta(days=days_ago) - timedelta(hours=0)
-        start = start.replace(hour=h, minute=m)
         dur = int(kwh / (90.0 if fast else 11.0) * 60) + 20
+        k_pct = full_rated(start) / 100.0     # 当日额定续航系数 (km/1%)
         proc = seed_charging(
             db, id=pid, car_id=1, start_date=start,
             end_date=start + timedelta(minutes=dur), address_id=addr,
             start_battery_level=b0, end_battery_level=b1,
             charge_energy_added=kwh, charge_energy_used=round(kwh * 1.07, 1),
             duration_min=dur, cost=cost, outside_temp_avg=27.5,
-            start_rated_range_km=round(b0 * 3.3, 1),
-            end_rated_range_km=round(b1 * 3.3, 1))
+            start_rated_range_km=round(b0 * k_pct, 1),
+            end_rated_range_km=round(b1 * k_pct, 1))
+        if b1 == 100:
+            # 满充: 每 10% 一个采样, 额定续航 + 可用电量齐 (电池健康页的料);
+            # 采样间 ±0.4% 抖动让曲线不那么机械
+            levels = list(range(b0, 100, 10))
+            levels.append(100)
+            for j, lv in enumerate(levels):
+                frac = j / (len(levels) - 1)
+                seed_charge(
+                    db, proc.id,
+                    date=start + timedelta(minutes=5 + (dur - 10) * frac),
+                    battery_level=lv, usable_battery_level=lv,
+                    rated_battery_range_km=round(
+                        lv * k_pct * (1 + 0.004 * (j % 3 - 1)), 1),
+                    charger_power=11.0, charger_voltage=220.0,
+                    charger_actual_current=50.0, conn_charge_cable="CCS",
+                    fast_charger_brand="<invalid>", fast_charger_type="Gb",
+                    fast_charger_present=False)
+            continue
         seed_charge(db, proc.id, date=start + timedelta(minutes=5),
                     battery_level=b0, charger_power=95.0 if fast else 11.0,
                     charger_voltage=400.0 if fast else 220.0,
@@ -340,21 +420,35 @@ with database.session_factory()() as db:  # pylint: disable=not-callable
                 38.0 + (did % 4) * 2.0
             dur_min = max(1, round(km / speed * 60))
             start = t
+            # 额定续航差 → 行程电耗 (额定续航差 × 桩端定标; 2026-10-09 用户
+            # 点名「行程统计的平均电耗和总电耗是空的」): 续航掉得比里程略多
+            # (±4% 抖动), 起续航 150–310km 轮转 —— 段间停留当补过电
+            k_pct = full_rated(start) / 100.0
+            drop = km * (1.0 + ((did % 5) - 2) * 0.02)
+            rated0 = 150.0 + (did * 37) % 160
+            rated1 = max(40.0, rated0 - drop)
+            lv0, lv1 = rated0 / k_pct, rated1 / k_pct   # 对应电量 %
             rows = []
             tt = start
             for i, (lon, lat) in enumerate(pts):
                 if i:
                     tt += timedelta(seconds=round(
                         wgs_km(pts[i - 1], pts[i]) / speed * 3600))
+                f = cum[i] / km if km else 0.0     # 沿程进度 → 电量/续航内插
                 rows.append({"date": tt, "longitude": lon, "latitude": lat,
                              "speed": speed + (i % 11) * 1.2,
-                             "power": 25000.0 + (i % 7) * 3000.0})
+                             "power": 25000.0 + (i % 7) * 3000.0,
+                             "battery_level": round(lv0 + (lv1 - lv0) * f),
+                             "rated_battery_range_km": round(
+                                 rated0 + (rated1 - rated0) * f, 1)})
             seed_drive(db, id=did, car_id=1,
                        start_date=start,
                        end_date=start + timedelta(minutes=dur_min),
                        distance=round(km, 1), duration_min=dur_min,
                        speed_max=round(speed * 1.4),
-                       start_address_id=A[ka][1], end_address_id=A[kb][1])
+                       start_address_id=A[ka][1], end_address_id=A[kb][1],
+                       start_rated_range_km=round(rated0, 1),
+                       end_rated_range_km=round(rated1, 1))
             seed_positions(db, did, rows)
             roads_rows.append(roads_repo.road_row(
                 did, "ok", roads_fit.ROAD_FIT_V,
