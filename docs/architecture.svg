@@ -8,12 +8,12 @@
       <path d="M0 0L10 5L0 10Z" fill="#7d7d86"/>
     </marker>
     <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
-      <feDropShadow dx="0" dy="0" stdDeviation="7" flood-color="#e82127" flood-opacity="0.4"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#e82127" flood-opacity="0.22"/>
     </filter>
   </defs>
 
-  <!-- 画布卡片 -->
-  <rect x="0.5" y="0.5" width="899" height="539" rx="18" fill="#0f0f13" stroke="#24242b"/>
+  <!-- 画布卡片 (浅色底) -->
+  <rect x="0.5" y="0.5" width="899" height="539" rx="18" fill="#ffffff" stroke="#d8d8de"/>
 
   <!-- ── 连线 (先画, 压在节点下) ─────────────────────── -->
   <g fill="none" stroke="#8f8f98" stroke-width="1.6">
@@ -28,25 +28,25 @@
 
   <!-- 连线标签 (胶囊底 + 文字) -->
   <g>
-    <rect x="196" y="358" width="78" height="20" rx="10" fill="#16161b" stroke="#2b2b32"/>
-    <text id="l-e2" x="235" y="368" data-max="68" font-size="12" fill="#a6a6b0" text-anchor="middle" dominant-baseline="central">Tesla 账号</text>
-    <rect x="393" y="358" width="82" height="20" rx="10" fill="#16161b" stroke="#2b2b32"/>
-    <text id="l-e3" x="434" y="368" data-max="72" font-size="11" fill="#a6a6b0" text-anchor="middle" dominant-baseline="central">行车数据落库</text>
-    <rect x="229" y="156" width="130" height="20" rx="10" fill="#16161b" stroke="#2b2b32"/>
-    <text id="l-e4" x="294" y="166" data-max="120" font-size="12" fill="#a6a6b0" text-anchor="middle" dominant-baseline="central">地图瓦片 · 道路拟合</text>
-    <rect x="531" y="160" width="110" height="20" rx="10" fill="#16161b" stroke="#2b2b32"/>
-    <text id="l-e5" x="586" y="170" data-max="100" font-size="12" fill="#a6a6b0" text-anchor="middle" dominant-baseline="central">账号 · 设置 · Key</text>
-    <rect x="592" y="248" width="192" height="20" rx="10" fill="#16161b" stroke="#2b2b32"/>
-    <text id="l-e6" x="688" y="258" data-max="182" font-size="12" fill="#a6a6b0" text-anchor="middle" dominant-baseline="central">只读查询 · 向导第二步填五项</text>
+    <rect x="196" y="358" width="78" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
+    <text id="l-e2" x="235" y="368" data-max="68" font-size="12" fill="#55555c" text-anchor="middle" dominant-baseline="central">Tesla 账号</text>
+    <rect x="393" y="358" width="82" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
+    <text id="l-e3" x="434" y="368" data-max="72" font-size="11" fill="#55555c" text-anchor="middle" dominant-baseline="central">行车数据落库</text>
+    <rect x="229" y="156" width="130" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
+    <text id="l-e4" x="294" y="166" data-max="120" font-size="12" fill="#55555c" text-anchor="middle" dominant-baseline="central">地图瓦片 · 道路拟合</text>
+    <rect x="531" y="160" width="110" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
+    <text id="l-e5" x="586" y="170" data-max="100" font-size="12" fill="#55555c" text-anchor="middle" dominant-baseline="central">账号 · 设置 · Key</text>
+    <rect x="592" y="248" width="192" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
+    <text id="l-e6" x="688" y="258" data-max="182" font-size="12" fill="#55555c" text-anchor="middle" dominant-baseline="central">只读查询 · 向导第二步填五项</text>
   </g>
 
   <!-- ── 顶排: 使用者 ────────────────────────────────── -->
-  <rect x="380" y="48" width="140" height="46" rx="12" fill="#1b1b1e" stroke="#3d3d44" stroke-width="1.2"/>
-  <text id="t-phone" x="450" y="71" data-max="122" font-size="14" font-weight="500" fill="#ededf2" text-anchor="middle" dominant-baseline="central">📱 浏览器 / 手机</text>
+  <rect x="380" y="48" width="140" height="46" rx="12" fill="#f4f4f7" stroke="#c8c8cf" stroke-width="1.2"/>
+  <text id="t-phone" x="450" y="71" data-max="122" font-size="14" font-weight="500" fill="#1d1d1f" text-anchor="middle" dominant-baseline="central">📱 浏览器 / 手机</text>
 
   <!-- ── 中排: 高德 ← My Tesla → 自有库 ──────────────── -->
-  <rect x="60" y="143" width="150" height="48" rx="12" fill="#1b1b1e" stroke="#3d3d44" stroke-width="1.2"/>
-  <text id="t-amap" x="135" y="167" data-max="132" font-size="14" font-weight="500" fill="#ededf2" text-anchor="middle" dominant-baseline="central">🗺️ 高德开放平台</text>
+  <rect x="60" y="143" width="150" height="48" rx="12" fill="#f4f4f7" stroke="#c8c8cf" stroke-width="1.2"/>
+  <text id="t-amap" x="135" y="167" data-max="132" font-size="14" font-weight="500" fill="#1d1d1f" text-anchor="middle" dominant-baseline="central">🗺️ 高德开放平台</text>
 
   <g filter="url(#glow)">
     <rect x="375" y="140" width="150" height="54" rx="14" fill="#e82127"/>
@@ -55,23 +55,23 @@
   <text id="t-hero" x="427" y="167" data-max="92" font-size="17" font-weight="700" fill="#ffffff" text-anchor="start" dominant-baseline="central">My Tesla</text>
 
   <!-- 自有 SQLite 圆柱 -->
-  <path d="M 650 149 L 650 197 A 65 9 0 0 0 780 197 L 780 149" fill="#1b1b1e" stroke="#3d3d44" stroke-width="1.2"/>
-  <ellipse cx="715" cy="149" rx="65" ry="9" fill="#222228" stroke="#3d3d44" stroke-width="1.2"/>
-  <text id="t-sqlite1" x="715" y="168" data-max="112" font-size="13" font-weight="500" fill="#ededf2" text-anchor="middle" dominant-baseline="central">自有 SQLite</text>
-  <text id="t-sqlite2" x="715" y="186" data-max="112" font-size="10.5" fill="#9c9ca6" text-anchor="middle" dominant-baseline="central">data/mytesla.db</text>
+  <path d="M 650 149 L 650 197 A 65 9 0 0 0 780 197 L 780 149" fill="#f4f4f7" stroke="#c8c8cf" stroke-width="1.2"/>
+  <ellipse cx="715" cy="149" rx="65" ry="9" fill="#e8e8ec" stroke="#c8c8cf" stroke-width="1.2"/>
+  <text id="t-sqlite1" x="715" y="168" data-max="112" font-size="13" font-weight="500" fill="#1d1d1f" text-anchor="middle" dominant-baseline="central">自有 SQLite</text>
+  <text id="t-sqlite2" x="715" y="186" data-max="112" font-size="10.5" fill="#6e6e73" text-anchor="middle" dominant-baseline="central">data/mytesla.db</text>
 
   <!-- ── 底排: TeslaMate 所在机器 ─────────────────────── -->
-  <rect x="250" y="300" width="360" height="200" rx="14" fill="#14141a" stroke="#38383f" stroke-width="1.2" stroke-dasharray="5 4"/>
-  <text id="t-group" x="266" y="324" data-max="328" font-size="12" fill="#8b8b95" text-anchor="start" dominant-baseline="central">🖥 TeslaMate 所在机器 · docker compose</text>
+  <rect x="250" y="300" width="360" height="200" rx="14" fill="#fafafc" stroke="#c2c2ca" stroke-width="1.2" stroke-dasharray="5 4"/>
+  <text id="t-group" x="266" y="324" data-max="328" font-size="12" fill="#6e6e73" text-anchor="start" dominant-baseline="central">🖥 TeslaMate 所在机器 · docker compose</text>
 
-  <rect x="60" y="345" width="130" height="46" rx="12" fill="#1b1b1e" stroke="#3d3d44" stroke-width="1.2"/>
-  <text id="t-car" x="125" y="368" data-max="112" font-size="14" font-weight="500" fill="#ededf2" text-anchor="middle" dominant-baseline="central">🚗 特斯拉车辆</text>
+  <rect x="60" y="345" width="130" height="46" rx="12" fill="#f4f4f7" stroke="#c8c8cf" stroke-width="1.2"/>
+  <text id="t-car" x="125" y="368" data-max="112" font-size="14" font-weight="500" fill="#1d1d1f" text-anchor="middle" dominant-baseline="central">🚗 特斯拉车辆</text>
 
-  <rect x="280" y="345" width="110" height="46" rx="12" fill="#1b1b1e" stroke="#3d3d44" stroke-width="1.2"/>
-  <text id="t-tm" x="335" y="368" data-max="92" font-size="14" font-weight="500" fill="#ededf2" text-anchor="middle" dominant-baseline="central">TeslaMate</text>
+  <rect x="280" y="345" width="110" height="46" rx="12" fill="#f4f4f7" stroke="#c8c8cf" stroke-width="1.2"/>
+  <text id="t-tm" x="335" y="368" data-max="92" font-size="14" font-weight="500" fill="#1d1d1f" text-anchor="middle" dominant-baseline="central">TeslaMate</text>
 
-  <path d="M 478 345 L 478 393 A 57.5 9 0 0 0 593 393 L 593 345" fill="#1b1b1e" stroke="#3d3d44" stroke-width="1.2"/>
-  <ellipse cx="535.5" cy="345" rx="57.5" ry="9" fill="#222228" stroke="#3d3d44" stroke-width="1.2"/>
-  <text id="t-pg1" x="535.5" y="367" data-max="97" font-size="13" font-weight="500" fill="#ededf2" text-anchor="middle" dominant-baseline="central">PostgreSQL</text>
-  <text id="t-pg2" x="535.5" y="384" data-max="97" font-size="9.5" fill="#9c9ca6" text-anchor="middle" dominant-baseline="central">.env 的 POSTGRES_*</text>
+  <path d="M 478 345 L 478 393 A 57.5 9 0 0 0 593 393 L 593 345" fill="#f4f4f7" stroke="#c8c8cf" stroke-width="1.2"/>
+  <ellipse cx="535.5" cy="345" rx="57.5" ry="9" fill="#e8e8ec" stroke="#c8c8cf" stroke-width="1.2"/>
+  <text id="t-pg1" x="535.5" y="367" data-max="97" font-size="13" font-weight="500" fill="#1d1d1f" text-anchor="middle" dominant-baseline="central">PostgreSQL</text>
+  <text id="t-pg2" x="535.5" y="384" data-max="97" font-size="9.5" fill="#6e6e73" text-anchor="middle" dominant-baseline="central">.env 的 POSTGRES_*</text>
 </svg>
