@@ -39,10 +39,9 @@ body {
 }
 .icon svg { width: 36px; height: 36px; display: block; }
 h1 { font-size: 21px; font-weight: 700; letter-spacing: -.3px; }
-.sub { font-size: 13px; color: var(--ink-2); margin: 5px 0 14px; }
 .steps {
   display: flex; justify-content: center; gap: 6px; list-style: none;
-  margin: 0 0 20px;
+  margin: 14px 0 20px;   /* 顶距接管: 副标题退役后 h1 与步骤条的间距在此兜 */
 }
 .steps li {
   font-size: 12px; color: var(--ink-3); padding: 3px 10px;
@@ -55,7 +54,9 @@ h1 { font-size: 21px; font-weight: 700; letter-spacing: -.3px; }
   background: var(--surface-2); border-radius: 12px;
   padding: 12px 14px; margin-bottom: 10px; text-align: left;
 }
-.field label { font-size: 13px; color: var(--ink-2); flex: none; width: 3.5em; }
+.field label {
+  font-size: 13px; color: var(--ink-2); flex: none; width: 6.5em;   /* 容「Web 服务 Key」 */
+}
 .field input {
   flex: 1; min-width: 0; border: 0; outline: 0; background: none;
   color: var(--ink-1); font: inherit; caret-color: #3987e5;

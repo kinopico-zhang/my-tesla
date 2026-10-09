@@ -194,13 +194,23 @@ def test_setup_page_wiring(  # pylint: disable=redefined-outer-name
     assert re.search(r'id="amap-key"[^>]*required', html)
     # 第三步是收尾步: 按钮写明存完即进应用 (2026-10-09 用户口径)
     assert "保存并进入应用" in html
+    # 第三步两把高德 Key (2026-10-09): 地图 Key 必填, Web 服务 Key (道路
+    # 拟合) 同场收、可留空后补; 顶部「首次使用」副标题同日退役 (步骤条
+    # 已说明流程, 页头不重复)
+    assert '<label for="amap-key">地图 Key</label>' in html
+    assert '<label for="amap-web">Web 服务 Key</label>' in html
+    web_input = re.search(r'<input id="amap-web"[^>]*>', html)
+    assert web_input and "required" not in web_input.group(0)
+    assert "三步配齐才能进入" not in html
     # 取参指引 (2026-10-09 用户点名「会用的必然装了 TeslaMate, 重要的是
     # 五个参数去哪儿抄」): 第二步的提示直接写明抄哪儿
     assert "POSTGRES_PASSWORD" in html
     assert "docker-compose.yml" in html
-    js = client.get("/static/setup.js?v=2").text
+    js = client.get("/static/setup.js?v=3").text
     assert '"/api/setup-admin"' in js
     assert '"/tesla/api/settings"' in js
+    assert 'amap_web_key: v("amap-web")' in js   # Web 服务 Key 随同提交
+    assert "web_key_masked" in js                # 预填时给现值掩码
     assert 'data-done' in js and "dataset.done" in js
     assert ".skip" not in js and "setup-status" in js
     assert 'missing.includes("account")' in js

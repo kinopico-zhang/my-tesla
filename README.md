@@ -160,7 +160,7 @@ python3.13 -m venv .venv          # Windows: py -3.13 -m venv .venv
 <a name="shot-setup-2"><img src="docs/screenshot-setup-2.png" width="240" alt="向导第二步 · 填 TeslaMate 连接"></a>
 <a name="shot-setup-3"><img src="docs/screenshot-setup-3.png" width="240" alt="向导第三步 · 填高德 Key"></a>
 <br><b>① 建立管理员</b> — 注册即登录 · <b>② 数据源</b> — 五项按上表抄
-TeslaMate 那台机器 · <b>③ 地图</b> — 高德 Key, 保存并进入应用
+TeslaMate 那台机器 · <b>③ 地图</b> — 高德两把 Key, 保存并进入应用
 </p>
 
 ## 📡 数据源
@@ -168,8 +168,9 @@ TeslaMate 那台机器 · <b>③ 地图</b> — 高德 Key, 保存并进入应�
 TeslaMate 连接只有一条路: 首启向导 (或之后的设置页) 里填, 保存即热重连
 实测。数据只读, 不会往 TeslaMate 库写任何东西。
 
-高德 Key (服务平台选「Web端 JS API」, 个人开发者免费) 未配置时地图页
-显示申请指引。
+高德 Key 两把 (个人开发者免费; 同一应用下可建多把, 各选一个服务平台):
+「Web端(JS API)」的 Key 与配套安全码给页面地图, 「Web服务」的 Key 给
+足迹道路拟合。未配置时地图页显示申请指引。
 
 自有数据落在 `data/` (git 忽略): `mytesla.db` (轨迹断档补路等自产数据)
 + `users.db` 账号 + `certs/` 证书。
@@ -181,8 +182,6 @@ TeslaMate 连接只有一条路: 首启向导 (或之后的设置页) 里填, �
 | 参数 | 默认 | 说明 |
 |---|---|---|
 | `--port` | `8500` | 端口: 证书目录有证书走 HTTPS, 没证书走 HTTP |
-| `--mytesla-db` | `sqlite:///data/mytesla.db` | 自有库 (自产数据) |
-| `--users-db` / `--secret-file` | `data/users.db` / `.session_secret` | 账号库与会话密钥 |
 | `--tz` / `--currency` | `Asia/Shanghai` / `¥` | 显示口径 |
 
 参数没给的回落同名环境变量, 再回落内置默认 —— 显式参数 > 环境变量 >

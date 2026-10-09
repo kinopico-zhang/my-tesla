@@ -1,6 +1,6 @@
 // setup.js — 首启引导: 三步全走完才能进应用, 不允许跳过。第一步建管理
 // 员 (注册即登录, 后续接口都带会话); 带数据源/地图步骤的部署 (My Home /
-// My Tesla) 顺路配 TeslaMate 与高德 Key, 一步变体 (My Money / My Music)
+// My Tesla) 顺路配 TeslaMate 与高德两把 Key, 一步变体 (My Money / My Music)
 // 建完即完成。起步步数由 /api/setup-status 的 missing 决定 —— 中途退出
 // 的续走 (管理员已在, 从缺口步接着); 完成跳转读 body 的 data-done;
 // 步骤按 DOM 现状收集, 同一份脚本服务两种页面。
@@ -105,6 +105,8 @@ async function prefillSettings() {
     if (key) key.placeholder = a.key_masked ? `现值 ${a.key_masked}, 留空保持` : "未设置";
     const code = document.getElementById("amap-code");
     if (code) code.placeholder = a.security_code_masked ? `现值 ${a.security_code_masked}, 留空保持` : "未设置";
+    const web = document.getElementById("amap-web");
+    if (web) web.placeholder = a.web_key_masked ? `现值 ${a.web_key_masked}, 留空保持` : "未设置";
   } catch (_e) { /* 拉不到现值不挡流程, 空表单照填 */ }
 }
 
@@ -135,7 +137,7 @@ if (forms[1]) {
   });
 }
 
-// 第三步 (有则存在): 高德 Key + 安全码 (留空=保持现值)
+// 第三步 (有则存在): 高德两把 Key + 安全码 (留空=保持现值)
 if (forms[2]) {
   forms[2].addEventListener("submit", async e => {
     e.preventDefault();
@@ -148,6 +150,7 @@ if (forms[2]) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amap_key: v("amap-key"), amap_security_code: v("amap-code"),
+          amap_web_key: v("amap-web"),
         }),
       });
       if (r.ok) { advance(2); return; }
