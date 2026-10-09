@@ -10,8 +10,8 @@ import sys
 import zlib
 from pathlib import Path
 
-DMG = Path("/tmp/shotlab/bezel17.dmg")
-RAW = Path("/tmp/shotlab/bezel17.raw")
+DMG = Path.home() / "shotlab" / "bezel17.dmg"
+RAW = Path.home() / "shotlab" / "bezel17.raw"
 
 data = DMG.read_bytes()
 
@@ -79,7 +79,7 @@ while True:
     except struct.error:
         continue
 print(f"PNG 候选 {len(found)} 张")
-outdir = Path("/tmp/shotlab/bezel-png")
+outdir = Path.home() / "shotlab" / "bezel-png"
 outdir.mkdir(exist_ok=True)
 for i, (p, ln, w, h) in enumerate(found):
     (outdir / f"{i:03d}_{w}x{h}.png").write_bytes(bytes(out[p:p + ln]))

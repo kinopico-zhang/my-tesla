@@ -15,8 +15,13 @@ undmg.py 纯 python 解 UDIF 后 carve 出 PNG) 只含边框环 + 灵动岛, 屏
 = 屏幕洞) 贴内容, 方角内容永远出不了圆角开窗。
 页高按 pages/*.png 实际尺寸自适应 (764 视口 + 34px 底条拉伸补齐安全区)。
 
+2026-10-09 白边收紧 (用户点名「截图白边太多, 与下方文字间距大」): 资产
+自带 ~16-21px @3x 透明留白 + MARGIN 24 设备 px, 白底 README 上每边渲染
+~10 CSS px 死白边 —— bezel 载入即裁到 alpha 内容框 (开窗坐标同步平移,
+fx/fy 只看窗口尺寸不受影响), MARGIN 收到 6。
+
 用法: /tmp/pw-verify/bin/python shots/composite.py
-环境: SHOTLAB 工作目录 (默认 /tmp/shotlab; 内含 bezel-png/010_1350x2760.png
+环境: SHOTLAB 工作目录 (默认 ~/shotlab; 内含 bezel-png/010_1350x2760.png
       与 pages/*.png), 输出 LAB/final/。
 依赖: icons 在本目录 assets/ (自制, 随仓); bezel PNG 是 Apple 官方资产
       不随仓 (公开仓不可再分发), 由 README 的下载 + undmg.py 步骤再生。"""
@@ -28,7 +33,8 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageMath
 from playwright.sync_api import sync_playwright
 
 HERE = pathlib.Path(__file__).resolve().parent
-LAB = pathlib.Path(os.environ.get("SHOTLAB", "/tmp/shotlab"))
+LAB = pathlib.Path(os.environ.get("SHOTLAB",
+                                  str(pathlib.Path.home() / "shotlab")))
 PAGES = LAB / "pages"
 FINAL = LAB / "final"
 FINAL.mkdir(exist_ok=True)
@@ -97,12 +103,17 @@ body {background:transparent}
 # ---- 官方 bezel: 一次缩放, 全部页共用 ----
 WIN = (72, 69, 1278, 2691)              # 开窗 @3x = 402×874pt (实测 flood-fill)
 SCR_W, SCR_H = 786, 1704                # 内容 393×852 @2x, 原生贴窗
-MARGIN = 24                             # 设备外透明留白 (设备 px)
+MARGIN = 6                              # 设备外透明留白 (设备 px, 2026-10-09 收紧)
 fx = SCR_W / (WIN[2] - WIN[0])          # 0.6517
 fy = SCR_H / (WIN[3] - WIN[1])          # 0.6499
 BEZEL = pathlib.Path(os.environ.get(
     "SHOT_BEZEL", LAB / "bezel-png/010_1350x2760.png"))
 bezel = Image.open(BEZEL).convert("RGBA")
+# 裁掉资产自带透明留白 (~16-21px @3x, 白底上渲染成死白边): 裁到 alpha
+# 内容框, 开窗坐标同步平移 (fx/fy 只看窗口尺寸, 平移不影响)
+_b = bezel.getchannel("A").getbbox()
+WIN = (WIN[0] - _b[0], WIN[1] - _b[1], WIN[2] - _b[0], WIN[3] - _b[1])
+bezel = bezel.crop(_b)
 
 
 # 预乘缩放 (PIL 12.3 无 ImageChops.divide, 除回走 ImageMath): 透明留白的

@@ -3,7 +3,7 @@
 用法: /tmp/pw-verify/bin/python shots/shoot.py [名字过滤词]
 依赖: 种子服务器已起 (shots/seed_server.py, 默认 127.0.0.1:8901)。
 环境: SHOT_BASE 服务地址 (默认 http://127.0.0.1:8901)
-      SHOT_PAGES 原图输出目录 (默认 /tmp/shotlab/pages)
+      SHOT_PAGES 原图输出目录 (默认 ~/shotlab/pages)
 2026-10-08 视口 798→764: 底部留 34px (iOS 安全区), 合成时由页面底行
 拉伸补齐 —— 应用自己的底部控件抬出屏幕圆角 (官方 bezel 圆角 75px, 控件
 贴底会进角)。
@@ -21,7 +21,8 @@ os.environ.setdefault(
 from playwright.async_api import async_playwright  # noqa: E402
 
 BASE = os.environ.get("SHOT_BASE", "http://127.0.0.1:8901")
-OUT = os.environ.get("SHOT_PAGES", "/tmp/shotlab/pages")
+OUT = os.environ.get("SHOT_PAGES",
+                    os.path.expanduser("~/shotlab/pages"))
 os.makedirs(OUT, exist_ok=True)
 
 VIEWPORT = {"width": 393, "height": 764}   # 852-54 状态栏-34 底部安全区

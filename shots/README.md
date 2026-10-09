@@ -2,7 +2,8 @@
 
 把 README 的 15 张 iPhone 17 Pro 设备截图 (docs/screenshot-*.png) 从零复刻出来:
 种子服务器 → 无头射手 → 官方边框合成, 三步。全部中间产物落在 `$SHOTLAB`
-(默认 `/tmp/shotlab`, 可再生, 不进仓); 本目录只进脚本与自制资产。
+(默认 `~/shotlab`, 可再生, 不进仓; 挪出 /tmp 后种子库与中间产物
+跨重启存活); 本目录只进脚本与自制资产。
 
 `pylint`/`mypy` 只扫 `app`/`tests`, 本目录不参与静态检查。
 

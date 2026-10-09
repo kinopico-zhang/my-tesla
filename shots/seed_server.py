@@ -10,7 +10,7 @@ uvicorn 线程起来后, 把 TeslaMate 引擎换成灌好假数据的 SQLite: �
 admin/shot-pass-123。打印 READY 后存活。
 
 用法: .venv/bin/python shots/seed_server.py [端口]   (默认 8901)
-环境: SHOTLAB 工作目录 (默认 /tmp/shotlab; 种子库/缓存落 SHOTLAB/tesla/)
+环境: SHOTLAB 工作目录 (默认 ~/shotlab; 种子库/缓存落 SHOTLAB/tesla/)
       MYHOME_ENV 根仓 .env 路径 (取高德 Key 种进演示设置行, 默认根仓 .env)
       MYHOME_PROD_DB 生产 mytesla.db (只读取 amap_web_key 拟合道路用)
 注意: 首次跑要对高德做 ~34 段驾车规划 (真实 Web 服务 Key, 几分钟 + 要网);
@@ -29,7 +29,8 @@ REPO = HERE.parent
 sys.path.insert(0, str(REPO))
 os.chdir(REPO)
 
-LAB = Path(os.environ.get("SHOTLAB", "/tmp/shotlab"))
+LAB = Path(os.environ.get("SHOTLAB",
+                        os.path.expanduser("~/shotlab")))
 TMP = LAB / "tesla"
 TMP.mkdir(parents=True, exist_ok=True)
 
