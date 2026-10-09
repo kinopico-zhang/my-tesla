@@ -10,7 +10,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app import database
-from app.tesla import roads_amap
+from app.tesla import roads_amap, settings_store
 from app.tesla.models import AppSetting
 from tests.tesla_static_files import served_page
 
@@ -105,6 +105,38 @@ def test_settings_tmdb_rollback_when_verify_fails(  # pylint: disable=redefined-
         "postgresql+psycopg://u:p@10.0.0.1:5432/teslamate"]    # 失败换回
     d = auth.get("/tesla/api/settings").json()["tmdb"]
     assert d["host"] == "10.0.0.1"   # 设置行已回滚
+
+
+def test_engine_url_unconfigured_falls_back_to_sentinel(  # pylint: disable=redefined-outer-name
+        auth, owndb, rebuild_recorder, monkeypatch):
+    """真首启 (设置行/env/docker 全空) 拼连接串不炸: 落 .invalid 占位主机
+    (2026-10-09 前直接 RuntimeError, 跨机首启 lifespan 起不来, 向导页
+    服务不到用户 —— conftest 一直种着 TMDB_HOST 把病盖住了)。占位只进
+    URL 不进门: 引导缺口照实报; 存好真地址一次热换即生效。"""
+    row = owndb.get(AppSetting, 1)
+    for field in ("tmdb_host", "tmdb_port", "tmdb_user",
+                  "tmdb_password", "tmdb_name"):
+        setattr(row, field, "")
+    owndb.commit()
+    for var in ("TMDB_HOST", "TMDB_PORT", "TMDB_USER",
+                "TMDB_PASS", "TMDB_NAME"):
+        monkeypatch.delenv(var, raising=False)
+
+    def no_docker() -> str:
+        raise RuntimeError("无法定位数据库容器 teslamate_cn_database_1")
+    monkeypatch.setattr(database.teslamate_engine,
+                        "resolve_db_host", no_docker)
+
+    url = settings_store.engine_url(owndb)
+    assert url.endswith("@teslamate-unset.invalid:5432/teslamate")
+    # 门不看占位: 数据源没配就是没配, 引导第二步还在
+    assert settings_store.wizard_missing(owndb) == ["teslamate"]
+    # 从占位状态存真地址: 占位旧值 ≠ 新值, 走一次热换即到位
+    d = auth.post("/tesla/api/settings", json={
+        "tmdb_host": "10.0.0.9", "tmdb_user": "u", "tmdb_password": "p",
+        "tmdb_port": "5433", "tmdb_name": "n"}).json()["tmdb"]
+    assert (d["host"], d["port"], d["name"]) == ("10.0.0.9", "5433", "n")
+    assert rebuild_recorder == ["postgresql+psycopg://u:p@10.0.0.9:5433/n"]
 
 
 def test_drivers_crud_and_single_default(auth):
@@ -208,6 +240,11 @@ def test_settings_views_and_entries(auth):
                  # + 已填的在框里显掩码 (掩码住 placeholder 不入提交值)
                  '<details class="howto">', "<summary>Key 的获取方式</summary>",
                  'id="amap-howto"', 'id="amap-web-howto"',
+                 # TeslaMate 取参指引 (2026-10-09 用户点名「会用的必然装了
+                 # TeslaMate, 重要的是五个参数去哪儿抄」): DB 卡同款折叠块,
+                 # 静态文本 (地图那份要 markdown 渲染链接才进 JS)
+                 "<summary>参数怎么拿</summary>", "POSTGRES_PASSWORD",
+                 "docker compose exec database env",
                  # 驾驶员页 10-04 左滑三钮 (v5): 常显钮退役, 改名是行内编辑
                  'class="swipe-edit set-def">设为默认', 'class="swipe-edit ren">改名',
                  'class="drv-input"', "window.confirm(`删除驾驶员",

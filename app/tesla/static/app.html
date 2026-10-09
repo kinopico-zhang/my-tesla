@@ -729,6 +729,17 @@
         <section class="card">
           <h2>TeslaMate 数据库</h2>
           <!-- 布局 2026-10-07 用户点名: ip 和端口一行, 数据库名/账号/密码各占一行 -->
+          <!-- 取参指引 2026-10-09 用户点名「会用的必然装了 TeslaMate, 重要的是
+               五个参数去哪儿抄」: 与地图设置同款折叠 howto, 内容短走静态文本
+               (地图那份要 markdown 渲染链接才进 JS) -->
+          <details class="howto">
+            <summary>参数怎么拿</summary>
+            <ul class="md">
+              <li>用户 / 密码 / 库名: 抄 TeslaMate 那台机器 .env 里的 POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB (默认用户与库名都是 teslamate)</li>
+              <li>忘了值: 在它的 compose 目录跑 <code>docker compose exec database env</code>, 一次全打出来</li>
+              <li>地址 / 端口: 填那台机器的 IP + 5432; 官方 compose 默认不把 5432 发布到宿主, 跨机器先给 database 服务加 ports 映射再重建, 同机填 localhost</li>
+            </ul>
+          </details>
           <div class="row2">
             <label><span>主机地址</span><input type="text" id="tm-host" autocomplete="off" spellcheck="false"></label>
             <label><span>端口</span><input type="text" id="tm-port" inputmode="numeric" autocomplete="off"></label>

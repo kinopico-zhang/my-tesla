@@ -71,12 +71,26 @@ class _PgConnectArgs(BaseModel):
 _PG_ARGS = _PgConnectArgs()
 
 
+# 首启还没配 TeslaMate 时的占位主机 (设置行/env 都空、docker 也定位不到):
+# RFC 2606 的 .invalid 顶域保证永不解析 —— 引擎照建 (懒连接, 不炸启动),
+# 真查询快速 DNS 失败走既有 503, 向导第二步存好真地址即热换。2026-10-09
+# 前这里直接抛 RuntimeError: 跨机首启 (无 env 无 docker) lifespan 起不来,
+# 向导页根本到不了用户眼前 (conftest 一直种着 TMDB_HOST 把病盖住了)。
+UNSET_HOST = "teslamate-unset.invalid"
+
+
 def build_db_url(values: DbConnectValues | None = None) -> str:
-    """拼接 SQLAlchemy 连接串: 设置页字段 > env > docker 容器定位。"""
+    """拼接 SQLAlchemy 连接串: 设置页字段 > env > docker 容器定位。
+
+    全都定位不到 (真首启) 落 UNSET_HOST 占位而不抛 —— 启动要建引擎,
+    /setup 引导页才有得服务; 真地址由设置保存链路热换引擎。"""
     ov = values or DbConnectValues()   # 空串 = 未设, 走下层
     user = ov.user or os.environ.get("TMDB_USER", "teslamate")
     password = ov.password or os.environ.get("TMDB_PASS", "123456")
-    host = ov.host or os.environ.get("TMDB_HOST") or resolve_db_host()
+    try:
+        host = ov.host or os.environ.get("TMDB_HOST") or resolve_db_host()
+    except RuntimeError:               # 定位不到 ≠ 起不来, 占位顶上
+        host = UNSET_HOST
     port = ov.port or os.environ.get("TMDB_PORT", "5432")
     name = ov.name or os.environ.get("TMDB_NAME", "teslamate")
     return f"postgresql+psycopg://{user}:{password}@{host}:{port}/{name}"

@@ -58,8 +58,9 @@
     <div class="err"></div>
   </form>
   <form id="form2" hidden>
-    <p class="hint">TeslaMate 行车数据库的连接参数; 保存时自动验证, 连不上
-    会原样退回可重试。</p>
+    <p class="hint">TeslaMate 行车数据库的连接参数, 都在它那台机器的 .env /
+    docker-compose.yml 里 (用户/库名默认都是 teslamate, 密码即
+    POSTGRES_PASSWORD); 保存时自动验证, 连不上原样退回可重试。</p>
     <div class="field">
       <label for="tm-host">地址</label>
       <input id="tm-host" type="text" autocapitalize="off" autocorrect="off"

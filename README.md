@@ -12,7 +12,7 @@
 
 ![pylint](https://img.shields.io/badge/pylint-10.00%2F10-brightgreen)
 ![mypy](https://img.shields.io/badge/mypy-strict-2A6DB2)
-![pytest](https://img.shields.io/badge/pytest-442%20passed-0A9EDC?logo=pytest&logoColor=white)
+![pytest](https://img.shields.io/badge/pytest-445%20passed-0A9EDC?logo=pytest&logoColor=white)
 ![coverage](https://img.shields.io/badge/JS%20coverage-95%25%2B-brightgreen)
 
 ![ESLint](https://img.shields.io/badge/ESLint-passing-4B32C3?logo=eslint&logoColor=white)
@@ -76,45 +76,55 @@
 
 ## 🚀 部署
 
-### 准备 · TeslaMate (数据源)
+### 准备 · TeslaMate 连接参数
 
-My Tesla 读 TeslaMate 的 PostgreSQL 库 (只读, 不往回写)。还没有的话,
-官方推荐 docker compose 部署 (完整文档
-[docs.teslamate.org](https://docs.teslamate.org/)):
+会来用 My Tesla 的人必然已经装好了 TeslaMate (还没装的看官方文档
+[docs.teslamate.org](https://docs.teslamate.org/))。My Tesla 只读它的
+PostgreSQL, 不往回写任何东西。数据链路:
 
-```yaml
-# docker-compose.yml —— 三处「改成」务必换成自己的随机值
-services:
-  teslamate:
-    image: teslamate/teslamate:latest
-    restart: always
-    environment:
-      - ENCRYPTION_KEY=改成随机串
-      - DATABASE_USER=teslamate
-      - DATABASE_PASS=改成密码
-      - DATABASE_NAME=teslamate
-      - DATABASE_HOST=database
-      - TZ=Asia/Shanghai
-    ports:
-      - 4000:4000
-    depends_on:
-      - database
-  database:
-    image: postgres:17
-    restart: always
-    environment:
-      - POSTGRES_USER=teslamate
-      - POSTGRES_PASSWORD=改成密码
-      - POSTGRES_DB=teslamate
-    volumes:
-      - teslamate-db:/var/lib/postgresql/data
-volumes:
-  teslamate-db:
+```mermaid
+flowchart LR
+    subgraph tmhost["TeslaMate 所在机器 · docker compose"]
+        tm["TeslaMate"] -- "行车数据落库" --> pg[("PostgreSQL<br/>库名 / 账号 / 密码<br/>= .env 里的 POSTGRES_*")]
+    end
+    car["特斯拉车辆"] -- "Tesla 账号" --> tm
+    web["浏览器 / 手机"] --> app["My Tesla (本项目)"]
+    app -. "只读查询 · 向导第二步填五项" .-> pg
+    app -- "地图瓦片 / 道路拟合" --> amap["高德开放平台"]
+    app -- "账号 · 设置 · Key" --> own[("自有 SQLite<br/>data/mytesla.db")]
 ```
 
-`docker compose up -d` 后打开 `http://<host>:4000`, 登录 Tesla 账号并
-添加车辆, 行驶/充电数据即开始落库。My Tesla 部署在别的机器时, 给
-`database` 加 `ports: ["5432:5432"]` 把 PostgreSQL 发布出去。
+首启向导第二步 (或之后的 设置 → 数据库) 要填的五项, 全部在 TeslaMate
+那台机器的 `docker-compose.yml` / `.env` 里:
+
+| 表单字段 | TeslaMate 那边 | 默认 |
+|---|---|---|
+| 地址 | 跑 TeslaMate 的那台机器 (见下) | — |
+| 端口 | `database` 服务映射到宿主的端口 | `5432` |
+| 用户 | `POSTGRES_USER` | `teslamate` |
+| 密码 | `POSTGRES_PASSWORD` | — |
+| 库名 | `POSTGRES_DB` | `teslamate` |
+
+想不起来值, 在 TeslaMate 的 compose 目录里一条命令全打出来 (密码也在
+里面):
+
+```sh
+docker compose exec database env | grep -E '^POSTGRES_'
+```
+
+地址只有一件事要注意: 官方 compose 默认**不**把 5432 发布到宿主 (只在
+compose 内部网络互通), 跨机器访问要先给 `database` 服务加端口映射再重建
+(加完 `docker compose up -d`):
+
+```yaml
+  database:
+    ports:
+      - "5432:5432"
+```
+
+- **My Tesla 装在别的机器** (常见): 地址填 TeslaMate 那台机器的 IP,
+  端口 `5432`, 防火墙放行;
+- **同一台机器**: 同样加端口映射, 地址填 `localhost`。
 
 ### 准备 · Python 环境
 
@@ -142,6 +152,14 @@ python3.13 -m venv .venv          # Windows: py -3.13 -m venv .venv
 账号 → 填 TeslaMate 的 PostgreSQL 连接 (主机/端口/账号/密码/库名, 保存即
 实测连通) → 填高德 Key。三步配齐才能进应用, 一步不能跳; 中途关掉下次
 从缺的那步接着配。之后想改, 设置页随时改。
+
+<p align="center">
+<a name="shot-setup-1"><img src="docs/screenshot-setup-1.png" width="240" alt="向导第一步 · 建立管理员"></a>
+<a name="shot-setup-2"><img src="docs/screenshot-setup-2.png" width="240" alt="向导第二步 · 填 TeslaMate 连接"></a>
+<a name="shot-setup-3"><img src="docs/screenshot-setup-3.png" width="240" alt="向导第三步 · 填高德 Key"></a>
+<br><b>① 建立管理员</b> — 注册即登录 · <b>② 数据源</b> — 五项按上表抄
+TeslaMate 那台机器 · <b>③ 地图</b> — 高德 Key, 配完自动进应用
+</p>
 
 ## 📡 数据源
 

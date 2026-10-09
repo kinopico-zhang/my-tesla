@@ -190,6 +190,10 @@ def test_setup_page_wiring(  # pylint: disable=redefined-outer-name
     assert "btn-plain" not in html
     assert re.search(r'id="tm-host"[^>]*required', html)
     assert re.search(r'id="amap-key"[^>]*required', html)
+    # 取参指引 (2026-10-09 用户点名「会用的必然装了 TeslaMate, 重要的是
+    # 五个参数去哪儿抄」): 第二步的提示直接写明抄哪儿
+    assert "POSTGRES_PASSWORD" in html
+    assert "docker-compose.yml" in html
     js = client.get("/static/setup.js?v=2").text
     assert '"/api/setup-admin"' in js
     assert '"/tesla/api/settings"' in js
