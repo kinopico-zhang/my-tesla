@@ -26,52 +26,52 @@
 
 <p align="center">
 <a name="shot-live"><img src="docs/screenshot-live.png" width="280" alt="状态 · My Tesla (演示数据)"></a>
-<br><b>状态</b> — 实时位置与当前驾驶状态, 电量续航一目了然
+<br><b>状态</b> — 车停在哪、还剩多少电、还能跑多远, 打开即见
 </p>
 
 <p align="center">
 <a name="shot-trips"><img src="docs/screenshot-trips.png" width="280" alt="行程轨迹 · My Tesla (演示数据)"></a>
-<br><b>行程轨迹</b> — 每次出行的里程/时长/能耗, 详情带轨迹回放动画
+<br><b>行程轨迹</b> — 每一趟去了哪、开了多久、耗了多少电, 随时翻旧账
 </p>
 
 <p align="center">
 <a name="shot-trip"><img src="docs/screenshot-trip.png" width="280" alt="单个行程 · My Tesla (演示数据)"></a>
-<br><b>单个行程</b> — 轨迹回放定格 (随速红绿线), 横滑切动态曲线与速度直方图
+<br><b>单个行程</b> — 回放这一趟怎么开的: 路线按车速着色, 横滑看速度与电耗曲线
 </p>
 
 <p align="center">
 <a name="shot-tripstats"><img src="docs/screenshot-tripstats.png" width="280" alt="行程统计 · My Tesla (演示数据)"></a>
-<br><b>行程统计</b> — 里程/时长/电耗的趋势与分布
+<br><b>行程统计</b> — 一段时间开了多少公里、平均电耗多少, 趋势与分布一眼看完
 </p>
 
 <p align="center">
 <a name="shot-groups"><img src="docs/screenshot-groups.png" width="280" alt="行程分组 · My Tesla (演示数据)"></a>
-<br><b>行程分组</b> — 多次行程归成一册 (出差/周末), 分组看统计
+<br><b>行程分组</b> — 出差、周末出行各归一册, 分开算用车账
 </p>
 
 <p align="center">
 <a name="shot-map"><img src="docs/screenshot-map.png" width="280" alt="足迹地图 · My Tesla (演示数据)"></a>
-<br><b>足迹地图</b> — 行车轨迹 + 道路拟合纠偏 (WGS-84 → GCJ-02), 断档自动补路
+<br><b>足迹地图</b> — 车轮碾过的每条路都亮在地图上, 拖时间轴回放这些年跑过的路
 </p>
 
 <p align="center">
 <a name="shot-charging"><img src="docs/screenshot-charging.png" width="280" alt="充电记录 · My Tesla (演示数据)"></a>
-<br><b>充电记录</b> — 每次充电的费用/电量/地点, 可按区域筛选
+<br><b>充电记录</b> — 每次在哪充、充了多少、花了几块钱, 按区域翻查
 </p>
 
 <p align="center">
 <a name="shot-stats"><img src="docs/screenshot-stats.png" width="280" alt="充电统计 · My Tesla (演示数据)"></a>
-<br><b>充电统计</b> — 充电费用与电量的统计趋势
+<br><b>充电统计</b> — 每月充电量与花销的趋势, 用电的账一清二楚
 </p>
 
 <p align="center">
 <a name="shot-battery"><img src="docs/screenshot-battery.png" width="280" alt="电池健康 · My Tesla (演示数据)"></a>
-<br><b>电池健康</b> — 电池容量衰减趋势
+<br><b>电池健康</b> — 电池还剩几成、衰减快不快, 曲线直接说话
 </p>
 
 <p align="center">
 <a name="shot-chargemap"><img src="docs/screenshot-chargemap.png" width="280" alt="充电地图 · My Tesla (演示数据)"></a>
-<br><b>充电地图</b> — 常去充电点的地图分布
+<br><b>充电地图</b> — 常去充电点的地理分布, 陌生地方先看哪里充过电
 </p>
 
 ## 🚀 快速开始
