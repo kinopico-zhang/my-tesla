@@ -15,10 +15,10 @@ undmg.py 纯 python 解 UDIF 后 carve 出 PNG) 只含边框环 + 灵动岛, 屏
 = 屏幕洞) 贴内容, 方角内容永远出不了圆角开窗。
 页高按 pages/*.png 实际尺寸自适应 (764 视口 + 34px 底条拉伸补齐安全区)。
 
-2026-10-09 白边收紧 (用户点名「截图白边太多, 与下方文字间距大」): 资产
-自带 ~16-21px @3x 透明留白 + MARGIN 24 设备 px, 白底 README 上每边渲染
-~10 CSS px 死白边 —— bezel 载入即裁到 alpha 内容框 (开窗坐标同步平移,
-fx/fy 只看窗口尺寸不受影响), MARGIN 收到 6。
+2026-10-09 白边收紧 (用户点名「截图白边太多, 与下方文字间距大」): 原来
+资产透明留白 + MARGIN 24, 白底 README 上每边 ~10 CSS px 死白边。收的是
+成品不是资产 —— 合成后裁到 alpha 内容框再补 6px 呼吸边; 若裁资产会断掉
+蒙版洪泛的外部通路, 三个角的透明区漏进「洞」里, 方角内容溢出圆角。
 
 用法: /tmp/pw-verify/bin/python shots/composite.py
 环境: SHOTLAB 工作目录 (默认 ~/shotlab; 内含 bezel-png/010_1350x2760.png
@@ -103,17 +103,12 @@ body {background:transparent}
 # ---- 官方 bezel: 一次缩放, 全部页共用 ----
 WIN = (72, 69, 1278, 2691)              # 开窗 @3x = 402×874pt (实测 flood-fill)
 SCR_W, SCR_H = 786, 1704                # 内容 393×852 @2x, 原生贴窗
-MARGIN = 6                              # 设备外透明留白 (设备 px, 2026-10-09 收紧)
+MARGIN = 6                              # 成品四边呼吸留白 (设备 px, 2026-10-09 收紧)
 fx = SCR_W / (WIN[2] - WIN[0])          # 0.6517
 fy = SCR_H / (WIN[3] - WIN[1])          # 0.6499
 BEZEL = pathlib.Path(os.environ.get(
     "SHOT_BEZEL", LAB / "bezel-png/010_1350x2760.png"))
 bezel = Image.open(BEZEL).convert("RGBA")
-# 裁掉资产自带透明留白 (~16-21px @3x, 白底上渲染成死白边): 裁到 alpha
-# 内容框, 开窗坐标同步平移 (fx/fy 只看窗口尺寸, 平移不影响)
-_b = bezel.getchannel("A").getbbox()
-WIN = (WIN[0] - _b[0], WIN[1] - _b[1], WIN[2] - _b[0], WIN[3] - _b[1])
-bezel = bezel.crop(_b)
 
 
 # 预乘缩放 (PIL 12.3 无 ImageChops.divide, 除回走 ImageMath): 透明留白的
@@ -146,13 +141,17 @@ HOLE_CROP = HOLE.crop((WX, WY, WX + SCR_W, WY + SCR_H)) \
 
 def build(screen):
     """屏幕内容 (786×1704) → 官方边框设备图 (RGBA)。"""
-    canvas = Image.new("RGBA",
-                       (dev.width + 2 * MARGIN, dev.height + 2 * MARGIN),
-                       (0, 0, 0, 0))
+    canvas = Image.new("RGBA", (dev.width, dev.height), (0, 0, 0, 0))
     # 洞形蒙版贴内容: 官方开窗是圆角, 方角内容只落在洞内, 四角出不去
-    canvas.paste(screen, (MARGIN + WX, MARGIN + WY), HOLE_CROP)
-    canvas.alpha_composite(dev, (MARGIN, MARGIN))
-    return canvas
+    canvas.paste(screen, (WX, WY), HOLE_CROP)
+    canvas.alpha_composite(dev, (0, 0))
+    # 收白边: 裁到内容框再补 MARGIN 呼吸边 (资产原样不裁, 洪泛通路不断)
+    bb = canvas.getchannel("A").getbbox()
+    trimmed = canvas.crop(bb)
+    out = Image.new("RGBA", (trimmed.width + 2 * MARGIN,
+                             trimmed.height + 2 * MARGIN), (0, 0, 0, 0))
+    out.alpha_composite(trimmed, (MARGIN, MARGIN))
+    return out
 
 
 with sync_playwright() as p:
