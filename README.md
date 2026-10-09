@@ -25,7 +25,7 @@
 ## ✨ 功能
 
 <p align="center">
-<a name="shot-live"><img src="docs/screenshot-live.png" width="280" alt="状态 · My Tesla (演示数据)"></a>
+<a name="shot-live"><img src="docs/screenshot-live.png?v=2" width="280" alt="状态 · My Tesla (演示数据)"></a>
 <br><b>状态</b> — 车开到哪、还剩多少电、还能跑多远, 打开即见; 行驶中蓝点实时跟车
 </p>
 
@@ -83,7 +83,7 @@
 PostgreSQL, 不往回写任何东西。数据链路:
 
 <p align="center">
-<a name="arch"><img src="docs/architecture.svg" width="800" alt="My Tesla 数据链路"></a>
+<a name="arch"><img src="docs/architecture.svg?v=2" width="800" alt="My Tesla 数据链路"></a>
 </p>
 
 首启向导第二步 (或之后的 设置 → 数据库) 要填的五项, 全部在 TeslaMate
