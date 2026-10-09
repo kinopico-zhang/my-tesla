@@ -32,28 +32,13 @@
   <path id="e6" d="M 505 194 L 505 262 L 557.5 262 L 557.5 330" fill="none" stroke="#7d7d86"
         stroke-width="1.6" stroke-dasharray="7 6" marker-end="url(#ahd)"/>
 
-  <!-- 连线标签 (胶囊底 + 文字; 全部悬在线上方或立于线旁, 不遮任何线) -->
-  <g>
-    <g id="l-e2">
-      <rect x="184" y="345" width="92" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
-      <text x="230" y="355" data-max="84" font-size="11" fill="#55555c" text-anchor="middle" dominant-baseline="central">Tesla 实时数据</text>
-    </g>
-    <g id="l-e3">
-      <rect x="409" y="345" width="82" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
-      <text x="450" y="355" data-max="72" font-size="11" fill="#55555c" text-anchor="middle" dominant-baseline="central">行车数据落库</text>
-    </g>
-    <g id="l-e4">
-      <rect x="220.5" y="145" width="130" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
-      <text x="285.5" y="155" data-max="120" font-size="12" fill="#55555c" text-anchor="middle" dominant-baseline="central">地图瓦片 · 道路拟合</text>
-    </g>
-    <g id="l-e5">
-      <rect x="543.5" y="145" width="110" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
-      <text x="598.5" y="155" data-max="100" font-size="12" fill="#55555c" text-anchor="middle" dominant-baseline="central">账号 · 设置 · Key</text>
-    </g>
-    <g id="l-e6">
-      <rect x="513" y="218" width="68" height="20" rx="10" fill="#f6f6f8" stroke="#d3d3da"/>
-      <text x="547" y="228" data-max="56" font-size="12" fill="#55555c" text-anchor="middle" dominant-baseline="central">只读查询</text>
-    </g>
+  <!-- 连线标签 (纯文字, 悬在线上方或立于线旁, 不遮任何线) -->
+  <g fill="#55555c">
+    <text id="l-e2" x="230" y="355" data-max="92" font-size="12" text-anchor="middle" dominant-baseline="central">Tesla 实时数据</text>
+    <text id="l-e3" x="450" y="355" data-max="80" font-size="12" text-anchor="middle" dominant-baseline="central">行车数据落库</text>
+    <text id="l-e4" x="285.5" y="155" data-max="120" font-size="12" text-anchor="middle" dominant-baseline="central">地图瓦片 · 道路拟合</text>
+    <text id="l-e5" x="598.5" y="155" data-max="100" font-size="12" text-anchor="middle" dominant-baseline="central">账号 · 设置 · Key</text>
+    <text id="l-e6" x="537" y="228" data-max="56" font-size="12" text-anchor="middle" dominant-baseline="central">只读查询</text>
   </g>
 
   <!-- ── 顶排: 使用者 ────────────────────────────────── -->
