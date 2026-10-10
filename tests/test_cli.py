@@ -9,6 +9,8 @@
 import argparse
 import os
 
+import pytest
+
 from app import cli
 
 
@@ -48,6 +50,7 @@ def test_service_defaults_and_knobs_default_none():
     args = cli.build_parser().parse_args([])
     assert (args.host, args.port, args.cert_dir, args.http) \
         == ("0.0.0.0", 8500, "data/certs", False)
+    assert (args.cert_file, args.key_file) == (None, None)
     for knob in _all_knobs():
         assert getattr(args, knob.dest) is None, knob.flag
 
@@ -76,10 +79,35 @@ def test_empty_arg_clears_env(monkeypatch):
 # ---------------------------------------------------------------- 证书判定
 def test_cert_pair_detects_full_set(tmp_path):
     """证书目录里私钥+证书齐 → 返回证书对 (TLS 开); 缺一件 → None。"""
-    ns = argparse.Namespace(cert_dir=str(tmp_path))
+    ns = argparse.Namespace(cert_dir=str(tmp_path),
+                            cert_file=None, key_file=None)
     assert cli.cert_pair(ns) is None
     (tmp_path / "privkey.pem").write_text("k", encoding="utf-8")
     assert cli.cert_pair(ns) is None                    # 只有私钥不算
     (tmp_path / "fullchain.pem").write_text("c", encoding="utf-8")
     assert cli.cert_pair(ns) == (tmp_path / "privkey.pem",
                                  tmp_path / "fullchain.pem")
+
+
+def test_cert_pair_explicit_files_override_dir(tmp_path):
+    """--cert-file / --key-file 成对给出且文件在 → 直接采用 (优先于目录)。"""
+    (tmp_path / "k.pem").write_text("k", encoding="utf-8")
+    (tmp_path / "c.pem").write_text("c", encoding="utf-8")
+    ns = argparse.Namespace(cert_dir=str(tmp_path / "no-such-dir"),
+                            cert_file=str(tmp_path / "c.pem"),
+                            key_file=str(tmp_path / "k.pem"))
+    assert cli.cert_pair(ns) == (tmp_path / "k.pem", tmp_path / "c.pem")
+
+
+def test_cert_pair_explicit_half_or_missing_errors(tmp_path):
+    """显式只给一个 / 文件不存在 → SystemExit (显式配错不静默回落明文)。"""
+    half = argparse.Namespace(cert_dir="data/certs",
+                              cert_file=str(tmp_path / "c.pem"), key_file=None)
+    with pytest.raises(SystemExit):
+        cli.cert_pair(half)
+    (tmp_path / "k.pem").write_text("k", encoding="utf-8")
+    missing = argparse.Namespace(cert_dir="data/certs",
+                                 cert_file=str(tmp_path / "c.pem"),
+                                 key_file=str(tmp_path / "k.pem"))
+    with pytest.raises(SystemExit):
+        cli.cert_pair(missing)                  # c.pem 没写盘, 只落了私钥

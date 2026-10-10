@@ -7,7 +7,8 @@
 
 单端口: 证书目录 (默认 data/certs) 里有 fullchain.pem + privkey.pem 时
 该端口走 TLS (Let's Encrypt 证书由 WSL 上的 acme.sh 签发续期), 没证书
-走明文; --http 可强制明文 (忽略证书, 调试用)。
+走明文; 两个文件的位置也可用 --cert-file / --key-file 直接指 (成对给,
+从严校验, 优先于目录约定); --http 可强制明文 (忽略证书, 调试用)。
 
 账号与高德 Key 不走参数: 空账号库首启由登录页自动引去 /setup 引导 (顺路
 配 TeslaMate 与高德两把 Key), 之后在设置页「地图设置」里改 (存自有库)。
@@ -83,6 +84,7 @@ def build_parser() -> argparse.ArgumentParser:
                "再回落内置默认; 显式给空串可清掉环境变量。示例:\n"
                "  python -m app                           # 全默认, 浏览器打开 /setup 引导\n"
                "  python -m app --port 8600\n"
+               "  python -m app --cert-file c/fullchain.pem --key-file c/privkey.pem\n"
                "  python -m app --teslamate-host 192.168.31.5 --teslamate-password ***",
         formatter_class=argparse.RawDescriptionHelpFormatter)
     svc = parser.add_argument_group("服务与监听")
@@ -92,6 +94,11 @@ def build_parser() -> argparse.ArgumentParser:
     svc.add_argument("--cert-dir", default="data/certs",
                      help="TLS 证书目录 (默认 data/certs; 内含 fullchain.pem 与 "
                           "privkey.pem 即启用 HTTPS)")
+    svc.add_argument("--cert-file", default=None,
+                     help="证书文件 (fullchain.pem) 路径; 与 --key-file 成对"
+                          "给出, 优先于 --cert-dir")
+    svc.add_argument("--key-file", default=None,
+                     help="私钥文件 (privkey.pem) 路径; 与 --cert-file 成对给出")
     svc.add_argument("--http", action="store_true",
                      help="强制明文, 忽略证书 (调试用)")
     for title, knobs in _GROUPS:
@@ -118,7 +125,20 @@ def apply_env(args: argparse.Namespace) -> None:
 
 
 def cert_pair(args: argparse.Namespace) -> tuple[Path, Path] | None:
-    """证书对 (私钥, 证书); 目录里不齐 → None (明文开)。"""
+    """证书对 (私钥, 证书); 都不齐 → None (明文开)。
+
+    两个来源: 显式 --cert-file / --key-file 优先且从严 —— 只给一个或文件
+    不存在直接 SystemExit (显式意图配错, 不静默回落明文); 没给则查
+    --cert-dir 目录约定, 目录里不齐 → None。"""
+    if args.cert_file or args.key_file:
+        if not (args.cert_file and args.key_file):
+            raise SystemExit("--cert-file 与 --key-file 必须成对给出 "
+                             f"(只收到 --{'cert' if args.cert_file else 'key'}-file)")
+        key, cert = Path(args.key_file), Path(args.cert_file)
+        missing = " ".join(str(p) for p in (key, cert) if not p.is_file())
+        if missing:
+            raise SystemExit(f"证书文件不存在: {missing}")
+        return key, cert
     directory = Path(args.cert_dir)
     if not directory.is_absolute():
         directory = PROJECT_DIR / directory

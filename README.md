@@ -12,7 +12,7 @@
 
 ![pylint](https://img.shields.io/badge/pylint-10.00%2F10-brightgreen)
 ![mypy](https://img.shields.io/badge/mypy-strict-2A6DB2)
-![pytest](https://img.shields.io/badge/pytest-446%20passed-0A9EDC?logo=pytest&logoColor=white)
+![pytest](https://img.shields.io/badge/pytest-448%20passed-0A9EDC?logo=pytest&logoColor=white)
 ![coverage](https://img.shields.io/badge/JS%20coverage-95%25%2B-brightgreen)
 
 ![ESLint](https://img.shields.io/badge/ESLint-passing-4B32C3?logo=eslint&logoColor=white)
@@ -80,8 +80,43 @@
 <a name="arch"><img src="docs/architecture.svg?v=7" width="800" alt="My Tesla 数据链路"></a>
 </p>
 
-My Tesla 连 TeslaMate 的 PostgreSQL 要五项, 全部在 TeslaMate 那台机器的
-`docker-compose.yml` / `.env` 里:
+## 3. 🚀 部署
+
+需要 Python 3.13+:
+
+```sh
+git clone https://github.com/kinopico-zhang/my-tesla.git
+cd my-tesla
+python3.13 -m venv .venv          # Windows: py -3.13 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python -m app           # Windows: .venv\Scripts\python -m app
+```
+
+终端打出 `Uvicorn running on http://0.0.0.0:8500` 即已启动; 浏览器打开
+`http://<host>:8500/`, 见到登录页 (未初始化则是三步向导) 就是服务正常。
+
+监听 `--host` (默认 `0.0.0.0`)、端口 `--port` (默认 `8500`), 全量参数
+`--help` 一屏看全。端口分两种情况:
+
+- **有证书**: `fullchain.pem` + `privkey.pem` 放进 `data/certs/` 再启动, 或
+  `--cert-file` / `--key-file` 直接指到两个文件, 走 `https://<host>:8500/`;
+- **没证书**: 直接启动, 走 `http://<host>:8500/` (`--http` 可强制明文,
+  调试用)。
+
+## 4. 初始化
+
+### 4.1 建立管理员
+
+注册管理员账号, 注册即登录。
+
+<p align="center">
+<a name="shot-setup-1"><img src="docs/screenshot-setup-1.png" width="240" alt="向导第一步 · 建立管理员"></a>
+</p>
+
+### 4.2 数据源
+
+填 TeslaMate 的 PostgreSQL 连接, 保存即实测连通。五项全部在 TeslaMate
+那台机器的 `docker-compose.yml` / `.env` 里:
 
 | 表单字段 | TeslaMate 那边 | 默认 |
 |---|---|---|
@@ -112,71 +147,32 @@ compose 内部网络互通), 跨机器访问要先给 `database` 服务加端口
   端口 `5432`, 防火墙放行;
 - **同一台机器**: 同样加端口映射, 地址填 `localhost`。
 
-## 3. 🚀 部署
-
-需要 Python 3.13+:
-
-```sh
-git clone https://github.com/kinopico-zhang/my-tesla.git
-cd my-tesla
-python3.13 -m venv .venv          # Windows: py -3.13 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/python -m app           # Windows: .venv\Scripts\python -m app
-```
-
-终端打出 `Uvicorn running on http://0.0.0.0:8500` 即已启动; 浏览器打开
-`http://<host>:8500/`, 见到登录页 (未初始化则是三步向导) 就是服务正常。
-
-监听 `--host` (默认 `0.0.0.0`)、端口 `--port` (默认 `8500`), 全量参数
-`--help` 一屏看全。端口分两种情况:
-
-- **有证书**: `fullchain.pem` + `privkey.pem` 放进 `data/certs/` 再启动,
-  走 `https://<host>:8500/`;
-- **没证书**: 直接启动, 走 `http://<host>:8500/` (`--http` 可强制明文,
-  调试用)。
-
-## 4. 初始化
-
-首次打开自动走设置向导, 三步配齐才能进应用, 一步不能跳; 中途关掉下次
-从缺的那步接着配。之后想改, 设置页随时改; 每次打开自动进 `/tesla/charging`。
-
-### 4.1 建立管理员
-
-注册管理员账号, 注册即登录。
-
-<p align="center">
-<a name="shot-setup-1"><img src="docs/screenshot-setup-1.png" width="240" alt="向导第一步 · 建立管理员"></a>
-</p>
-
-### 4.2 数据源
-
-填 TeslaMate 的 PostgreSQL 连接, 五项照「系统架构」的表抄; 保存即实测连通。
-
 <p align="center">
 <a name="shot-setup-2"><img src="docs/screenshot-setup-2.png" width="240" alt="向导第二步 · 填 TeslaMate 连接"></a>
 </p>
 
 ### 4.3 地图
 
-填高德两把 Key: 「Web端(JS API)」的 Key 与安全码给页面地图, 「Web服务」
-的 Key 给足迹道路拟合 (可留空); 保存并进入应用。
+填高德两把 Key, 保存并进入应用。
+
+**地图 Key 与安全码** (服务平台选「Web端 (JS API)」):
+
+- 打开 [高德开放平台控制台](https://console.amap.com), 注册并登录
+- 左侧「应用管理」→「创建新应用」
+- 在应用里「添加 Key」, 服务平台选「Web端 (JS API)」
+- Key 生成后点开详情, 「安全密钥」就是这里的安全码 —— Key 和安全码配套,
+  换新 Key 要配新安全码
+
+**Web 服务 Key** (可留空):
+
+- 在同一个应用的「添加 Key」再来一把, 服务平台选「Web服务」
+- 和上面的地图 Key 是两种类型, 不能混用
+- 只在服务端用: 把足迹轨迹拟合到实际道路
 
 <p align="center">
 <a name="shot-setup-3"><img src="docs/screenshot-setup-3.png" width="240" alt="向导第三步 · 填高德 Key"></a>
 </p>
 
-## 5. ⚙️ 启动参数
-
-全量清单 `python -m app --help` (分组帮助即部署文档), 常用项:
-
-| 参数 | 默认 | 说明 |
-|---|---|---|
-| `--host` | `0.0.0.0` | 监听地址 |
-| `--port` | `8500` | 端口: 证书目录有证书走 HTTPS, 没证书走 HTTP |
-
-参数没给的回落同名环境变量, 再回落内置默认 —— 显式参数 > 环境变量 >
-默认, 自动化与容器注入仍可走环境变量。
-
-## 6. 📄 许可证
+## 5. 📄 许可证
 
 [MIT](./LICENSE) © 2026 kinopico
