@@ -142,10 +142,11 @@ def _round(monkeypatch, mode="ok", key="k"):
     _FakeClient.mode = mode
     _FakeClient.made = _FakeClient.regeo_calls = 0
     tesla_f, own_f = _factories()
-    if key:      # Web 服务 Key 只认设置页 (2026-10-08 收敛): 种进设置行
-        with own_f() as own:                     # pylint: disable=not-callable
-            own.merge(AppSetting(id=1, amap_web_key=key))
-            own.commit()
+    with own_f() as own:                     # pylint: disable=not-callable
+        # Web 服务 Key 只认设置页 (2026-10-08 收敛): key 写进设置行, 没给
+        # 就清 —— conftest 的已初始化口径种着 web key, 别让它顶上来
+        own.merge(AppSetting(id=1, amap_web_key=key or ""))
+        own.commit()
     return place_worker._round(tesla_f, own_f)   # pylint: disable=protected-access
 
 

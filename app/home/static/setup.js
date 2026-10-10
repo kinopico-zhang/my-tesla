@@ -85,6 +85,10 @@ forms[0].addEventListener("submit", async e => {
   btn.disabled = false;
 });
 
+// 第三步校验用: Web 服务 Key 必填 (足迹道路拟合要用), 已有现值 (掩码
+// 回显过) 时留空=保持 —— 预填时更新
+let webKeySet = false;
+
 // 进入数据源步骤时拉现值: 输入框预填 (掩码/密码只给 placeholder, 留空=保持)
 async function prefillSettings() {
   try {
@@ -101,6 +105,7 @@ async function prefillSettings() {
     const pass = document.getElementById("tm-pass");
     if (pass) pass.placeholder = t.password_set ? "已设置, 留空保持" : "未设置";
     const a = d.amap || {};
+    webKeySet = !!a.web_key_masked;
     const key = document.getElementById("amap-key");
     if (key) key.placeholder = a.key_masked ? `现值 ${a.key_masked}, 留空保持` : "未设置";
     const code = document.getElementById("amap-code");
@@ -137,14 +142,19 @@ if (forms[1]) {
   });
 }
 
-// 第三步 (有则存在): 高德两把 Key + 安全码 (留空=保持现值)
+// 第三步 (有则存在): 高德两把 Key + 安全码 —— Web 服务 Key 必填 (足迹
+// 道路拟合要用), 已有现值时留空=保持; 其余留空=保持现值
 if (forms[2]) {
   forms[2].addEventListener("submit", async e => {
     e.preventDefault();
     const btn = forms[2].querySelector(".btn");
+    const v = id => document.getElementById(id).value.trim();
+    if (!v("amap-web") && !webKeySet) {
+      fail(forms[2], "Web 服务 Key 必填: 足迹道路拟合要用");
+      return;
+    }
     btn.disabled = true;
     try {
-      const v = id => document.getElementById(id).value.trim();
       const r = await fetch("/tesla/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

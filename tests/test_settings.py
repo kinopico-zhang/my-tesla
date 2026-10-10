@@ -165,7 +165,7 @@ def test_drivers_crud_and_single_default(auth):
     assert auth.post("/tesla/api/drivers", json={"name": "x" * 31}).status_code == 422
 
 
-def test_web_key_test_verdicts(auth, monkeypatch):
+def test_web_key_test_verdicts(auth, owndb, monkeypatch):
     """「测试」钮端点 (2026-10-06 用户点名「添加两个测试按钮」+ 同日追点
     「测试正常只显示正常就行了, 只有测试正常才能保存」): 测 POST 来的候选
     Web 服务 Key (空 = 测现值) —— 打一次逆地理回真伪, 通过 detail 就是
@@ -183,6 +183,8 @@ def test_web_key_test_verdicts(auth, monkeypatch):
         return make
 
     monkeypatch.delenv("AMAP_WEB_KEY", raising=False)   # env 已不是通道, 双保险
+    owndb.get(AppSetting, 1).amap_web_key = ""  # conftest 的已初始化口径种着
+    owndb.commit()                              # web key, 清掉才测得出「还没填」
     assert auth.post("/tesla/map/api/web-key-test").json() == \
         {"ok": False, "detail": "还没填 Web 服务 Key"}
 
@@ -235,16 +237,9 @@ def test_settings_views_and_entries(auth):
                  'id="tm-host"', 'id="tm-save"', "保存并连接", 'id="amap-key"',
                  'id="drv-list"', "/tesla/api/settings", "/tesla/api/drivers",
                  'id="toast"', "设为默认",
-                 # 高德两把 Key 各配一个「获取方式」折叠块 (2026-10-06 用户
-                 # 点名「默认折叠, 展开后 markdown 条目渲染, 超链接可以点开」)
-                 # + 已填的在框里显掩码 (掩码住 placeholder 不入提交值)
-                 '<details class="howto">', "<summary>Key 的获取方式</summary>",
-                 'id="amap-howto"', 'id="amap-web-howto"',
-                 # TeslaMate 取参指引 (2026-10-09 用户点名「会用的必然装了
-                 # TeslaMate, 重要的是五个参数去哪儿抄」): DB 卡同款折叠块,
-                 # 静态文本 (地图那份要 markdown 渲染链接才进 JS)
-                 "<summary>参数怎么拿</summary>", "POSTGRES_PASSWORD",
-                 "docker compose exec database env",
+                 # 取参指引/「Key 的获取方式」折叠块 2026-10-10 撤 (用户点名
+                 # 「设置界面上的说明去掉」, 指导集中 README) —— 负钉在 gone
+                 # 清单里, 不许回潮
                  # 驾驶员页 10-04 左滑三钮 (v5): 常显钮退役, 改名是行内编辑
                  'class="swipe-edit set-def">设为默认', 'class="swipe-edit ren">改名',
                  'class="drv-input"', "window.confirm(`删除驾驶员",
@@ -280,16 +275,13 @@ def test_settings_views_and_entries(auth):
                  '$("#amap-web-save").disabled',
                  'addEventListener("input"'):     # 输入一变作废重测
         assert frag in sm, f"地图设置脚本缺 {frag}"
-    # 折叠块内容 (markdown 条目) 与渲染器: 条目在 JS 里记, [字](网址) 转成
-    # 新标签页链接; 安全码掩码回显住 placeholder (2026-10-06 用户点名
-    # 「默认折叠/markdown 条目/链接可点开」「安全码也是显示头尾」)
-    for frag in ("HOWTO_JS", "HOWTO_WEB", "function mdItems(",
-                 'target="_blank"', "https://console.amap.com",
-                 "服务平台选「Web端 (JS API)」", "服务平台选「Web服务」",
-                 "两种类型, 不能混用",
-                 'security_code_masked || "未设置"',
+    # 安全码掩码回显住 placeholder (2026-10-06 用户点名「安全码也是头尾」);
+    # 折叠块的 markdown 条目与渲染器 2026-10-10 随说明撤下 (获取方式集中
+    # README), 渲染器下岗不许回潮
+    for frag in ('security_code_masked || "未设置"',
                  'web_key_masked || "未设置"', "setMapGate("):
-        assert frag in sm, f"获取方式折叠块/掩码回显缺 {frag}"
+        assert frag in sm, f"掩码回显缺 {frag}"
+    assert "HOWTO_JS" not in sm and "mdItems" not in sm
     # 通行一次性 (2026-10-06 用户点名「修改后, 保存按钮灰色, 要测试通过
     # 才能保存」): 存完回灰再存要重测; 「留空保持」文案同日退役
     assert "保存消费掉通行" in sm
@@ -297,8 +289,9 @@ def test_settings_views_and_entries(auth):
     # v12 的「测已保存值/未保存先拦」旧路退役 (与保存闸死循环, 不许回潮)
     assert "先保存再测" not in sm
     css = auth.get("/tesla/static/css/tesla-settings.css").text
-    for frag in (".btn-row {", ".plain {", ".howto summary {", ".howto .md a {"):
+    for frag in (".btn-row {", ".plain {"):
         assert frag in css, f"设置样式缺 {frag}"
+    assert ".howto" not in css            # 折叠块样式随说明一起退役
     # 服务商切换/地图样式选择/长说明已退役 (2026-09-25/10-05, 用户点名):
     # 下拉/收组逻辑/样式保存不许回潮; 样式固定幻影黑住适配层
     for gone in ('id="map-provider"', "map_provider:", "syncProviderRows",
@@ -306,6 +299,9 @@ def test_settings_views_and_entries(auth):
                  'id="amap-style"', "amap_style:", "styles/darkblue",
                  'id="amap-style-custom"', 'id="amap-now"', 'id="amap-web-now"',
                  "首次打开过一两秒才出现", "留空 = 保持现值",
-                 "留空保持现值"):   # 「留空保持」文案 2026-10-06 用户点名退役
+                 "留空保持现值",   # 「留空保持」文案 2026-10-06 用户点名退役
+                 '<details class="howto">', 'id="amap-howto"',
+                 'id="amap-web-howto"', "参数怎么拿",
+                 "docker compose exec"):   # 说明折叠块 2026-10-10 撤
         assert gone not in html, f"退役的片段回潮: {gone}"
     assert "无地名" not in html   # 深色样式有地名, 旧说法不许回潮

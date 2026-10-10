@@ -128,7 +128,8 @@ def test_setup_admin_full_flow(client):  # pylint: disable=redefined-outer-name
     gate = client.get(APP_PATH, follow_redirects=False)
     assert (gate.status_code, gate.headers["location"]) == (302, "/setup")
     assert client.post("/tesla/api/settings",
-                       json={"amap_key": "e2e-amap-key"}).status_code == 200
+                       json={"amap_key": "e2e-amap-key",
+                             "amap_web_key": "e2e-web-key"}).status_code == 200
     page = client.get(APP_PATH)
     assert page.status_code == 200
     assert "html" in page.headers["content-type"]

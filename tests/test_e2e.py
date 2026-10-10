@@ -119,7 +119,8 @@ def test_login_session_and_app_page(client):  # pylint: disable=redefined-outer-
     gate = client.get(APP_PATH, follow_redirects=False)
     assert (gate.status_code, gate.headers["location"]) == (302, "/setup")
     assert client.post("/tesla/api/settings",
-                       json={"amap_key": "e2e-amap-key"}).status_code == 200
+                       json={"amap_key": "e2e-amap-key",
+                             "amap_web_key": "e2e-web-key"}).status_code == 200
     r = client.get(APP_PATH)
     assert r.status_code == 200
     assert "html" in r.headers["content-type"]

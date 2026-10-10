@@ -95,11 +95,10 @@ python3.13 -m venv .venv          # Windows: py -3.13 -m venv .venv
 终端打出 `Uvicorn running on http://0.0.0.0:8500` 即已启动; 浏览器打开
 `http://<host>:8500/`, 见到登录页 (未初始化则是三步向导) 就是服务正常。
 
-监听 `--host` (默认 `0.0.0.0`)、端口 `--port` (默认 `8500`), 全量参数
-`--help` 一屏看全。端口分两种情况:
+监听 `--host` (默认 `0.0.0.0`)、端口 `--port` (默认 `8500`)。端口分两种情况:
 
-- **有证书**: `fullchain.pem` + `privkey.pem` 放进 `data/certs/` 再启动, 或
-  `--cert-file` / `--key-file` 直接指到两个文件, 走 `https://<host>:8500/`;
+- **有证书**: `--cert-file` 与 `--key-file` 指到 `fullchain.pem` 与
+  `privkey.pem`, 走 `https://<host>:8500/`;
 - **没证书**: 直接启动, 走 `http://<host>:8500/` (`--http` 可强制明文,
   调试用)。
 
@@ -143,10 +142,6 @@ compose 内部网络互通), 跨机器访问要先给 `database` 服务加端口
       - "5432:5432"
 ```
 
-- **My Tesla 装在别的机器** (常见): 地址填 TeslaMate 那台机器的 IP,
-  端口 `5432`, 防火墙放行;
-- **同一台机器**: 同样加端口映射, 地址填 `localhost`。
-
 <p align="center">
 <a name="shot-setup-2"><img src="docs/screenshot-setup-2.png" width="240" alt="向导第二步 · 填 TeslaMate 连接"></a>
 </p>
@@ -163,7 +158,7 @@ compose 内部网络互通), 跨机器访问要先给 `database` 服务加端口
 - Key 生成后点开详情, 「安全密钥」就是这里的安全码 —— Key 和安全码配套,
   换新 Key 要配新安全码
 
-**Web 服务 Key** (可留空):
+**Web 服务 Key** (足迹道路拟合要用):
 
 - 在同一个应用的「添加 Key」再来一把, 服务平台选「Web服务」
 - 和上面的地图 Key 是两种类型, 不能混用

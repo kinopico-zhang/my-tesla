@@ -37,7 +37,7 @@
 <link rel="stylesheet" href="/tesla/static/css/tesla-chargemap-map.css?v=7">
 <link rel="stylesheet" href="/tesla/static/css/tesla-live-page.css?v=2">
 <link rel="stylesheet" href="/tesla/static/css/tesla-live-driving.css?v=20">
-<link rel="stylesheet" href="/tesla/static/css/tesla-settings.css?v=23">
+<link rel="stylesheet" href="/tesla/static/css/tesla-settings.css?v=24">
 <link rel="stylesheet" href="/tesla/static/css/tesla-shell-floor.css?v=9">
 </head>
 <body>
@@ -728,18 +728,9 @@
         <!-- 账号卡 2026-09-27 拆去账号设置独立页 (设置组首位) -->
         <section class="card">
           <h2>TeslaMate 数据库</h2>
-          <!-- 布局 2026-10-07 用户点名: ip 和端口一行, 数据库名/账号/密码各占一行 -->
-          <!-- 取参指引 2026-10-09 用户点名「会用的必然装了 TeslaMate, 重要的是
-               五个参数去哪儿抄」: 与地图设置同款折叠 howto, 内容短走静态文本
-               (地图那份要 markdown 渲染链接才进 JS) -->
-          <details class="howto">
-            <summary>参数怎么拿</summary>
-            <ul class="md">
-              <li>用户 / 密码 / 库名: 抄 TeslaMate 那台机器 .env 里的 POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB (默认用户与库名都是 teslamate)</li>
-              <li>忘了值: 在它的 compose 目录跑 <code>docker compose exec database env</code>, 一次全打出来</li>
-              <li>地址 / 端口: 填那台机器的 IP + 5432; 官方 compose 默认不把 5432 发布到宿主, 跨机器先给 database 服务加 ports 映射再重建, 同机填 localhost</li>
-            </ul>
-          </details>
+          <!-- 布局 2026-10-07 用户点名: ip 和端口一行, 数据库名/账号/密码各占一行。
+               取参指引折叠块 2026-10-10 撤下 (用户点名「设置界面上的说明去掉」,
+               怎么抄参数集中到 README 部署文档) -->
           <div class="row2">
             <label><span>主机地址</span><input type="text" id="tm-host" autocomplete="off" spellcheck="false"></label>
             <label><span>端口</span><input type="text" id="tm-port" inputmode="numeric" autocomplete="off"></label>
@@ -758,18 +749,9 @@
         <section class="card">
           <h2>地图显示</h2>
           <div>
-            <!-- 说明行 2026-10-05 三轮: 长说明先退役 (用户点名), 同日点名补回
-                 「每个类型的 key 给出获取方式 + 已填的 key 在框里显掩码」——
-                 掩码住 placeholder (留空仍 = 保持现值, 掩码串不会被存成新 key,
-                 mapSetLoad 填); 地图样式选择同日退役 (不允许用户选择, 固定
-                 幻影黑住适配层)。2026-10-06 第四轮 (用户点名「获取方式默认
-                 折叠, 展开后 markdown 条目渲染, 超链接可以点开」): 一行小字
-                 换成 <details> 折叠块, 条目与链接由 settings-map.js 从 markdown
-                 渲染 (内容进 JS 不进壳, 壳里只剩骨架) -->
-            <details class="howto">
-              <summary>Key 的获取方式</summary>
-              <ul class="md" id="amap-howto"></ul>
-            </details>
+            <!-- 掩码住 placeholder (留空仍 = 保持现值, mapSetLoad 填);
+                 「Key 的获取方式」折叠块 2026-10-10 撤下 (用户点名
+                 「设置界面上的说明去掉」, 获取方式集中到 README) -->
             <label><span>Key</span><input type="text" id="amap-key" autocomplete="off" spellcheck="false"></label>
             <label><span>安全码</span><input id="amap-code" type="password" autocomplete="new-password"></label>
           </div>
@@ -784,10 +766,6 @@
         <section class="card">
           <h2>足迹道路拟合</h2>
           <div>
-            <details class="howto">
-              <summary>Key 的获取方式</summary>
-              <ul class="md" id="amap-web-howto"></ul>
-            </details>
             <label><span>Web 服务 Key</span><input type="password" id="amap-web-key" autocomplete="new-password"></label>
           </div>
           <div class="btn-row">
@@ -1139,7 +1117,7 @@
 <script src="/tesla/static/js/view/live-page.js?v=9"></script>
 <script src="/tesla/static/js/view/live-driving.js?v=13"></script>
 <script src="/tesla/static/js/view/settings-db.js?v=5"></script>
-<script src="/tesla/static/js/view/settings-map.js?v=18"></script>
+<script src="/tesla/static/js/view/settings-map.js?v=19"></script>
 <script src="/tesla/static/js/tesla-swipe-delete.js?v=4"></script>
 <script src="/tesla/static/js/view/settings-drivers.js?v=6"></script>
 <script src="/tesla/static/js/view/trips-place-detail.js?v=12"></script>

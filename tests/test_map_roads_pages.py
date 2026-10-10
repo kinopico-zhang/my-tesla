@@ -189,12 +189,13 @@ def test_map_roads_colors_and_grid_css(auth):
 # ---------------------------------------------------------------- 设置页
 def test_settings_amap_web_key_field(auth):
     """设置页 Web 服务 Key (轨迹拟合) 独立成卡 (2026-09-29 用户点名「要配置
-    两个 key」: 两类型易拿混分卡配置): 密码框留空保持现值, 当前状态行, 写明
-    与地图 Key 是两种类型不能混用, 独立保存钮存后踢 worker (/roads/tick)。"""
+    两个 key」: 两类型易拿混分卡配置): 密码框留空保持现值, 独立保存钮存后
+    踢 worker (/roads/tick)。卡里的「两种类型不能混用」说明 2026-10-10 随
+    设置页说明撤下 (获取方式集中 README)。"""
     html = _shell(auth)
     for frag in ('<h2>足迹道路拟合</h2>', 'id="amap-web-key"',
                  'type="password" id="amap-web-key"', 'id="amap-web-save"',
-                 "两种类型, 不能混用", '"/tesla/map/api/roads/tick"'):
+                 '"/tesla/map/api/roads/tick"'):
         assert frag in html, f"Web 服务 Key 设置缺少 {frag}"
     # 地图显示卡还在 (JS Key + 安全码 + 样式), 保存钮互不越界
     assert '<h2>地图显示</h2>' in html and 'id="amap-save"' in html

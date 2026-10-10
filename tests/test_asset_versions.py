@@ -109,7 +109,9 @@ def test_guard_assets_versioned_on_shell(auth):
                                                          #   嫌深); v8: 车辆选择卡住抽屉顶
                    ("css/tesla-filter-bar.css", 5),     # 菜单圆键退役 (#menu-key 拆净,
                                                          # #bar-row.no-chips 整条收起)
-                   ("css/tesla-settings.css", 23),      # v23: 「获取方式」折叠块
+                   ("css/tesla-settings.css", 24),      # v24: 「获取方式」折叠块
+                                                         #   撤下 (说明集中 README);
+                                                         #   v23: 折叠块
                                                          #   (markdown 条目 + 可点链接);
                                                          #   v22: 「测试」次钮
                                                          #   (.btn-row 并排 +
@@ -227,7 +229,9 @@ def test_guard_assets_versioned_on_shell(auth):
                                                          #   v4: bindGestures 回 drawer
                    ("js/view/settings-drivers.js", 6),  # v6: 加载失败 toast (别装空列表);
                                                          # v5: 左滑三钮 + 行内改名 (v4: bindGestures)
-                   ("js/view/settings-map.js", 18),     # v18: markdown 一条一行
+                   ("js/view/settings-map.js", 19),     # v19: 折叠块整链退役
+                                                         # (HOWTO_*/mdItems 下岗);
+                                                         # v18: markdown 一条一行
                                                          # (折行被当第二条);
                                                          # v17: 获取方式折叠块
                                                          # (markdown 条目渲染 +

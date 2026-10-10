@@ -93,13 +93,15 @@ def wizard_missing(own: Session) -> list[str]:
     """首启引导 (三步版) 还差的配置步: "teslamate" / "amap"。
 
     判据与设置页同源: 连接看现值拼不拼得出明确指向 (设置行 > env > docker
-    容器定位, 哪来的都算配过 —— 能连上就是配过); 高德 Key 只认设置行。
-    引导页与应用页的门都问它: 全配齐之前 /tesla 一律 302 回 /setup
-    (2026-10-09 用户点名「向导不允许跳过, 必须都配置了才能进入 app」)。"""
+    容器定位, 哪来的都算配过 —— 能连上就是配过); 高德两把 Key 都只认
+    设置行, Web 服务 Key 2026-10-10 起也必填 (足迹道路拟合要用, 缺一把
+    都算地图步没配完)。引导页与应用页的门都问它: 全配齐之前 /tesla 一律
+    302 回 /setup (2026-10-09 用户点名「向导不允许跳过, 必须都配置了才能
+    进入 app」)。"""
     missing: list[str] = []
     if not effective_tmdb(own).host:
         missing.append("teslamate")
-    if not amap_values(own)[0]:
+    if not amap_values(own)[0] or not amap_web_key_value(own):
         missing.append("amap")
     return missing
 

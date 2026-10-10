@@ -24,38 +24,12 @@
 // 显掩码值 (安全码掩码是新加的下发字段), 「· 留空=保持」后缀全退役; ③ 「修改
 // 后, 保存按钮灰色, 要测试通过才能保存」—— 输入一变即锁 (原有), 存完也
 // 回灰: 通行是一次性的, 保存就消费掉, 再存要重测。
+// v19 (2026-10-10 用户点名「设置界面上的说明去掉」, 获取方式集中到
+// README): v17 的「Key 的获取方式」两块折叠整链退役 —— 折叠文案常量与
+// markdown 渲染器下岗, 壳里的 details 骨架同拆。
 /* global $, toast, getJSON, sendJSON, mapLib, bindGestures, registerView,
           setMapGate */
 "use strict";
-
-/* ---------- 「Key 的获取方式」折叠块: markdown 条目渲染 ---------- */
-const HOWTO_JS = `
-- 打开 [高德开放平台控制台](https://console.amap.com), 注册并登录
-- 左侧「应用管理」→「创建新应用」
-- 在应用里「添加 Key」, 服务平台选「Web端 (JS API)」
-- Key 生成后点开详情, 「安全密钥」就是这里的安全码 —— Key 和安全码配套, 换新 Key 要配新安全码
-`;
-const HOWTO_WEB = `
-- 在同一个应用的「添加 Key」再来一把, 服务平台选「Web服务」
-- 和上面的地图 Key 是两种类型, 不能混用
-- 只在服务端用: 把足迹轨迹拟合到实际道路
-`;
-
-// 极简 markdown: 一行一条 item (- 开头), [字](网址) 转链接 (新标签页)。
-// 先转义再链接化, 文案里夹的尖括号 & 不会变成活的标签
-function mdItems(md) {
-  const escHtml = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
-  const linkify = s => escHtml(s).replace(
-    /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
-    '<a href="$2" target="_blank" rel="noopener">$1</a>');
-  return md.trim().split("\n")
-    .map(l => l.trim())
-    .filter(Boolean)
-    .map(l => `<li>${linkify(l.startsWith("- ") ? l.slice(2) : l)}</li>`)
-    .join("");
-}
-$("#amap-howto").innerHTML = mdItems(HOWTO_JS);
-$("#amap-web-howto").innerHTML = mdItems(HOWTO_WEB);
 
 async function mapSetLoad() {
   const s = await getJSON("/tesla/api/settings");

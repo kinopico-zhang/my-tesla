@@ -15,7 +15,7 @@
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v=2">
   <link rel="manifest" href="/static/manifest.json">
   <title>初始化 · My Tesla</title>
-<link rel="stylesheet" href="/static/css/setup-page.css?v=4">
+<link rel="stylesheet" href="/static/css/setup-page.css?v=5">
 </head>
 <body data-done="/tesla">
 <div class="card" id="card">
@@ -63,9 +63,6 @@
     <div class="err"></div>
   </form>
   <form id="form2" hidden>
-    <p class="hint">TeslaMate 行车数据库的连接参数, 都在它那台机器的 .env /
-    docker-compose.yml 里 (用户/库名默认都是 teslamate, 密码即
-    POSTGRES_PASSWORD); 保存时自动验证, 连不上原样退回可重试。</p>
     <div class="field">
       <label for="tm-host">地址</label>
       <input id="tm-host" type="text" autocapitalize="off" autocorrect="off"
@@ -93,10 +90,6 @@
     <div class="err"></div>
   </form>
   <form id="form3" hidden>
-    <p class="hint">高德开放平台的两把 Key (个人开发者免费; 同一应用下可建
-    多把, 各选一个服务平台): 地图 Key 选「Web端(JS API)」, 安全码与它配套;
-    Web 服务 Key 选「Web服务」, 供足迹道路拟合, 可留空稍后在 设置 →
-    地图设置 补。</p>
     <div class="field">
       <label for="amap-key">地图 Key</label>
       <input id="amap-key" type="text" autocapitalize="off" autocorrect="off"
@@ -120,6 +113,6 @@
     <p>初始化完成, 正在进入…</p>
   </div>
 </div>
-<script src="/static/setup.js?v=3"></script>
+<script src="/static/setup.js?v=4"></script>
 </body>
 </html>
