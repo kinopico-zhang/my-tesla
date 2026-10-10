@@ -22,7 +22,7 @@
 
 </div>
 
-## ✨ 功能
+## 1. ✨ 功能
 
 <p align="center">
 <a name="shot-live"><img src="docs/screenshot-live.png?v=2" width="280" alt="状态 · My Tesla (演示数据)"></a>
@@ -74,7 +74,7 @@
 <br><b>充电地图</b> — 常去充电点的地理分布, 陌生地方先看哪里充过电
 </p>
 
-## 系统架构
+## 2. 系统架构
 
 <p align="center">
 <a name="arch"><img src="docs/architecture.svg?v=7" width="800" alt="My Tesla 数据链路"></a>
@@ -112,7 +112,7 @@ compose 内部网络互通), 跨机器访问要先给 `database` 服务加端口
   端口 `5432`, 防火墙放行;
 - **同一台机器**: 同样加端口映射, 地址填 `localhost`。
 
-## 🚀 部署
+## 3. 🚀 部署
 
 需要 Python 3.13+:
 
@@ -135,22 +135,37 @@ python3.13 -m venv .venv          # Windows: py -3.13 -m venv .venv
 - **没证书**: 直接启动, 走 `http://<host>:8500/` (`--http` 可强制明文,
   调试用)。
 
-## 初始化
+## 4. 初始化
 
-首次打开自动走设置向导, 三步: 注册管理员账号 → 填 TeslaMate 的
-PostgreSQL 连接 (主机/端口/账号/密码/库名, 保存即实测连通) → 填高德
-Key。三步配齐才能进应用, 一步不能跳; 中途关掉下次从缺的那步接着配。
-之后想改, 设置页随时改; 每次打开自动进 `/tesla/charging`。
+首次打开自动走设置向导, 三步配齐才能进应用, 一步不能跳; 中途关掉下次
+从缺的那步接着配。之后想改, 设置页随时改; 每次打开自动进 `/tesla/charging`。
+
+### 4.1 建立管理员
+
+注册管理员账号, 注册即登录。
 
 <p align="center">
 <a name="shot-setup-1"><img src="docs/screenshot-setup-1.png" width="240" alt="向导第一步 · 建立管理员"></a>
-<a name="shot-setup-2"><img src="docs/screenshot-setup-2.png" width="240" alt="向导第二步 · 填 TeslaMate 连接"></a>
-<a name="shot-setup-3"><img src="docs/screenshot-setup-3.png" width="240" alt="向导第三步 · 填高德 Key"></a>
-<br><b>① 建立管理员</b> — 注册即登录 · <b>② 数据源</b> — 五项按上表抄
-TeslaMate 那台机器 · <b>③ 地图</b> — 高德两把 Key, 保存并进入应用
 </p>
 
-## ⚙️ 启动参数
+### 4.2 数据源
+
+填 TeslaMate 的 PostgreSQL 连接, 五项照「系统架构」的表抄; 保存即实测连通。
+
+<p align="center">
+<a name="shot-setup-2"><img src="docs/screenshot-setup-2.png" width="240" alt="向导第二步 · 填 TeslaMate 连接"></a>
+</p>
+
+### 4.3 地图
+
+填高德两把 Key: 「Web端(JS API)」的 Key 与安全码给页面地图, 「Web服务」
+的 Key 给足迹道路拟合 (可留空); 保存并进入应用。
+
+<p align="center">
+<a name="shot-setup-3"><img src="docs/screenshot-setup-3.png" width="240" alt="向导第三步 · 填高德 Key"></a>
+</p>
+
+## 5. ⚙️ 启动参数
 
 全量清单 `python -m app --help` (分组帮助即部署文档), 常用项:
 
@@ -162,6 +177,6 @@ TeslaMate 那台机器 · <b>③ 地图</b> — 高德两把 Key, 保存并进�
 参数没给的回落同名环境变量, 再回落内置默认 —— 显式参数 > 环境变量 >
 默认, 自动化与容器注入仍可走环境变量。
 
-## 📄 许可证
+## 6. 📄 许可证
 
 [MIT](./LICENSE) © 2026 kinopico
