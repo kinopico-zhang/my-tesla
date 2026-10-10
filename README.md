@@ -117,13 +117,16 @@ python3.13 -m venv .venv          # Windows: py -3.13 -m venv .venv
 填 TeslaMate 的 PostgreSQL 连接, 保存即实测连通。五项全部在 TeslaMate
 那台机器的 `docker-compose.yml` / `.env` 里:
 
-| 表单字段 | TeslaMate 那边 | 默认 |
-|---|---|---|
-| 地址 | 跑 TeslaMate 的那台机器 (见下) | — |
-| 端口 | `database` 服务映射到宿主的端口 | `5432` |
-| 用户 | `POSTGRES_USER` | `teslamate` |
-| 密码 | `POSTGRES_PASSWORD` | — |
-| 库名 | `POSTGRES_DB` | `teslamate` |
+<table align="center">
+<thead><tr><th>表单字段</th><th>TeslaMate 那边</th><th>默认</th></tr></thead>
+<tbody>
+<tr><td>地址</td><td>跑 TeslaMate 的那台机器 (见下)</td><td>—</td></tr>
+<tr><td>端口</td><td><code>database</code> 服务映射到宿主的端口</td><td><code>5432</code></td></tr>
+<tr><td>用户</td><td><code>POSTGRES_USER</code></td><td><code>teslamate</code></td></tr>
+<tr><td>密码</td><td><code>POSTGRES_PASSWORD</code></td><td>—</td></tr>
+<tr><td>库名</td><td><code>POSTGRES_DB</code></td><td><code>teslamate</code></td></tr>
+</tbody>
+</table>
 
 想不起来值, 在 TeslaMate 的 compose 目录里一条命令全打出来 (密码也在
 里面):
@@ -152,7 +155,7 @@ compose 内部网络互通), 跨机器访问要先给 `database` 服务加端口
 
 **地图 Key 与安全码** (服务平台选「Web端 (JS API)」):
 
-- 打开 [高德开放平台控制台](https://console.amap.com), 注册并登录
+- 打开 <a href="https://console.amap.com" target="_blank">高德开放平台控制台</a>, 注册并登录
 - 左侧「应用管理」→「创建新应用」
 - 在应用里「添加 Key」, 服务平台选「Web端 (JS API)」
 - Key 生成后点开详情, 「安全密钥」就是这里的安全码 —— Key 和安全码配套,
