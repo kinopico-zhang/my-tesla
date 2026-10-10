@@ -1,6 +1,6 @@
 """命令行启动器 (python -m app): 部署配置全走参数。
 
-独立部署的完整配置面: 监听 / TeslaMate / 库与缓存 / 显示口径。没给的
+独立部署的完整配置面: 监听 / TeslaMate / 库与缓存。没给的
 参数回落同名环境变量 (自动化 / 测试 / 组合仓注入用), 再回落各消费模块
 的内置默认 —— 显式参数 > 环境变量 > 默认值; 参数显式给空串 = 清掉对应
 环境变量。
@@ -71,9 +71,6 @@ _GROUPS: tuple[tuple[str, tuple[_Knob, ...]], ...] = (
             "轨迹盘缓存 (默认 data/tracks_cache.json)"),
       _Knob("--speed-cache", "SPEED_HIST_CACHE_FILE",
             "速度直方图盘缓存 (默认 data/speed_hist_cache.json)"))),
-    ("显示口径",
-     (_Knob("--tz", "TZ_NAME", "时区 (默认 Asia/Shanghai)"),
-      _Knob("--currency", "CUR_SYMBOL", "货币符号 (默认 ¥)"))),
 )
 
 

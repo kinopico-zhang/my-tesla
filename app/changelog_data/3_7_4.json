@@ -1,0 +1,12 @@
+[
+  {
+    "version": "3.7.4",
+    "date": "2026-10-10",
+    "items": [
+      {
+        "kind": "改进",
+        "text": "启动参数更精简: --tz 与 --currency 退役, 时区与货币符号改走环境变量 TZ_NAME / CUR_SYMBOL (默认 Asia/Shanghai / ¥ 不变)。"
+      }
+    ]
+  }
+]

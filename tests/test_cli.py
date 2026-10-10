@@ -2,8 +2,10 @@
 证书判定 (TLS 的开关)、配置面对账 (旋钮 ↔ 消费模块读的环境变量)。
 
 账号与高德 Key 不在参数面里 (管理员走 /setup 首启引导, 高德在设置页
-「地图设置」里保存) —— 对账清单钉死这条边界, 谁往里加 auth/amap 旋钮
-当场红。真启动链路 (命令行 → uvicorn → 登录) 由 test_e2e.py 盖着。"""
+「地图设置」里保存); 显示口径 (时区/货币符号) 同样只走环境变量注入
+(2026-10-10 --tz / --currency 退役) —— 对账清单钉死这条边界, 谁往里
+加 auth/amap/tz 旋钮当场红。真启动链路 (命令行 → uvicorn → 登录)
+由 test_e2e.py 盖着。"""
 import argparse
 import os
 
@@ -25,7 +27,6 @@ def test_knob_surface_matches_consumer_envs():
         "TMDB_HOST", "TMDB_PORT", "TMDB_USER", "TMDB_PASS", "TMDB_NAME",
         "TMDB_CONTAINER", "DOCKER_BIN",
         "MYTESLA_DB", "MAP_CACHE_FILE", "SPEED_HIST_CACHE_FILE",
-        "TZ_NAME", "CUR_SYMBOL",
     }
     assert len({k.flag for k in _all_knobs()}) == len(_all_knobs())
 
@@ -67,9 +68,9 @@ def test_absent_arg_keeps_env(monkeypatch):
 
 def test_empty_arg_clears_env(monkeypatch):
     """显式给空串 = 清掉环境变量 (把 env 注入的值临时退回内置默认)。"""
-    monkeypatch.setenv("TZ_NAME", "UTC")
-    cli.apply_env(cli.build_parser().parse_args(["--tz", ""]))
-    assert "TZ_NAME" not in os.environ
+    monkeypatch.setenv("TMDB_HOST", "from-env")
+    cli.apply_env(cli.build_parser().parse_args(["--teslamate-host", ""]))
+    assert "TMDB_HOST" not in os.environ
 
 
 # ---------------------------------------------------------------- 证书判定
