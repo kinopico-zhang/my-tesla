@@ -38,7 +38,7 @@
     <text id="l-e3" x="450" y="355" data-max="80" font-size="12" text-anchor="middle" dominant-baseline="central">行车数据落库</text>
     <text id="l-e4" x="285.5" y="155" data-max="120" font-size="12" text-anchor="middle" dominant-baseline="central">地图瓦片 · 道路拟合</text>
     <text id="l-e5" x="598.5" y="155" data-max="100" font-size="12" text-anchor="middle" dominant-baseline="central">账号 · 设置 · Key</text>
-    <text id="l-e6" x="537" y="228" data-max="56" font-size="12" text-anchor="middle" dominant-baseline="central">只读查询</text>
+    <text id="l-e6" x="513" y="228" data-max="116" font-size="12" text-anchor="start" dominant-baseline="central">查询 · 充电金额回写</text>
   </g>
 
   <!-- ── 顶排: 使用者 ────────────────────────────────── -->

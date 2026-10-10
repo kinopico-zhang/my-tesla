@@ -74,20 +74,14 @@
 <br><b>充电地图</b> — 常去充电点的地理分布, 陌生地方先看哪里充过电
 </p>
 
-## 🚀 部署
-
-### 准备 · TeslaMate 连接参数
-
-会来用 My Tesla 的人必然已经装好了 TeslaMate (还没装的看官方文档
-[docs.teslamate.org](https://docs.teslamate.org/))。My Tesla 只读它的
-PostgreSQL, 不往回写任何东西。数据链路:
+## 系统架构
 
 <p align="center">
-<a name="arch"><img src="docs/architecture.svg?v=6" width="800" alt="My Tesla 数据链路"></a>
+<a name="arch"><img src="docs/architecture.svg?v=7" width="800" alt="My Tesla 数据链路"></a>
 </p>
 
-首启向导第二步 (或之后的 设置 → 数据库) 要填的五项, 全部在 TeslaMate
-那台机器的 `docker-compose.yml` / `.env` 里:
+My Tesla 连 TeslaMate 的 PostgreSQL 要五项, 全部在 TeslaMate 那台机器的
+`docker-compose.yml` / `.env` 里:
 
 | 表单字段 | TeslaMate 那边 | 默认 |
 |---|---|---|
@@ -118,32 +112,35 @@ compose 内部网络互通), 跨机器访问要先给 `database` 服务加端口
   端口 `5432`, 防火墙放行;
 - **同一台机器**: 同样加端口映射, 地址填 `localhost`。
 
-### 准备 · Python 环境
+## 🚀 部署
 
 需要 Python 3.13+:
 
 ```sh
+git clone https://github.com/kinopico-zhang/my-tesla.git
+cd my-tesla
 python3.13 -m venv .venv          # Windows: py -3.13 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-```
-
-### 启动
-
-```sh
 .venv/bin/python -m app           # Windows: .venv\Scripts\python -m app
 ```
 
-配置全走命令行参数 (`--help` 一屏看全), 端口只有一个 `8500`, 分两种情况:
+终端打出 `Uvicorn running on http://0.0.0.0:8500` 即已启动; 浏览器打开
+`http://<host>:8500/`, 见到登录页 (未初始化则是三步向导) 就是服务正常。
+
+监听 `--host` (默认 `0.0.0.0`)、端口 `--port` (默认 `8500`), 全量参数
+`--help` 一屏看全。端口分两种情况:
 
 - **有证书**: `fullchain.pem` + `privkey.pem` 放进 `data/certs/` 再启动,
   走 `https://<host>:8500/`;
 - **没证书**: 直接启动, 走 `http://<host>:8500/` (`--http` 可强制明文,
   调试用)。
 
-打开后自动进 `/tesla/charging`。首次打开先走设置向导, 三步: 注册管理员
-账号 → 填 TeslaMate 的 PostgreSQL 连接 (主机/端口/账号/密码/库名, 保存即
-实测连通) → 填高德 Key。三步配齐才能进应用, 一步不能跳; 中途关掉下次
-从缺的那步接着配。之后想改, 设置页随时改。
+## 初始化
+
+首次打开自动走设置向导, 三步: 注册管理员账号 → 填 TeslaMate 的
+PostgreSQL 连接 (主机/端口/账号/密码/库名, 保存即实测连通) → 填高德
+Key。三步配齐才能进应用, 一步不能跳; 中途关掉下次从缺的那步接着配。
+之后想改, 设置页随时改; 每次打开自动进 `/tesla/charging`。
 
 <p align="center">
 <a name="shot-setup-1"><img src="docs/screenshot-setup-1.png" width="240" alt="向导第一步 · 建立管理员"></a>
@@ -156,7 +153,8 @@ TeslaMate 那台机器 · <b>③ 地图</b> — 高德两把 Key, 保存并进�
 ## 📡 数据源
 
 TeslaMate 连接只有一条路: 首启向导 (或之后的设置页) 里填, 保存即热重连
-实测。数据只读, 不会往 TeslaMate 库写任何东西。
+实测。查询全只读; 唯一的写库是充电金额 —— 充电记录页填的每次花销写回
+TeslaMate 的 `charging_processes.cost`, TeslaMate 那边同步可见。
 
 高德 Key 两把 (个人开发者免费; 同一应用下可建多把, 各选一个服务平台):
 「Web端(JS API)」的 Key 与配套安全码给页面地图, 「Web服务」的 Key 给
@@ -171,6 +169,7 @@ TeslaMate 连接只有一条路: 首启向导 (或之后的设置页) 里填, �
 
 | 参数 | 默认 | 说明 |
 |---|---|---|
+| `--host` | `0.0.0.0` | 监听地址 |
 | `--port` | `8500` | 端口: 证书目录有证书走 HTTPS, 没证书走 HTTP |
 | `--tz` / `--currency` | `Asia/Shanghai` / `¥` | 显示口径 |
 
