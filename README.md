@@ -143,7 +143,7 @@ compose 内部网络互通), 跨机器访问要先给 `database` 服务加端口
 ```
 
 <p align="center">
-<a name="shot-setup-2"><img src="docs/screenshot-setup-2.png" width="240" alt="向导第二步 · 填 TeslaMate 连接"></a>
+<a name="shot-setup-2"><img src="docs/screenshot-setup-2.png?v=2" width="240" alt="向导第二步 · 填 TeslaMate 连接"></a>
 </p>
 
 ### 4.3 地图
@@ -165,7 +165,7 @@ compose 内部网络互通), 跨机器访问要先给 `database` 服务加端口
 - 只在服务端用: 把足迹轨迹拟合到实际道路
 
 <p align="center">
-<a name="shot-setup-3"><img src="docs/screenshot-setup-3.png" width="240" alt="向导第三步 · 填高德 Key"></a>
+<a name="shot-setup-3"><img src="docs/screenshot-setup-3.png?v=2" width="240" alt="向导第三步 · 填高德 Key"></a>
 </p>
 
 ## 5. 📄 许可证
