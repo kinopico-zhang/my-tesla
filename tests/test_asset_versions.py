@@ -150,7 +150,7 @@ def test_guard_assets_versioned_on_shell(auth):
                    # 3.3.0 定稿: 左抽屉纯导航回归 (tab-dock 草稿整链撤); 车辆
                    # 选择住抽屉顶, 时间筛选整个下线 (全局 chips 退役), 账号
                    # 卡进设置页
-                   ("css/tesla-base.css", 18),          # v18: #task-list 进
+                   ("css/tesla-base.css", 19),          # v19: 主屏 Web App 全屏高度；v18: #task-list 进
                                                          #   rise 容器清单 (任务卡
                                                          #   够不着 .view-scroll >
                                                          #   .card 那条);

@@ -72,6 +72,15 @@ html { -webkit-text-size-adjust: 100%; height: 100%; overflow: hidden; }
      /* 固定壳: 文档本身永不滚 —— 各视图滚动全在 .view-scroll 内部
         (键盘弹出收起时视口恒定; iOS 26 系统侧滑无历史条目可退:
         内存路由不碰 pushState)。 */
+/* 主屏 Web App 没有可收放的浏览器工具栏。iOS 冷启动时 100dvh 可能
+   仍沿用较矮的高度；用完整视口作为默认壳高，键盘恢复时的 JS 像素补偿
+   仍可通过内联 --shell-h 覆盖。底部控件继续由 safe-area 留出手势区。 */
+@media (display-mode: standalone) and (pointer: coarse) {
+  :root { --shell-h: 100vh; height: var(--shell-h); }
+  @supports (height: 100lvh) {
+    :root { --shell-h: 100lvh; }
+  }
+}
 body {
   background: var(--bg); color: var(--ink-1);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
