@@ -20,7 +20,7 @@ def list_cars(session: Session) -> list[CarInfo]:
     rows = session.execute(
         select(Car.id, Car.name, Car.model, Car.trim_badging, Car.vin)
         .order_by(Car.id)).all()
-    return [CarInfo(id=cid, name=name, model=model, trim_badging=trim, vin=vin)
+    return [CarInfo(id=cid, name=name or f"Tesla {cid}", model=model, trim_badging=trim, vin=vin)
             for cid, name, model, trim, vin in rows]
 
 

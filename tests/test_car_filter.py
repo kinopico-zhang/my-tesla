@@ -3,6 +3,8 @@
 car_id 一律空结果 (宽容口径, 不 4xx)。行程/地图/驾驶见
 test_car_filter_trips.py。
 """
+import pytest
+
 from app.tesla.models import Address
 from tests.car_seed_helpers import _seed_two_cars
 from tests.seed_factories import seed_car
@@ -15,6 +17,15 @@ def test_car_endpoint_lists_both_cars(auth, db):
     seed_car(db, id=2, name="小黑", model="3", trim_badging="P", vin="5YJ3")
     cars = auth.get("/tesla/charging/api/car").json()
     assert [(c["id"], c["name"]) for c in cars] == [(1, "臭哈子"), (2, "小黑")]
+
+
+@pytest.mark.parametrize("name", [None, ""])
+def test_car_endpoint_accepts_unnamed_car(auth, db, name):
+    """TeslaMate permits NULL names; the API must still return a usable label."""
+    seed_car(db, name=name)
+    response = auth.get("/tesla/charging/api/car")
+    assert response.status_code == 200
+    assert response.json()[0]["name"] == "Tesla 1"
 
 
 # ---------------------------------------------------------------- 充电域

@@ -122,13 +122,18 @@ function enterDriving(s) {
   trackTimer = setInterval(refreshTrack, TRACK_MS);
 }
 
+let lvPollPending = false;
+
 async function poll() {
+  if (lvPollPending) return;
+  lvPollPending = true;
   const gen = lvGen;            // 离开视图后的迟到响应不再起定时器/改状态
   let s;
   try {
     const q = shellState.carId != null ? "?car_id=" + shellState.carId : "";
     s = await getJSON("/tesla/live/api/status" + q);
   } catch (e) { return; }   // 轮询失败保留当前画面, 下一轮再试
+  finally { lvPollPending = false; }
   if (gen !== lvGen) return;
   if (s.now_utc != null) serverSkew = s.now_utc - Date.now() / 1000;
   if (s.driving) {
@@ -231,6 +236,8 @@ $("#lv-gutter").addEventListener("touchcancel", e => {
 }, { passive: true });
 
 function lvShow() {
+  clearInterval(lvPollTimer);
+  clearInterval(lvTicker);
   lvGen++;
   if (!lvBootedDiag) { lvBootedDiag = true; diag("lv_boot", {}); }   // 首启信标: 确认手机真跑上 v13 (排查旧缓存混跑)
   $("#map-fallback").hidden = true;   // 上次失败的占位先收起, 这轮重试

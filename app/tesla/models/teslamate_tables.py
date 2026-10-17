@@ -12,7 +12,7 @@ class Car(Base):
 
     __tablename__ = "cars"
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str]
+    name: Mapped[str | None]
     model: Mapped[str | None]
     trim_badging: Mapped[str | None]
     vin: Mapped[str | None]

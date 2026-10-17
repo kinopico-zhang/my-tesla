@@ -329,7 +329,7 @@ def test_guard_assets_versioned_on_shell(auth):
                    ("js/view/map-filters.js", 18),      # v18: 构造蒙版三挂点 (show/hide/refresh);
                                                          # v17: ptrMove 挂整视图; v16: 左缘缝条取证
                                                          # 播放条行尾; v13: 前台旗 + 自动开播
-                   ("js/view/live-driving.js", 13),     # v13: 左缘缝条 + ptrMove 整舞台; v12: nudge 守卫
+                   ("js/view/live-driving.js", 14),     # v14: 轮询防重入与定时器清理; v13: 左缘缝条
                                                          # v10: 最后一段行程直达钮退役 (用户点名, 整链拆净);
                                                          # v9: 驻车画最后一程轨迹+车位点收进视野
                                                          # (lvDrawLastTrack 按 id 记账不重拉)
