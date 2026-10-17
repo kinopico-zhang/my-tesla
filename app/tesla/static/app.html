@@ -38,7 +38,7 @@
 <link rel="stylesheet" href="/tesla/static/css/tesla-chargemap-map.css?v=11">
 <link rel="stylesheet" href="/tesla/static/css/tesla-live-page.css?v=4">
 <link rel="stylesheet" href="/tesla/static/css/tesla-live-driving.css?v=20">
-<link rel="stylesheet" href="/tesla/static/css/tesla-settings.css?v=31">
+<link rel="stylesheet" href="/tesla/static/css/tesla-settings.css?v=32">
 <link rel="stylesheet" href="/tesla/static/css/tesla-shell-floor.css?v=13">
 </head>
 <body>
@@ -812,18 +812,26 @@
 
         <!-- 地点显示模板 (2026-10-17 用户点名「高德给的地址要完完整整的
              结构化地存起来, 然后在设置界面, 可以设置各个界面显示地点的模
-             板」): 三界面各一条 —— 变量 {省} {市} {区} {镇} {路} {门牌}
-             {POI} {名字} {推荐}, 缺的组件自动留空 (悬空分隔符扫掉), 整条
-             留空 = 默认显示 (区 · 地名)。渲染单一源在服务端, 输入停 300ms
-             即预览 (拿缓存里组件最全的一条地名当样例); 保存走专用端点 ——
-             主设置保存把空串当「保持现值」(密码语义), 这里空串是合法值
-             (= 回默认), 两家语义不同不能合 (view/settings-places.js 接线) -->
+             板」; 2026-10-18 用户点名「每个都表示什么含义要说清楚 + 用选
+             择代替填空」): 三界面各一条 —— 手填变量退役, 改点选: 部件一
+             枚一义 (上行变量名 + 下行一行小字含义), 点一下插进「蓝框」目
+             标输入框的光标处 (最后点过的框, 点部件会收键盘, JS 记住目
+             标); 整条格式一键替换目标框 (空 = 回默认); 组件缺失自动留空
+             (悬空分隔符扫掉), 直辖市的省市算一个部件 (高德 city 层缺位,
+             {市} 并省层), 整条留空 = 默认显示 (区 · 地名)。渲染单一源在
+             服务端, 改动停 300ms 即预览 (拿缓存里组件最全的一条地名当
+             样例); 保存走专用端点 —— 主设置保存把空串当「保持现值」(密
+             码语义), 这里空串是合法值 (= 回默认), 两家语义不同不能合
+             (view/settings-places.js 接线) -->
         <section class="card" id="ptpl-card">
           <h2>地点显示</h2>
+          <p class="hint">部件点一下, 插进<b>蓝框</b>输入框的光标处; 整条格式点一下, 直接替换蓝框内容。</p>
           <label><span>行程起终点</span><input type="text" id="ptpl-trips" maxlength="80" autocomplete="off" spellcheck="false" placeholder="{区} · {POI}"></label>
           <label><span>充电地点</span><input type="text" id="ptpl-charging" maxlength="80" autocomplete="off" spellcheck="false" placeholder="{区} · {POI}"></label>
           <label><span>常用地点</span><input type="text" id="ptpl-places" maxlength="80" autocomplete="off" spellcheck="false" placeholder="{镇} · {路}"></label>
-          <p class="ptpl-vars">变量: {省} {市} {区} {镇} {路} {门牌} {POI} {名字} {推荐} — 组件缺失自动留空, 整条留空 = 默认显示</p>
+          <div class="ptpl-group"><span class="ptpl-gt">整条格式 (替换蓝框)</span><div class="ptpl-chips" id="ptpl-presets"></div></div>
+          <div class="ptpl-group"><span class="ptpl-gt">部件 (插入光标处)</span><div class="ptpl-chips" id="ptpl-vars"></div></div>
+          <p class="ptpl-vars">没数据的部件自动留空; 直辖市的省市算一个; 整条留空 = 默认显示</p>
           <div class="ptpl-preview" id="ptpl-preview" hidden></div>
           <button type="button" class="primary" id="ptpl-save">保存</button>
         </section>
@@ -1205,7 +1213,7 @@
 <script src="/tesla/static/js/tesla-swipe-delete.js?v=4"></script>
 <script src="/tesla/static/js/view/settings-drivers.js?v=6"></script>
 <script src="/tesla/static/js/view/trips-place-detail.js?v=12"></script>
-<script src="/tesla/static/js/view/settings-places.js?v=9"></script>
+<script src="/tesla/static/js/view/settings-places.js?v=10"></script>
 <script src="/tesla/static/js/view/settings-tasks.js?v=1"></script>
 <script src="/tesla/static/js/view/settings-account.js?v=6"></script>
 <script src="/tesla/static/js/tesla-app-boot.js?v=4"></script>

@@ -18,6 +18,12 @@
 // 「N 个地点的汇总」, 单点组不带小字 (跟没改过名的组一个长相)。
 // v9 (2026-10-17): 页首加「地点显示」卡 —— 三界面模板 (行程起终点/充电
 // 地点/常用地点), 服务端渲染 + 防抖预览 + 专用端点保存 (语义见下方卡块)。
+// v10 (2026-10-18 用户点名「每个都表示什么含义要说清楚 + 用选择代替填
+// 空」): 模板手填退役 —— 部件与整条格式全改点选。部件一枚一义 (上行变量
+// 名 + 下行一行小字含义), 点一下插进「蓝框」目标框的光标处 —— 点部件会
+// 收起键盘 (focus 跑掉), 目标得自己记 (最后点过的框, .ptpl-target 常亮
+// 蓝边与 :focus 同色); 整条格式点一下直接替换目标框 (空值 = 回默认);
+// 预览进页就跑一次 (不再是冷启动空块)。
 // 列表数据 = 行程统计的 locations 接口原样 (别名/并组/坐标都在行里)。
 /* global $, esc, getJSON, sendJSON, toast, bindGestures, registerView,
            openPlaceDetail */
@@ -123,14 +129,27 @@ $("#plc-hid-list").addEventListener("click", async e => {
 bindGestures($("#plc-scroll"), { drawer: true, ptr: true, onRefresh: loadPlaces });
 
 // ---- 地点显示模板 (2026-10-17 用户点名「在设置界面, 可以设置各个界面
-// 显示地点的模板」): 三界面各一条, 渲染单一源在服务端 (place_naming 的
-// render_place), 这里只搬运 —— 输入停 300ms POST preview 换预览行 (拿
-// 缓存里组件最全的一条地名当样例), 保存走专用端点: 主设置保存把空串当
-// 「保持现值」(密码语义), 模板的空串是合法值 (= 回默认), 两家语义不同
-// 不能合一个接口。
+// 显示地点的模板」; 2026-10-18 二改「用选择代替填空」): 三界面各一条,
+// 渲染单一源在服务端 (place_naming 的 render_place), 这里只搬运 —— 改动
+// (手输/点选) 停 300ms POST preview 换预览行 (拿缓存里组件最全的一条地
+// 名当样例, 进页也先跑一次), 保存走专用端点: 主设置保存把空串当「保持
+// 现值」(密码语义), 模板的空串是合法值 (= 回默认), 两家语义不同不能合
+// 一个接口。
 const PTPL_KEYS = [["trips", "行程起终点"], ["charging", "充电地点"],
                    ["places", "常用地点"]];
+// 整条格式速选: [钮面文字, 模板原文] —— 点一下替换目标框, 空串 = 回默认
+const PTPL_PRESETS = [["默认显示", ""], ["区 · 地点", "{区} · {POI}"],
+                      ["市 · 区", "{市} · {区}"], ["完整地址", "{推荐}"]];
+// 部件: [钮面文字, 含义, 插入文本] —— 含义即「每个都表示什么」的答案
+// (一行小字随钮走); 插入文本缺省 = {钮面文字}, 间隔类给明文 (· / 空格)
+const PTPL_VARS = [
+  ["{名字}", "高德取的地点名"], ["{省}", "省份"], ["{市}", "城市 (直辖市即省市)"],
+  ["{区}", "区县"], ["{镇}", "街道或镇"], ["{路}", "道路"],
+  ["{门牌}", "门牌号"], ["{POI}", "附近地点"], ["{推荐}", "高德完整地址"],
+  ["·", "间隔号", " · "], ["空格", "间隔", " "]];
 let ptplTimer = 0;
+let ptplTarget = null;   // 部件落点: 最后点过的输入框 (点部件收键盘,
+//                        focus 会跑掉, :focus 亮不住, 目标得自己记)
 
 function ptplBody() {
   return JSON.stringify({
@@ -140,6 +159,42 @@ function ptplBody() {
   });
 }
 
+function ptplKick() {     // 改动停 300ms 再预览 (手输/点选共用一条防抖)
+  clearTimeout(ptplTimer);
+  ptplTimer = setTimeout(ptplPreview, 300);
+}
+
+function ptplMark() {     // 蓝框高亮跟着目标走 (.ptpl-target 与 :focus 同色)
+  for (const [k] of PTPL_KEYS)
+    $("#ptpl-" + k).classList.toggle("ptpl-target", ptplTarget === $("#ptpl-" + k));
+}
+
+function ptplInsert(txt) {   // 插进目标框光标处 (选中段一并换掉), 光标跟到插完尾后
+  const el = ptplTarget;
+  const at = el.selectionStart ?? el.value.length;
+  const end = el.selectionEnd ?? at;
+  if (el.value.length + txt.length - (end - at) > 80) {
+    toast("格式太长了 (最多 80 字)");   // 与服务端上限同数, 超了也存不进
+    return;
+  }
+  el.value = el.value.slice(0, at) + txt + el.value.slice(end);
+  const next = at + txt.length;
+  try { el.setSelectionRange(next, next); }   // 老内核不吃: 光标留末尾不碍事
+  catch { /* setSelectionRange 不支持 */ }
+  ptplKick();
+}
+
+function ptplBuildChips() {
+  $("#ptpl-presets").innerHTML = PTPL_PRESETS.map(([lb, val]) =>
+    `<button type="button" class="ptpl-preset" data-val="${esc(val)}">${esc(lb)}</button>`).join("");
+  $("#ptpl-vars").innerHTML = PTPL_VARS.map(([lb, cap, txt]) => {
+    const t = txt ?? lb;   // 部件钮面即插入文本 ({名字}), 间隔类给明文
+    return `<button type="button" class="ptpl-chip" data-txt="${esc(t)}">` +
+           `<span class="ptpl-vlb">${esc(lb)}</span>` +
+           `<span class="ptpl-vcap">${esc(cap)}</span></button>`;
+  }).join("");
+}
+
 async function loadPlaceTpls() {
   try {
     const d = await getJSON("/tesla/api/place-templates");
@@ -147,6 +202,7 @@ async function loadPlaceTpls() {
   } catch (err) {
     toast(`地点显示模板加载失败: ${err.message}`);
   }
+  ptplPreview();     // 进页就亮预览 (v10: 不等第一次改动)
 }
 
 async function ptplPreview() {
@@ -170,12 +226,29 @@ async function ptplPreview() {
   }
 }
 
+ptplBuildChips();
 for (const [k] of PTPL_KEYS) {
-  $("#ptpl-" + k).addEventListener("input", () => {
-    clearTimeout(ptplTimer);
-    ptplTimer = setTimeout(ptplPreview, 300);   // 停 300ms 再预览 (别每键一发)
-  });
+  const el = $("#ptpl-" + k);
+  el.addEventListener("input", ptplKick);
+  el.addEventListener("focus", () => { ptplTarget = el; ptplMark(); });
 }
+ptplTarget = $("#ptpl-trips");   // 进页默认落点 = 第一框 (点过哪框跟哪框)
+ptplMark();
+
+// 点选 (冒泡层): 整条格式替换目标框; 部件插光标处
+$("#ptpl-presets").addEventListener("click", e => {
+  if (!(e.target instanceof Element)) return;
+  const b = e.target.closest(".ptpl-preset");
+  if (!b) return;
+  ptplTarget.value = b.dataset.val;
+  ptplKick();
+});
+$("#ptpl-vars").addEventListener("click", e => {
+  if (!(e.target instanceof Element)) return;
+  const b = e.target.closest(".ptpl-chip");
+  if (!b) return;
+  ptplInsert(b.dataset.txt);
+});
 
 $("#ptpl-save").addEventListener("click", async () => {
   try {

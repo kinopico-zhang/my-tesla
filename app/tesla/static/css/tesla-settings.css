@@ -213,8 +213,23 @@ input::placeholder { color: var(--ink-3); }
 }
 .plc-hid-row:last-child { border-bottom: 0; }
 /* 地点显示模板卡 (2026-10-17 用户点名「在设置界面, 可以设置各个界面显示
-   地点的模板」): 变量说明一行小字; 预览块 = 样例行置顶 (拿哪条名渲染的看
-   得见) + 三界面各一行 (界面名 ink-3 + 渲染结果) */
+   地点的模板」; 2026-10-18 用户点名「每个都表示什么含义要说清楚 + 用选
+   择代替填空」): 手填退役 —— 整条格式/部件全是点选钮 (chips), 部件两行
+   (上行变量名 + 下行一行小字含义)。.ptpl-target = 部件落点框: 点部件会
+   收键盘, :focus 亮不住, JS 记住目标给它常亮蓝边 (与 :focus 同色, 进页
+   默认第一框); 预览块 = 样例行置顶 (拿哪条名渲染的看得见) + 三界面各一
+   行 (界面名 ink-3 + 渲染结果) */
+.ptpl-group { margin: 0 0 12px; }
+.ptpl-gt { display: block; font-size: 12px; color: var(--ink-3); margin-bottom: 6px; }
+.ptpl-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ptpl-chips button {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 7px 14px; border-radius: 12px; background: var(--surface-2);
+  font-size: 13px; font-weight: 600; color: var(--ink-1);
+}
+.ptpl-chips button:active { background: var(--surface-3); }
+.ptpl-chips .ptpl-vcap { font-size: 11px; font-weight: 400; color: var(--ink-3); }
+#ptpl-card input.ptpl-target { border-color: var(--blue); }
 .ptpl-vars { margin: 2px 0 10px; font-size: 12px; color: var(--ink-3); }
 .ptpl-preview {
   margin: 0 0 10px; padding: 10px 12px;

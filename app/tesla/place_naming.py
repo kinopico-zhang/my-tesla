@@ -87,11 +87,14 @@ def render_place(tpl: str, info: "PlaceInfo | None") -> str:
     {区} {镇} {路} {门牌} {POI} {推荐}, 空组件渲染成空串 —— 悬空的分隔符
     (· 顿号 逗号 连字符 空格) 首尾扫掉、中间连排并回一段; 没缓存行 / 渲染
     全空 → "" (调用方走默认拼装)。{路} = 门牌街 || 最近道路 (同概念两个来
-    源); 不认识的 {xxx} 原样保留 (写错了看得见)。"""
+    源); 不认识的 {xxx} 原样保留 (写错了看得见)。直辖市 (高德 city 层缺
+    位): {市} 并省层, {省} 不再重复 (「北京市北京市」难看, 充电城市口径
+    同款) —— 省市算一个部件。"""
     if not tpl or info is None:
         return ""
-    vals = {"名字": info.name, "省": info.province, "市": info.city,
-            "区": info.district, "镇": info.township,
+    city = info.city or info.province
+    vals = {"名字": info.name, "省": "" if city == info.province else info.province,
+            "市": city, "区": info.district, "镇": info.township,
             "路": info.street or info.road, "门牌": info.number,
             "POI": info.poi, "推荐": info.rec}
     out: list[str] = []

@@ -93,11 +93,22 @@ _INFO = PlaceInfo(name="万象天地", province="广东省", city="深圳市",
 
 def test_render_place_substitutes_vars():
     assert render_place("{市}{区} · {POI}", _INFO) == "深圳市南山区 · 万象城"
+    assert render_place("{省} {市} {区}", _INFO) == "广东省 深圳市 南山区"
     assert render_place("{名字}({门牌})", _INFO) == "万象天地(88号)"
     # {路} = 门牌街 || 最近道路 (同概念两个来源, 模板只记一条)
     assert render_place("{路}", _INFO) == "深南大道"
     assert render_place("{路}", _INFO._replace(street="", road="坂田大道")) \
         == "坂田大道"
+
+
+def test_render_place_municipality_merges_province_into_city():
+    """直辖市: 高德 city 层缺位 (city=[] 验形收编成空串), {市} 并省层, {省}
+    渲染空 —— 省市算一个部件 (「北京市北京市」难看, 充电城市口径同款);
+    省市都空的老行走同一条路。"""
+    bj = PlaceInfo("国家大剧院", "北京市", "", "东城区", poi="人民大会堂")
+    assert render_place("{省}{市}{区}", bj) == "北京市东城区"
+    assert render_place("{市} · {POI}", bj) == "北京市 · 人民大会堂"
+    assert render_place("{省}", bj) == ""    # 单取 {省} 渲染空 (回退默认)
 
 
 def test_render_place_cleans_glue_and_keeps_unknown():
@@ -262,20 +273,24 @@ def test_locations_template_display_only(auth, db, owndb):
 
 # ---------------------------------------------------------------- 设置页接线
 def test_place_template_card_wiring(auth):
-    """设置页「地点显示」卡: 三界面输入框 (80 字上限) + 变量说明 + 预览块 +
-    保存钮; JS 走专用端点, 输入停 300ms 防抖预览, 进页现拉现值, 三张列表
-    卡优先吃服务端渲染行。"""
+    """设置页「地点显示」卡 (2026-10-18 用户点名「每个都表示什么含义要说清
+    楚 + 用选择代替填空」): 三界面输入框 (80 字上限) + 点选件 (整条格式一
+    键替换 / 部件每枚带一行含义插光标处) + 预览块 + 保存钮; JS 走专用端点,
+    改动停 300ms 防抖预览 (进页先跑一次), 部件落点 = 蓝框目标框, 三张列
+    表卡优先吃服务端渲染行。"""
     page = served_page(auth, "/tesla")
     for frag in ('id="ptpl-card"', "<h2>地点显示</h2>",
                  'id="ptpl-trips"', 'id="ptpl-charging"', 'id="ptpl-places"',
-                 'maxlength="80"', 'class="ptpl-vars"', 'id="ptpl-preview"',
-                 'id="ptpl-save"',
-                 "{省} {市} {区} {镇} {路} {门牌} {POI} {名字} {推荐}",
-                 "整条留空 = 默认显示"):
+                 'maxlength="80"',
+                 'id="ptpl-presets"', 'id="ptpl-vars"', 'class="ptpl-chips"',
+                 'class="ptpl-vars"', 'id="ptpl-preview"', 'id="ptpl-save"',
+                 "直辖市的省市算一个", "整条留空 = 默认显示"):
         assert frag in page, f"地点显示卡缺少 {frag}"
     for frag in ('getJSON("/tesla/api/place-templates")',
                  '"/tesla/api/place-templates/preview"',
                  "setTimeout(ptplPreview, 300)",
+                 "PTPL_PRESETS", "PTPL_VARS", "ptplInsert", "ptpl-target",
+                 "高德取的地点名", "高德完整地址",   # 部件含义随钮走 (用户点名)
                  "地点显示已保存",
                  "it.from_place || shortPlace(it.from_region",     # 行程卡
                  "it.from_place || gtrShortPlace(it.from_region",  # 分组明细卡
