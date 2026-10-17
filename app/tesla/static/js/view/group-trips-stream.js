@@ -36,8 +36,10 @@ function gtrRow(it) {
   const on = gtrSel.has(it.id);
   el.className = "card-t gtr-row" + (on ? " in" : "");
   el.dataset.id = it.id;
-  const fromP = gtrShortPlace(it.from_region, it.from);
-  const toP = gtrShortPlace(it.to_region, it.to);
+  // 起终点整行: 模板渲染的优先 (设置页「地点显示」, 与行程列表同口径),
+  // 没模板/渲染空走本地拼装
+  const fromP = it.from_place || gtrShortPlace(it.from_region, it.from);
+  const toP = it.to_place || gtrShortPlace(it.to_region, it.to);
   el.innerHTML = `
     <div class="ct-top">
       <span class="ct-date">${esc(fmtCardDate(it.start))}</span>

@@ -38,7 +38,12 @@ class PlaceName(OwnBase):
 
     2026-10-14 v2 起顺手存省市区区划 (province/city/district): 行程起终点
     与充电地点的省市区/城市分布同走高德 —— v1 老行区划空, 读侧该址回退
-    TeslaMate 解析, worker 重查 (v bump) 后补齐。"""
+    TeslaMate 解析, worker 重查 (v bump) 后补齐。
+
+    2026-10-17 v3 起完整结构化 (用户点名「完完整整地存起来」): 镇/门牌街/
+    门牌号/最近道路/最近 POI/区划码/推荐串随行落库 (设置页「地点显示」
+    模板的原料), raw 存应答 regeocode 段原文 —— 列只提升模板要用的字段,
+    以后要新组件不用再问一遍高德。v2 老行组件空, bump 重查后补齐。"""
 
     __tablename__ = "place_names"
 
@@ -47,6 +52,14 @@ class PlaceName(OwnBase):
     province: Mapped[str] = mapped_column(String, default="")
     city: Mapped[str] = mapped_column(String, default="")
     district: Mapped[str] = mapped_column(String, default="")
+    township: Mapped[str] = mapped_column(String, default="")
+    street: Mapped[str] = mapped_column(String, default="")
+    number: Mapped[str] = mapped_column(String, default="")
+    road: Mapped[str] = mapped_column(String, default="")
+    poi: Mapped[str] = mapped_column(String, default="")
+    adcode: Mapped[str] = mapped_column(String, default="")
+    rec: Mapped[str] = mapped_column(String, default="")
+    raw: Mapped[str] = mapped_column(String, default="")
     status: Mapped[str] = mapped_column(String, default="ok")
     v: Mapped[int] = mapped_column(default=1)
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)

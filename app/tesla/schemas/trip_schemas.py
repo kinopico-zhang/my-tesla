@@ -22,6 +22,9 @@ class TripItem(BaseModel):
     from_loc: str | None = None      # 起点地名 (addresses.name; 没地名 = None)
     to_region: str | None = None     # 终点省市区链
     to_loc: str | None = None        # 终点地名
+    from_place: str | None = None    # 模板渲染的起点整行 (设置页地点显示;
+    #                                  没模板/渲染空 = None → 前端走老拼装)
+    to_place: str | None = None      # 终点同款
     driver: str | None = None      # 展示名: 显式标注, 未标注回落默认驾驶员
     driver_id: int | None = None   # 显式标注的驾驶员 id (未标 = None)
     toll: float | None = None      # 估价高速费 (元); None=还没算过

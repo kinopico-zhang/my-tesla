@@ -212,6 +212,17 @@ input::placeholder { color: var(--ink-3); }
   padding: 10px 0; border-bottom: 1px solid var(--hairline);
 }
 .plc-hid-row:last-child { border-bottom: 0; }
+/* 地点显示模板卡 (2026-10-17 用户点名「在设置界面, 可以设置各个界面显示
+   地点的模板」): 变量说明一行小字; 预览块 = 样例行置顶 (拿哪条名渲染的看
+   得见) + 三界面各一行 (界面名 ink-3 + 渲染结果) */
+.ptpl-vars { margin: 2px 0 10px; font-size: 12px; color: var(--ink-3); }
+.ptpl-preview {
+  margin: 0 0 10px; padding: 10px 12px;
+  background: var(--surface-2); border-radius: 10px;
+}
+.ptpl-line { display: flex; gap: 8px; font-size: 13px; line-height: 1.8; }
+.ptpl-line .ptpl-lb { flex: none; color: var(--ink-3); }
+.ptpl-sample { color: var(--ink-3); font-size: 12px; }
 /* ---------- 组详情页 3.4.1 (用户点名「点名称弹出页面: 上面地图, 下面真实
    地点列表, 点列表 item 地图切到这个位置」)。2026-10-06 (用户点名「不从
    底下弹窗, 而是从右侧滑入窗口, 全屏, 弹出后在屏幕左侧滑动推出。弹入弹出

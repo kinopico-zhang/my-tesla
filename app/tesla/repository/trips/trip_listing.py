@@ -6,6 +6,8 @@ from sqlalchemy import ColumnElement, Select, func, select
 from sqlalchemy.orm import InstrumentedAttribute, Session, aliased
 
 from ...models import Address, Drive
+from ...place_naming import render_place
+from ...place_tpl_store import place_tpl_values
 from .trip_marks import _driver_condition, annotate_drivers, annotate_tolls
 from ..charging import _range_conditions, charge_efficiency
 from ..common import DateRange, _clean_addr, fdate, ftime
@@ -30,26 +32,26 @@ def _consumption(drive: Drive, eff: float | None) -> tuple[float | None, float |
 
 def _trip_item(drive: Drive, start_addr: Address | None,
                end_addr: Address | None, eff: float | None = None,
-               amap: dict[int, PlaceInfo] | None = None) -> TripItem:
+               amap: dict[int, PlaceInfo] | None = None,
+               tpl: str = "") -> TripItem:
     """条目组装: from/to 是清洗后的整链 (播放会话还在用), from_region/
     from_loc 等是省市区链 + 地名 —— 前端配 fmtPlaceShort 取最小两段
     (用户点名: 卡片起终点与充电列表同款「区 · 地名」)。
 
     省市区/地名高德优先 (amap = 地址 id → 高德缓存行; TeslaMate 的 OSM
     反查语言/覆盖不可信, 2026-10-14 地名高德化), 没刷到/境外的逐址回退
-    TeslaMate —— 后台慢慢刷, 刷好一址换一址。"""
+    TeslaMate —— 后台慢慢刷, 刷好一址换一址。tpl = 地点显示模板 (空/
+    渲染空 → place 字段 None, 前端走老拼装)。"""
     amap = amap or {}
     kwh, wh_per_km = _consumption(drive, eff)
     s_info = amap.get(start_addr.id) if start_addr else None
     e_info = amap.get(end_addr.id) if end_addr else None
     return TripItem(
-        id=drive.id,
-        date=fdate(drive.start_date),
+        id=drive.id, date=fdate(drive.start_date),
         start=ftime(drive.start_date),
         end=ftime(drive.end_date) if drive.end_date else None,
         km=round(float(drive.distance), 2) if drive.distance is not None else None,
-        min=drive.duration_min,
-        speed_max=drive.speed_max,
+        min=drive.duration_min, speed_max=drive.speed_max,
         from_=(amap_full(s_info)
                or _clean_addr(start_addr.display_name if start_addr else None)),
         to=(amap_full(e_info)
@@ -64,7 +66,8 @@ def _trip_item(drive: Drive, start_addr: Address | None,
                    if end_addr else None),
         to_loc=((e_info.name if e_info else None)
                 or (end_addr.name or None)) if end_addr else None,
-        kwh=kwh, wh_per_km=wh_per_km)
+        from_place=render_place(tpl, s_info) or None,   # 模板整行 (to_place 同)
+        to_place=render_place(tpl, e_info) or None, kwh=kwh, wh_per_km=wh_per_km)
 
 
 class TripFilter(BaseModel):
@@ -134,7 +137,8 @@ def list_trips(session: Session, own: Session, offset: int, limit: int,
         .offset(offset).limit(limit)).all()
     effs = _eff_by_car(session, {d.car_id for d, _, _ in rows})
     amap = place_info_map(own, {a.id for _, s, e in rows for a in (s, e) if a})
-    items = [_trip_item(d, s, e, effs.get(d.car_id), amap)
+    tpl = place_tpl_values(own)[0]   # 行程起终点模板 (空 = 不套)
+    items = [_trip_item(d, s, e, effs.get(d.car_id), amap, tpl)
              for d, s, e in rows]
     annotate_drivers(own, items)
     annotate_tolls(own, items)
@@ -189,7 +193,8 @@ def get_trip(session: Session, own: Session, drive_id: int) -> TripItem | None:
     drive = rows[0][0]
     amap = place_info_map(own, {a.id for _, s, e in rows for a in (s, e) if a})
     item = _trip_item(drive, rows[0][1], rows[0][2],
-                      charge_efficiency(session, drive.car_id), amap)
+                      charge_efficiency(session, drive.car_id), amap,
+                      place_tpl_values(own)[0])   # 起终点模板
     annotate_drivers(own, [item])
     annotate_tolls(own, [item])
     return item

@@ -9,9 +9,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ...models import Address, PlaceAlias
+from ...place_naming import place_tpl_map, shown_place_name
+from ...place_tpl_store import place_tpl_values
 from ...schemas import TripLocRaw, TripLocSpot, TripLocStat
 from ..common import PlaceCoords, _clean_addr
-from ..place_names import place_name_map
+from ..place_names import place_info_map
 from .place_admin import place_hidden_set
 from .trip_stats import _trip_rows
 
@@ -133,6 +135,27 @@ def _loc_stat(shown: str, raws: list[str], counts: dict[str, int],
                        orig=next((r for r in raws if aliases.get(r)), None))
 
 
+def _group_stats(trips: list, aliases: dict[str, str], hidden: set[str],
+                 tpl: str, infos: dict) -> list[TripLocStat]:
+    """停车名对 → 组统计行: 并组/计数/组名套模板 (口径详见 trip_locations)。"""
+    canon = _same_name_canon({aliases.get(n, n)
+                              for t in trips for n in t[:2] if n})
+    counts, coords = _count_parkings(trips, aliases, canon)
+    groups: dict[str, list[str]] = {}
+    for raw in counts:
+        groups.setdefault(canon[aliases.get(raw, raw)], []).append(raw)
+    by_name = place_tpl_map(infos) if tpl else {}
+    out = []
+    for shown, raws in groups.items():
+        if shown in hidden:
+            continue
+        shown = shown_place_name(shown, by_name.get(shown), tpl, hidden)
+        if shown is None:
+            continue
+        out.append(_loc_stat(shown, raws, counts, coords, aliases))
+    return sorted(out, key=lambda s: (-s.trips, s.name))
+
+
 def trip_locations(session: Session, own: Session,
                    car_id: int | None = None,
                    top: int | None = None) -> list[TripLocStat]:
@@ -152,26 +175,20 @@ def trip_locations(session: Session, own: Session,
     raws 把并组原名带上 (改名接口的键)。
 
     删除 (hidden_places, 2026-10-03 用户点名「左滑删除」): 隐 raw 原名
-    → 该地址停车不计数, 组次数随之缩; 隐组显示名 → 整组不回 (组名 ==
-    别名或折入后的组名, 别名并组时删任一显示名都隐得住整组)。"""
+    → 该地址停车不计数, 组次数随之缩; 隐组显示名 → 整组不回。
+
+    地点显示模板 (2026-10-17 设置页「地点显示」) 只动显示层: 分组/改名/
+    隐藏的键全是 raw 名, 组名渲染后展示; 别名与兜底名不在缓存里天然不套
+    (详见 place_naming.shown_place_name)。"""
     rows = _trip_rows(session, car_id)
     aliases = {a.place: a.alias for a in own.scalars(select(PlaceAlias)).all()}
     hidden = place_hidden_set(own)
-    amap = place_name_map(
+    infos = place_info_map(
         own, {a.id for _, s, e in rows for a in (s, e) if a is not None})
-    trips = _trip_stops(rows, amap, hidden)
-    canon = _same_name_canon({aliases.get(n, n)
-                              for t in trips for n in t[:2] if n})
-    counts, coords = _count_parkings(trips, aliases, canon)
-    groups: dict[str, list[str]] = {}
-    for raw in counts:
-        groups.setdefault(canon[aliases.get(raw, raw)], []).append(raw)
-    out = []
-    for shown, raws in groups.items():
-        if shown in hidden:
-            continue
-        out.append(_loc_stat(shown, raws, counts, coords, aliases))
-    out = sorted(out, key=lambda s: (-s.trips, s.name))
+    trips = _trip_stops(rows, {i: info.name for i, info in infos.items()},
+                        hidden)
+    out = _group_stats(trips, aliases, hidden,
+                       place_tpl_values(own)[2], infos)   # 常用地点模板
     if top is not None:
         # top=0 = 全瘦; 负数当 0, 不让负下标从尾翻全字段
         out = [r if i < max(0, top) else

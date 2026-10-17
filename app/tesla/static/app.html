@@ -38,7 +38,7 @@
 <link rel="stylesheet" href="/tesla/static/css/tesla-chargemap-map.css?v=11">
 <link rel="stylesheet" href="/tesla/static/css/tesla-live-page.css?v=4">
 <link rel="stylesheet" href="/tesla/static/css/tesla-live-driving.css?v=20">
-<link rel="stylesheet" href="/tesla/static/css/tesla-settings.css?v=30">
+<link rel="stylesheet" href="/tesla/static/css/tesla-settings.css?v=31">
 <link rel="stylesheet" href="/tesla/static/css/tesla-shell-floor.css?v=13">
 </head>
 <body>
@@ -809,6 +809,25 @@
     <section class="view" id="view-settings-places" data-view="settings-places" hidden>
       <div class="view-scroll" id="plc-scroll">
         <div class="sec-head"><h2>常用地点</h2></div>
+
+        <!-- 地点显示模板 (2026-10-17 用户点名「高德给的地址要完完整整的
+             结构化地存起来, 然后在设置界面, 可以设置各个界面显示地点的模
+             板」): 三界面各一条 —— 变量 {省} {市} {区} {镇} {路} {门牌}
+             {POI} {名字} {推荐}, 缺的组件自动留空 (悬空分隔符扫掉), 整条
+             留空 = 默认显示 (区 · 地名)。渲染单一源在服务端, 输入停 300ms
+             即预览 (拿缓存里组件最全的一条地名当样例); 保存走专用端点 ——
+             主设置保存把空串当「保持现值」(密码语义), 这里空串是合法值
+             (= 回默认), 两家语义不同不能合 (view/settings-places.js 接线) -->
+        <section class="card" id="ptpl-card">
+          <h2>地点显示</h2>
+          <label><span>行程起终点</span><input type="text" id="ptpl-trips" maxlength="80" autocomplete="off" spellcheck="false" placeholder="{区} · {POI}"></label>
+          <label><span>充电地点</span><input type="text" id="ptpl-charging" maxlength="80" autocomplete="off" spellcheck="false" placeholder="{区} · {POI}"></label>
+          <label><span>常用地点</span><input type="text" id="ptpl-places" maxlength="80" autocomplete="off" spellcheck="false" placeholder="{镇} · {路}"></label>
+          <p class="ptpl-vars">变量: {省} {市} {区} {镇} {路} {门牌} {POI} {名字} {推荐} — 组件缺失自动留空, 整条留空 = 默认显示</p>
+          <div class="ptpl-preview" id="ptpl-preview" hidden></div>
+          <button type="button" class="primary" id="ptpl-save">保存</button>
+        </section>
+
         <section class="card">
           <div id="plc-list"></div>
           <!-- 首拉加载态 (2026-10-05 用户点名「页面的响应速度太慢了, 改成
@@ -1115,7 +1134,7 @@
 </div><!-- /#shell -->
 
 <script src="/tesla/static/js/gcj02.js?v=1"></script>
-<script src="/tesla/static/js/format.js?v=6"></script>
+<script src="/tesla/static/js/format.js?v=7"></script>
 <script src="/tesla/static/js/trackutil.js?v=5"></script>
 <script src="/tesla/static/js/track-animation.js?v=3"></script>
 <script src="/tesla/static/js/trip-playback.js?v=2"></script>
@@ -1144,10 +1163,10 @@
 <script src="/tesla/static/js/view/trips-stats-charts.js?v=12"></script>
 <script src="/tesla/static/js/view/battery-page.js?v=2"></script>
 <script src="/tesla/static/js/view/groups-page.js?v=9"></script>
-<script src="/tesla/static/js/view/group-trips-stream.js?v=4"></script>
+<script src="/tesla/static/js/view/group-trips-stream.js?v=5"></script>
 <script src="/tesla/static/js/view/group-trips-marks.js?v=4"></script>
 <script src="/tesla/static/js/view/changelog-view.js?v=4"></script>
-<script src="/tesla/static/js/view/trips-list-page.js?v=7"></script>
+<script src="/tesla/static/js/view/trips-list-page.js?v=8"></script>
 <script src="/tesla/static/js/view/trips-list-url.js?v=2"></script>
 <script src="/tesla/static/js/view/trips-list-region-filters.js?v=1"></script>
 <script src="/tesla/static/js/view/trips-list-select.js?v=3"></script>
@@ -1186,7 +1205,7 @@
 <script src="/tesla/static/js/tesla-swipe-delete.js?v=4"></script>
 <script src="/tesla/static/js/view/settings-drivers.js?v=6"></script>
 <script src="/tesla/static/js/view/trips-place-detail.js?v=12"></script>
-<script src="/tesla/static/js/view/settings-places.js?v=8"></script>
+<script src="/tesla/static/js/view/settings-places.js?v=9"></script>
 <script src="/tesla/static/js/view/settings-tasks.js?v=1"></script>
 <script src="/tesla/static/js/view/settings-account.js?v=6"></script>
 <script src="/tesla/static/js/tesla-app-boot.js?v=4"></script>

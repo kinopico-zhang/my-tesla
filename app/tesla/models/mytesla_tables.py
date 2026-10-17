@@ -65,6 +65,9 @@ class AppSetting(OwnBase):
     amap_web_key: Mapped[str] = mapped_column(String, default="")  # Web服务 key (轨迹拟合)
     map_provider: Mapped[str] = mapped_column(String, default="")  # 已退役: 列留而不用 (只留高德)
     roads_initial_done: Mapped[bool] = mapped_column(default=False)  # 历史道路首轮回填已清空
+    place_tpl_trips: Mapped[str] = mapped_column(String, default="")    # 地点显示模板: 行程起终点
+    place_tpl_charging: Mapped[str] = mapped_column(String, default="")  # 充电地点
+    place_tpl_places: Mapped[str] = mapped_column(String, default="")   # 常用地点
     updated_at: Mapped[datetime] = mapped_column(default=datetime.now,
                                                  onupdate=datetime.now)
 

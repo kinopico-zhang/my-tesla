@@ -23,6 +23,8 @@ class ChargingSession(BaseModel):
     city: str | None
     address: str | None
     region: str | None       # 省市区链 (大→小, " · " 连); 解析不出省为 None
+    place: str | None        # 模板渲染的整行 (设置页地点显示; 没模板/渲染空
+    #                         # = None → 前端走老拼装)
     start_soc: int | None
     end_soc: int | None
     energy_added: float | None

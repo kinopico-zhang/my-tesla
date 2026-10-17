@@ -73,8 +73,10 @@ function shortPlace(region, full) {
 function renderCard(it) {
   const el = document.createElement("article");
   el.className = "card-t"; el.dataset.id = it.id;
-  const fromP = shortPlace(it.from_region, it.from);
-  const toP = shortPlace(it.to_region, it.to);
+  // 起终点整行: 模板渲染的优先 (设置页「地点显示」), 没模板/渲染空走
+  // 本地拼装 (区 · 地名)
+  const fromP = it.from_place || shortPlace(it.from_region, it.from);
+  const toP = it.to_place || shortPlace(it.to_region, it.to);
   el.innerHTML = `
     <div class="ct-top">
       <span class="ct-date">${esc(fmtCardDate(it.start))}</span>

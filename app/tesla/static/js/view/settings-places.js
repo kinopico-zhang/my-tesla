@@ -16,6 +16,8 @@
 // 显示是几个地点的汇总」): 行上左滑整链退役 —— 解除编组的删除搬进详情层
 // 底部红钮 (#placed-del, 那边接线); 原名小字行退役, 并进多处的组改报
 // 「N 个地点的汇总」, 单点组不带小字 (跟没改过名的组一个长相)。
+// v9 (2026-10-17): 页首加「地点显示」卡 —— 三界面模板 (行程起终点/充电
+// 地点/常用地点), 服务端渲染 + 防抖预览 + 专用端点保存 (语义见下方卡块)。
 // 列表数据 = 行程统计的 locations 接口原样 (别名/并组/坐标都在行里)。
 /* global $, esc, getJSON, sendJSON, toast, bindGestures, registerView,
            openPlaceDetail */
@@ -119,10 +121,79 @@ $("#plc-hid-list").addEventListener("click", async e => {
 });
 
 bindGestures($("#plc-scroll"), { drawer: true, ptr: true, onRefresh: loadPlaces });
+
+// ---- 地点显示模板 (2026-10-17 用户点名「在设置界面, 可以设置各个界面
+// 显示地点的模板」): 三界面各一条, 渲染单一源在服务端 (place_naming 的
+// render_place), 这里只搬运 —— 输入停 300ms POST preview 换预览行 (拿
+// 缓存里组件最全的一条地名当样例), 保存走专用端点: 主设置保存把空串当
+// 「保持现值」(密码语义), 模板的空串是合法值 (= 回默认), 两家语义不同
+// 不能合一个接口。
+const PTPL_KEYS = [["trips", "行程起终点"], ["charging", "充电地点"],
+                   ["places", "常用地点"]];
+let ptplTimer = 0;
+
+function ptplBody() {
+  return JSON.stringify({
+    trips: $("#ptpl-trips").value.trim(),
+    charging: $("#ptpl-charging").value.trim(),
+    places: $("#ptpl-places").value.trim(),
+  });
+}
+
+async function loadPlaceTpls() {
+  try {
+    const d = await getJSON("/tesla/api/place-templates");
+    for (const [k] of PTPL_KEYS) $("#ptpl-" + k).value = d[k] || "";
+  } catch (err) {
+    toast(`地点显示模板加载失败: ${err.message}`);
+  }
+}
+
+async function ptplPreview() {
+  try {
+    const d = await sendJSON("/tesla/api/place-templates/preview", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: ptplBody(),
+    });
+    const box = $("#ptpl-preview");
+    box.hidden = false;
+    if (!d.sample) {   // 命名还没跑过: 预览没原料, 说明白而不是空块
+      box.innerHTML = `<div class="ptpl-line">还没有可用的地名样例 (等后台命名跑完再来预览)</div>`;
+      return;
+    }
+    box.innerHTML = `<div class="ptpl-line ptpl-sample">样例: ${esc(d.sample)}</div>` +
+      PTPL_KEYS.map(([k, lb]) =>
+        `<div class="ptpl-line"><span class="ptpl-lb">${lb}</span>` +
+        `<span>${esc(d[k] || "(默认显示)")}</span></div>`).join("");
+  } catch (err) {
+    toast(`预览失败: ${err.message}`);
+  }
+}
+
+for (const [k] of PTPL_KEYS) {
+  $("#ptpl-" + k).addEventListener("input", () => {
+    clearTimeout(ptplTimer);
+    ptplTimer = setTimeout(ptplPreview, 300);   // 停 300ms 再预览 (别每键一发)
+  });
+}
+
+$("#ptpl-save").addEventListener("click", async () => {
+  try {
+    await sendJSON("/tesla/api/place-templates", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: ptplBody(),
+    });
+    toast("地点显示已保存");
+    ptplPreview();
+  } catch (err) {
+    toast(`保存失败: ${err.message}`);
+  }
+});
+
 registerView("settings-places", {
   title: "常用地点",
   el: $("#view-settings-places"),
-  show: loadPlaces,    // 每次进来都拉 (统计页那边改了名这里要跟着新; 没变
-                       // 不重铺, 旧列表原样顶着 —— v7 异步化)
+  show: () => { loadPlaces(); loadPlaceTpls(); },   // 模板值也每次现拉 (别处
+  //                                  改过/清过这里要跟着新; 列表照旧 v7 异步化)
   refresh: loadPlaces,
 });

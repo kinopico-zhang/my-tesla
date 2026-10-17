@@ -96,6 +96,7 @@ def test_trip_session_one(auth, db):
         "from": "广东省深圳市龙岗区坂田街道", "to": "广东省东莞市长安镇",
         "from_region": "广东省 · 深圳市 · 龙岗区", "from_loc": "华为立体车库",
         "to_region": "广东省 · 东莞市 · 长安镇", "to_loc": "长安镇",
+        "from_place": None, "to_place": None,   # 地点显示模板空 → 不套 (走老拼装)
         "driver": None, "driver_id": None,     # 没配驾驶员 → 不显示
         "toll": None, "toll_km": None,         # 高速费还没算过
         "kwh": None, "wh_per_km": None,        # 没有充电记录 → 换算系数缺失

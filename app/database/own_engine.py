@@ -71,6 +71,15 @@ def migrate_own_db() -> None:
         # 读侧该址回退 TeslaMate 解析, worker 重查 (v bump) 后补齐
         for col in ("province", "city", "district"):
             _add_col(conn, "place_names", col, "TEXT NOT NULL DEFAULT ''")
+        # v3 完整结构化 (2026-10-17 设置页「地点显示」模板): 镇/门牌街/门牌
+        # 号/最近道路/最近 POI/区划码/推荐串/应答原文随行落库 —— v2 老行
+        # 补列默认空, worker 重查 (v bump) 后补齐
+        for col in ("township", "street", "number", "road", "poi", "adcode",
+                    "rec", "raw"):
+            _add_col(conn, "place_names", col, "TEXT NOT NULL DEFAULT ''")
+        # v: 地点显示模板三界面 (2026-10-17): 空串 = 默认口径 (不套模板)
+        for col in ("place_tpl_trips", "place_tpl_charging", "place_tpl_places"):
+            _add_col(conn, "app_settings", col, "TEXT NOT NULL DEFAULT ''")
 
 
 def dispose_own_engine() -> None:

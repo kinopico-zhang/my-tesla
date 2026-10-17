@@ -6,6 +6,7 @@
 roads_amap_wire)。节流/重试/配额记账都在调用方 (roads_worker /
 place_worker); transport 可注入 httpx.MockTransport 供测试。
 key 必须是控制台「Web 服务」类型 (JS 端 Key 调不了 REST 纠偏)。"""
+import json
 import time
 from typing import TypeVar
 
@@ -124,16 +125,26 @@ class AmapClient:
     def regeo(self, lng: float, lat: float) -> Regeocode | None:
         """逆地理 (地点命名用): WGS-84 进, extensions=all 拿 POI/道路/区划。
         返回 regeocode 模型; None = 境外坐标 (问不出中国名, 调用方记 skip
-        不耗配额)。"""
+        不耗配额)。regeocode 段原文回填 geo.raw (完整结构化落库的保底,
+        2026-10-17) —— 模型只提升模板要用的字段, 原文整段随行存库。"""
         gx, gy = roads_gcj.wgs_to_gcj(lng, lat)
         if roads_gcj.out_of_china(gx, gy):
             return None
         self._pace()
-        resp = _parse(_REGEO_RESPONSE, self._client.get(
+        text = self._client.get(
             _REGEO_URL, params={"key": self._key, "extensions": "all",
-                                "location": f"{gx:.6f},{gy:.6f}"}).text)
+                                "location": f"{gx:.6f},{gy:.6f}"}).text
+        resp = _parse(_REGEO_RESPONSE, text)
         if resp.infocode in _QUOTA_CODES:
             raise AmapQuota(f"regeo 配额: {resp.info}")
         if resp.status != "1":    # v3 的 status 是字符串
             raise AmapError(f"regeo {resp.infocode}: {resp.info}")
+        if resp.regeocode is None:
+            return None
+        try:   # 坏 JSON 到不了这 (上面 _parse 先炸), 防御的是 regeocode 段
+            resp.regeocode.raw = json.dumps(   # 不是对象 (null/串) 的怪形状
+                json.loads(text).get("regeocode") or {},
+                ensure_ascii=False)
+        except ValueError:
+            resp.regeocode.raw = ""
         return resp.regeocode

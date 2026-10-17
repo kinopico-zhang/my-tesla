@@ -1,13 +1,17 @@
-"""设置 API: 地图配置 + 驾驶员管理 (自有库; 驾驶员 CRUD 在 drivers_store)。"""
+"""设置 API: 地图配置 + 驾驶员管理 + 地点显示模板 (自有库; 驾驶员 CRUD
+在 drivers_store)。"""
 import logging
 import threading
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ... import database
-from .. import drivers_store, repository, settings_store, tracks_cache
+from .. import (drivers_store, place_tpl_store, repository, settings_store,
+                tracks_cache)
+from ..place_naming import render_place
 from ..schemas import (SettingsState, SettingsUpdate, DriverInfo, DriverIn,
-                       DriverUpdate, TmdbTest, TmdbTestIn)
+                       DriverUpdate, TmdbTest, TmdbTestIn,
+                       PlaceTplPreview, PlaceTplState, PlaceTplUpdate)
 from ...schemas import OkResponse
 
 
@@ -53,6 +57,41 @@ def test_settings_tmdb(body: TmdbTestIn,
               body.tmdb_user or "(空=现值)", body.tmdb_name or "(空=现值)",
               ok, detail)
     return TmdbTest(ok=ok, detail=detail)
+
+
+@settingsapi.get("/place-templates", response_model=PlaceTplState)
+def get_place_templates(own: Session = Depends(database.get_own_db)) -> PlaceTplState:
+    """地点显示模板现值 (三界面; 空串 = 默认口径)。"""
+
+    return place_tpl_store.place_tpl_state(own)
+
+
+@settingsapi.post("/place-templates", response_model=PlaceTplState)
+def save_place_templates(body: PlaceTplUpdate,
+                         own: Session = Depends(database.get_own_db)) -> PlaceTplState:
+    """保存地点显示模板: 全量提交, 空串也是有效值 (= 回默认) —— 与主设置
+    的「留空不动」密码语义相反, 所以单独一对端点。"""
+
+    return place_tpl_store.save_place_tpl(own, body)
+
+
+@settingsapi.post("/place-templates/preview",
+                  response_model=PlaceTplPreview)
+def preview_place_templates(
+        body: PlaceTplUpdate,
+        own: Session = Depends(database.get_own_db)) -> PlaceTplPreview:
+    """预览: 拿缓存里组件最全的一条地名当样例, 三条候选各渲染一遍 ——
+    渲染单一源在服务端 (render_place), 前端只搬运不重抄。还没跑过命名
+    (没样例) 时 sample 空, 前端提示「暂无样例」。"""
+
+    info = repository.sample_place_info(own)
+    if info is None:
+        return PlaceTplPreview(sample="", trips="", charging="", places="")
+    return PlaceTplPreview(
+        sample=info.name,
+        trips=render_place(body.trips, info),
+        charging=render_place(body.charging, info),
+        places=render_place(body.places, info))
 
 
 @settingsapi.get("/drivers")

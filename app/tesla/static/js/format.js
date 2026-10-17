@@ -66,8 +66,11 @@
     return it.region || it.city || "";
   }
   /* 只留最小两段 (用户点名): 全链取尾部 —— 常态 区 · 地名, 区缺位退化
-     市 · 地名, 无地区信息时光地名; 整链留在详情底部地址 */
+     市 · 地名, 无地区信息时光地名; 整链留在详情底部地址。
+     it.place (2026-10-17 设置页「地点显示」) = 服务端模板渲染好的整行,
+     有它直接整行回 (不再本地拼); 没模板/渲染空 → None 走本地拼装 */
   function fmtPlaceShort(it) {
+    if (it.place) return [it.place];
     const r = fmtRegion(it);
     return (r ? r.split(" · ") : []).concat(it.location ? [it.location] : []).slice(-2);
   }

@@ -1,4 +1,4 @@
-"""设置域接口模型: TeslaMate/高德连接现值与保存, 驾驶员条目。"""
+"""设置域接口模型: TeslaMate/高德连接现值与保存, 驾驶员条目, 地点显示模板。"""
 from pydantic import BaseModel, Field
 
 
@@ -81,3 +81,32 @@ class DriverUpdate(BaseModel):
 
     name: str | None = Field(None, min_length=1, max_length=30)
     is_default: bool | None = None
+
+
+class PlaceTplState(BaseModel):
+    """地点显示模板现值 (2026-10-17 用户点名「设置各个界面显示地点的模板」):
+    三界面各一条; 空串 = 默认口径 (不套模板, 行程/充电按各自现拼装)。"""
+
+    trips: str
+    charging: str
+    places: str
+
+
+class PlaceTplUpdate(BaseModel):
+    """保存地点显示模板: 全量提交 —— 空串也是合法值 (= 回默认口径), 这点
+    与主设置保存 (空 = 保持现值, 密码语义) 相反, 所以走专用端点不混家。"""
+
+    trips: str = Field(default="", max_length=80)
+    charging: str = Field(default="", max_length=80)
+    places: str = Field(default="", max_length=80)
+
+
+class PlaceTplPreview(BaseModel):
+    """模板预览: 拿缓存里组件最全的一条地名当样例, 三界面各渲染一遍 ——
+    渲染单一源在服务端 (place_naming.render_place), 前端不重抄一份。
+    sample 空 = 还没有可用样例 (命名没跑过), 三行渲染也随之空。"""
+
+    sample: str
+    trips: str
+    charging: str
+    places: str

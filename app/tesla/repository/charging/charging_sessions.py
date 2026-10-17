@@ -2,11 +2,13 @@
 
 名/省市区/城市三口径高德优先 (2026-10-14 地名高德化: TeslaMate 的 OSM
 反查语言/覆盖不可信), 没刷到的逐址回退 TeslaMate —— 后台慢慢刷, 刷好
-一址换一址。围栏名 (家/公司) 是用户手定的, 仍最高优先。
+一址换一址。围栏名 (家/公司) 是用户手定的, 仍最高优先 (模板也不盖它)。
 """
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
+from ...place_tpl_store import place_tpl_values
+from ...place_naming import render_place
 from .charge_samples import ChargeRow, _charge_rows
 from .charging_regions import _match_region
 from ..common import DateRange, _clean_addr, _fnum, fdate, ftime
@@ -60,7 +62,9 @@ def _region_of(address: Address | None,
     return amap_chain(info) or region_chain(address.display_name or "")
 
 
-def _session_item(row: ChargeRow) -> ChargingSession:
+def _session_item(row: ChargeRow, tpl: str = "") -> ChargingSession:
+    """条目组装。tpl (设置页「地点显示」) 非空时 place 带模板渲染的整行;
+    围栏名 (家/公司) 是用户手定的, 有它就不套 (location 已经是围栏名)。"""
     cp = row.process
     energy_used = _fnum(cp.charge_energy_used)
     energy_added = _fnum(cp.charge_energy_added)
@@ -68,6 +72,7 @@ def _session_item(row: ChargeRow) -> ChargingSession:
     base = energy_used or energy_added
     address = (amap_full(row.amap)
                or (_clean_addr(row.address.display_name) if row.address else None))
+    fenced = row.geofence is not None and bool(row.geofence.name)
     return ChargingSession(
         id=cp.id,
         start=ftime(cp.start_date),
@@ -77,6 +82,7 @@ def _session_item(row: ChargeRow) -> ChargingSession:
         city=_city_of(row),
         address=address,
         region=_region_of(row.address, row.amap),
+        place=(None if fenced else render_place(tpl, row.amap) or None),
         start_soc=cp.start_battery_level,
         end_soc=cp.end_battery_level,
         energy_added=energy_added,
@@ -179,4 +185,5 @@ def list_charging_sessions(session: Session, own: Session,
     total = len(rows)
     rows = _sorted_charge_rows(rows, flt.sort)
     page = rows[flt.offset:flt.offset + flt.limit]
-    return total, [_session_item(row) for row in page]
+    tpl = place_tpl_values(own)[1]   # 充电地点模板 (空 = 不套)
+    return total, [_session_item(row, tpl) for row in page]

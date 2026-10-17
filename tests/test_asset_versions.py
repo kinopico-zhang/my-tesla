@@ -96,7 +96,8 @@ def test_guard_assets_versioned_on_shell(auth):
                    ("js/view/trips-list-select.js", 3),   # 多选撤 100 段上限 (MERGE_MAX 退役)
                    ("js/trackutil.js", 5),   # v5: 扁平版 splitGapsFlat/decimateFlat 随原始轨迹层退役
                    ("js/track-animation.js", 3),
-                   ("js/format.js", 6),      # 新增 shiftStamp (段首时刻平移段内行驶秒, 时刻跟播)
+                   ("js/format.js", 7),      # v7: fmtPlaceShort 模板地点优先 (it.place 服务端
+                                               #   渲染好直用, 2026-10-17); v6: shiftStamp (时刻跟播)
                    ("css/tesla-charging-cards.css", 13),  # v13: 共享状态件收编;
                                                           #   (.tail/.spin/.err-box/.retry 副本拆);
                                                           #   v12: 侧距统一 16 (gap 10 + 卡内衬 14);
@@ -195,7 +196,8 @@ def test_guard_assets_versioned_on_shell(auth):
                    ("css/tesla-pull-refresh.css", 3),   # v3: 曲线令牌采用 (ios); v1-2 历史漏钉, 本批补上
                    ("css/tesla-filter-bar.css", 6),     # 菜单圆键退役 (#menu-key 拆净,
                                                          # #bar-row.no-chips 整条收起)
-                   ("css/tesla-settings.css", 30),      # v30: 后台任务卡 (进度条/状态行/重启钮);
+                   ("css/tesla-settings.css", 31),      # v31: 地点显示模板卡 (.ptpl-*);
+                                                         #   v30: 后台任务卡 (进度条/状态行/重启钮);
                                                          #   v28: 曲线令牌采用 (ios + swipe);
                                                          #   v27: 顶置 toast 副本拆净 (base 单源);
                                                          #   v26: 宽度查询折叠; 独立页死块退役;
@@ -320,7 +322,9 @@ def test_guard_assets_versioned_on_shell(auth):
                    ("js/view/groups-page.js", 9),       # v9: 破缓存批 (见上);
                                                           #   v8: 每次进都重拉 (明细页会改分组;
                                                           #   v7 bindGestures 回 drawer)
-                   ("js/view/group-trips-stream.js", 4),  # v4: 钩集住这 (gtrSel/gtrResetSel, 组内全钩起步)
+                   ("js/view/group-trips-stream.js", 5),  # v5: 起终点模板渲染优先 (from_place/
+                                                          #   to_place, 2026-10-17);
+                                                          #   v4: 钩集住这 (gtrSel/gtrResetSel, 组内全钩起步)
                                                           # + 行渲染选圈 (页头/加移按钮撤); v3: 破缓存批;
                                                           # v2: 第四页版 (gtrStart/gtrLoad 复位标记);
                                                           # v1: 二级页版 (已出批, 与 page.js 一起退役)
@@ -328,7 +332,8 @@ def test_guard_assets_versioned_on_shell(auth):
                                                           # v3: 破缓存批; v2: 整行可点
                                                           #   (v1 只有钮可点, 用户报「item 点不了」)
                    ("js/view/changelog-view.js", 4),    # bindGestures 回 drawer
-                   ("js/view/trips-list-page.js", 7),   # bindGestures 回 drawer
+                   ("js/view/trips-list-page.js", 8),   # v8: 起终点模板渲染优先 (from_place/
+                                                        #   to_place); v7: bindGestures 回 drawer
                    ("js/view/chargemap-time-filters.js", 10),  # v10: 屏缘缝条 (v9: ptrMove 整视图;
                                                                # v8: 度量档搬页内 pills mini-seg,
                                                                # 屏底 chip 退役 + bindGestures 回 drawer)

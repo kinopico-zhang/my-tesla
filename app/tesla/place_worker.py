@@ -17,13 +17,16 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from .. import database
 from . import roads_amap
-from .place_naming import pick_place_name
+from .place_naming import place_fields, pick_place_name
 from .repository.place_names import (all_address_coords, done_address_ids,
                                      place_name_row, save_place_name)
 from .roads_amap_wire import AddressComponent
 from .settings_store import amap_web_key_value
 
-PLACE_NAME_V = 2          # v2 = v1 取名 + 省市区区划随行落库 (v1 老行区划空, bump 补齐)
+PLACE_NAME_V = 3          # v3 = v2 取名+区划 + 完整结构化组件随行 (镇/门牌街/
+#                          门牌号/最近路/最近 POI/区划码/推荐串/应答原文; v2 老
+#                          行组件空, bump 全量重查补齐 —— 取名/区划没变, 只是
+#                          这轮把组件也带上)
 CALL_CAP_PER_DAY = 3000   # 自记账日上限 (官方个人 5000, 留余量)
 THROTTLE_S = 0.4          # 相邻 REST 调用最小间隔
 IDLE_SLEEP_S = 60         # 空转轮询 (无 key / 无待办)
@@ -146,11 +149,12 @@ def _round(tesla_factory: sessionmaker[Session],
             name = pick_place_name(geo) if geo else ""
             status = "ok" if name else "skip"
             comp = geo.address if geo else AddressComponent()  # 境外/失败 → 空
+            fields = place_fields(geo)   # v3 结构化组件 (境外/失败全空)
             with own_factory() as own:
                 save_place_name(own, place_name_row(
                     addr_id, status, PLACE_NAME_V, name,
                     province=comp.province, city=comp.city,
-                    district=comp.district))
+                    district=comp.district, fields=fields))
             progressed = True
             print(f"[places] {addr_id} {status} {name}", file=sys.stderr)
     finally:

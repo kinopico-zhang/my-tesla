@@ -7,21 +7,34 @@ place_names 一址一行 (键 = TeslaMate address_id): 读侧 IN 查只回 ok �
 空, 区划类消费对那址回退 TeslaMate (后台慢慢刷, 刷好一址换一址)。
 境外/失败的地址不落 ok 行, 读侧自然回退 TeslaMate 名 (旧行为)。
 all_address_coords 是 TeslaMate 侧的全量坐标清单 (worker 的待办面)。"""
+# pylint: disable=duplicate-code   # PlaceInfo 的组件段与 place_naming.PlaceFields
+# 有意平行 (读侧/写侧同名字段; 判重比的是剥掉注释的代码行, 注释写得再不同
+# 也撞) —— 不合并成继承: NamedTuple 继承会把组件排到 name 前面, 读侧构造
+# 与 select 顺序全乱; place_worker 对 _State 样板同款处理
 from typing import Iterable, NamedTuple
 
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session
 
+from ..place_naming import PlaceFields
 from ..models import Address, PlaceName
 
 
 class PlaceInfo(NamedTuple):
-    """读侧形状: 地名 + 省市区区划 (v2 起有; v1 老行只有 name)。"""
+    """读侧形状: 地名 + 省市区区划 (v2 起有) + 结构化组件 (v3 起: 镇/门牌
+    街/门牌号/最近道路/最近 POI/推荐串 —— 设置页「地点显示」模板的原料;
+    v1/v2 老行组件全空, 模板渲染出空由消费侧回退默认拼装)。"""
 
     name: str
     province: str
     city: str
     district: str
+    township: str = ""    # 镇/街道 (v3 组件, 写侧 PlaceFields 同名)
+    street: str = ""      # 门牌所在街
+    number: str = ""      # 门牌号
+    road: str = ""        # 最近道路名
+    poi: str = ""         # 最近 POI 名
+    rec: str = ""         # 高德推荐整串
 
 
 def place_name_map(own: Session, ids: Iterable[int]) -> dict[int, str]:
@@ -38,32 +51,55 @@ def place_name_map(own: Session, ids: Iterable[int]) -> dict[int, str]:
 
 
 def place_info_map(own: Session, ids: Iterable[int]) -> dict[int, PlaceInfo]:
-    """地址 id → 高德地名+区划 (ok 且有名或省市区; 空 ids 短路同上)。
+    """地址 id → 高德地名+区划+组件 (ok 且有名或省市区; 空 ids 短路同上)。
 
-    v1 老行 (只有名) 也回 —— 取名策略没变, 名字照用; 区划空由消费侧
-    逐项回退 TeslaMate 解析。"""
+    v1/v2 老行 (只有名/区划) 也回 —— 组件列迁移补的默认空, 名字/区划照用;
+    组件类消费 (模板) 对那址渲染出空, 逐项回退默认拼装。"""
     keys = list(ids)
     if not keys:
         return {}
     rows = own.execute(
         select(PlaceName.address_id, PlaceName.name, PlaceName.province,
-               PlaceName.city, PlaceName.district)
+               PlaceName.city, PlaceName.district, PlaceName.township,
+               PlaceName.street, PlaceName.number, PlaceName.road,
+               PlaceName.poi, PlaceName.rec)
         .where(PlaceName.address_id.in_(keys),
                PlaceName.status == "ok",
                or_(PlaceName.name != "", PlaceName.province != ""))).all()
-    return {r[0]: PlaceInfo(r[1], r[2], r[3], r[4]) for r in rows}
+    return {r[0]: PlaceInfo(*r[1:]) for r in rows}
+
+
+def sample_place_info(own: Session) -> PlaceInfo | None:
+    """模板预览的样例行 (设置页「地点显示」): 挑组件最全的 ok 行 —— POI/
+    门牌街/镇都在的先, 每个变量都渲染得出来; 一条都没有 (还没跑过命名)
+    回 None, 前端转成「暂无样例」提示。"""
+    row = own.execute(
+        select(PlaceName)
+        .where(PlaceName.status == "ok", PlaceName.name != "")
+        .order_by((PlaceName.poi != "").desc(), (PlaceName.street != "").desc(),
+                  (PlaceName.township != "").desc(), PlaceName.address_id)
+        .limit(1)).scalar_one_or_none()
+    if row is None:
+        return None
+    return PlaceInfo(row.name, row.province, row.city, row.district,
+                     row.township, row.street, row.number, row.road,
+                     row.poi, row.rec)
 
 
 def place_search_ids(own: Session, q: str) -> list[int]:
-    """搜索词命中高德名/区划的地址 id (充电地址搜索的补充口径: 地名换成
-    高德名后, 拿 TeslaMate 原名搜不到的, 得能在缓存里搜到)。"""
+    """搜索词命中高德名/区划/组件的地址 id (充电地址搜索的补充口径: 地名换
+    成高德名后, 拿 TeslaMate 原名搜不到的, 得能在缓存里搜到 —— v3 起镇/
+    门牌街/POI 也进搜索面, 用户拿小地名找充电记录)。"""
     like = f"%{q.lower()}%"
     return [r[0] for r in own.execute(
         select(PlaceName.address_id).where(or_(
             func.lower(PlaceName.name).like(like),
             func.lower(PlaceName.province).like(like),
             func.lower(PlaceName.city).like(like),
-            func.lower(PlaceName.district).like(like)))).all()]
+            func.lower(PlaceName.district).like(like),
+            func.lower(PlaceName.township).like(like),
+            func.lower(PlaceName.street).like(like),
+            func.lower(PlaceName.poi).like(like)))).all()]
 
 
 def done_address_ids(own: Session, ver: int) -> set[int]:
@@ -104,10 +140,16 @@ def all_address_coords(session: Session) -> list[tuple[int, float, float]]:
 
 
 def place_name_row(address_id: int, status: str, v: int, name: str = "",
-                   province: str = "", city: str = "",
-                   district: str = "") -> PlaceName:
+                   province: str = "", city: str = "", district: str = "",
+                   fields: PlaceFields | None = None) -> PlaceName:
     """工厂 (road_row 同款): name 截 60 字 (与改名接口的 max_length 对齐),
-    区划截 24 字 (省市区名最长也就十来字)。"""
+    区划截 24 字 (省市区名最长也就十来字)。v3 结构化组件打包在 fields
+    (place_fields 产物) —— 逐个拆传会超参数上限, 截长双保险对齐
+    place_fields, 手搓行也进不了超长值。"""
+    f = fields or PlaceFields()
     return PlaceName(address_id=address_id, name=name[:60],
                      province=province[:24], city=city[:24],
-                     district=district[:24], status=status, v=v)
+                     district=district[:24], township=f.township[:24],
+                     street=f.street[:48], number=f.number[:24],
+                     road=f.road[:60], poi=f.poi[:60], adcode=f.adcode[:12],
+                     rec=f.rec[:120], raw=f.raw[:8000], status=status, v=v)

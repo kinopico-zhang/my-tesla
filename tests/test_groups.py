@@ -98,7 +98,7 @@ def test_group_trips_page_skeleton(auth):
                  '<span class="tp-dots" id="tp-dots"><i class="on"></i><i></i>'
                  '<i></i><i hidden></i></span>',
                  'css/tesla-group-trips.css?v=6',
-                 '<script src="/tesla/static/js/view/group-trips-stream.js?v=4"></script>',
+                 '<script src="/tesla/static/js/view/group-trips-stream.js?v=5"></script>',
                  '<script src="/tesla/static/js/view/group-trips-marks.js?v=4"></script>']:
         assert frag in html, f"分组明细第四页缺少 {frag}"
     # 第四页在分页器里: 统计页之后、底行之前 (底行页标第四枚随它亮/藏)
@@ -140,7 +140,7 @@ def test_group_trips_page_interactions(auth):
     assert "gtrPageSync(it);" in open_js, "openTrip 没挂第四页同步"
     close_js = auth.get("/tesla/static/js/view/trips-sheet-close.js?v=14").text
     assert "gtrDetach();" in close_js, "hideSheet 没摘第四页"
-    stream_js = auth.get("/tesla/static/js/view/group-trips-stream.js?v=4").text
+    stream_js = auth.get("/tesla/static/js/view/group-trips-stream.js?v=5").text
     for frag in ["const GTR_PAGE = 24",
                  "before=${gtrStream[0].id}&limit=${GTR_PAGE}",
                  "after=${gtrStream[gtrStream.length - 1].id}&limit=${GTR_PAGE}",

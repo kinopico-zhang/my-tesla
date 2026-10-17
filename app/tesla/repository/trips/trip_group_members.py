@@ -7,12 +7,16 @@
 组外候选行也一并给 (前端降透明画 + 加标记钮, 拉动加载沿两端翻页)。
 改成员是「先标记后确认」的整批提交 (前端点行只是预览标记, 确认才发)。
 """
+from typing import Any
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session, aliased
 
 from ...models import Address, Drive, TripGroup
 from ...schemas import GroupMemberUpdate, GroupTripsPage, GroupTripRow
+from ...place_tpl_store import place_tpl_values
 from ..common import NotFound
+from ..place_names import place_info_map
 from .trip_groups import _group_ids, _group_info
 from .trip_listing import _eff_by_car, _trip_item, _trip_rows_stmt
 from .trip_tracks import closed_drive_ids_between
@@ -49,6 +53,18 @@ def _cursor_ok(session: Session, drive_id: int) -> None:
         raise NotFound("游标行程不存在或未结束")
 
 
+def _window_items(session: Session, own: Session, rows: list[Any],
+                  eff: set[int]) -> list[GroupTripRow]:
+    """窗口行组装: 起终点口径与行程列表对齐 (2026-10-17 随地点模板补齐 ——
+    此前只回 TeslaMate 链), 高德名/区划/模板整行同走 place_names 缓存。"""
+    effs = _eff_by_car(session, {d.car_id for d, _, _ in rows})
+    amap = place_info_map(own, {a.id for _, s, e in rows for a in (s, e) if a})
+    tpl = place_tpl_values(own)[0]
+    return [GroupTripRow(**_trip_item(d, s, e, effs.get(d.car_id), amap,
+                                      tpl).model_dump(),
+                         in_group=d.id in eff) for d, s, e in rows]
+
+
 def group_trip_window(session: Session, own: Session, group_id: int,
                       before_id: int | None = None,
                       after_id: int | None = None,
@@ -80,9 +96,7 @@ def group_trip_window(session: Session, own: Session, group_id: int,
         rows = list(session.execute(stmt.where(Drive.id >= lo, Drive.id <= hi)
                                     .order_by(Drive.id)).all())
     eff = set(closed_drive_ids_between(session, lo, hi))
-    effs = _eff_by_car(session, {d.car_id for d, _, _ in rows})
-    items = [GroupTripRow(**_trip_item(d, s, e, effs.get(d.car_id)).model_dump(),
-                          in_group=d.id in eff) for d, s, e in rows]
+    items = _window_items(session, own, rows, eff)
     edge_lo = items[0].id if items else None
     edge_hi = items[-1].id if items else None
     if before_id is not None:                  # 本方向翻页: limit+1 直接给出旗标

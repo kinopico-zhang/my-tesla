@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ...models import Charge, ChargingProcess
+from ...place_tpl_store import place_tpl_values
 from .charge_samples import _charge_rows_by_ids
 from .charging_sessions import _session_item
 from ..common import _fnum
@@ -37,7 +38,7 @@ def charging_session_detail(session: Session, own: Session,
         (c.fast_charger_brand for c in samples if c.fast_charger_brand), None))
     charger_type = _clean_national(next(
         (c.fast_charger_type for c in samples if c.fast_charger_type), None))
-    base = _session_item(row)
+    base = _session_item(row, place_tpl_values(own)[1])   # 充电地点模板同口径
     voltage = [_fnum(c.charger_voltage) for c in samples]
     current = [_fnum(c.charger_actual_current) for c in samples]
     # 车辆直流快充不回报电压/电流, TeslaMate 原样落库成恒 2V / 0A 的死字段
