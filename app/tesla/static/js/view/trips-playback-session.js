@@ -12,7 +12,7 @@
    zoomLastT: writable, speedZoom, zoomEaseStart, pbToggle, pbSeek, ICON_REPLAY,
    FIT_AVOID, buildTrackOverlays, speedSpans, headPos, addGap, queueWireGap,
    histStep, histClear, gapSettle, gapGrow, setLive, setOfficial, resetPlaybar,
-   setSegTitle, frameLoop, startSession, stopAnim */
+   setSegTitle, setPlayClock, frameLoop, startSession, stopAnim */
 /* exported anim, playTrack */
 "use strict";
 /* 播放轨迹动画。more=true 表示轨迹还会通过 append 追加 (合并轨迹流式
@@ -138,14 +138,19 @@ function playTrack(pts, ts, it, zoom = 14, more = false, defer = false) {
          段内是原始时间戳差, 红灯停车都在内, 服务端 merged_track_segments
          直测), 步内按 frac 插值同 setLive 口径 —— 播放/拖进度/重播都过
          apply, 一处接线全覆盖。流式追加期未来段的界已登记 (append 先于
-         播放头到), 顺扫取段序即可; 写前与 DOM 现值比对 (setSegTitle) */
+         播放头到), 顺扫取段序即可; 写前与 DOM 现值比对 (setSegTitle)。
+         单条行程同款跟播 (2026-10-17 用户点名「上面的时间也要跟着一起
+         同步」): ts 全程是首起时间戳差, 段首即出发点, 出发时刻平移行驶
+         秒即当前点墙钟 (setPlayClock, 跨零点主标题日期也滚) */
+      const tb = idx + 1 < N && ts[idx + 1] != null ? ts[idx + 1] : ts[idx];
       if (segStarts && ts[idx] != null) {
         let k = 0;                           // idx 落进的段序 (段界升序, 顺扫即得)
         for (let j = 1; j < segStarts.length; j++) if (idx >= segStarts[j]) k = j;
         const st = segStarts[k];
-        const tb = idx + 1 < N && ts[idx + 1] != null ? ts[idx + 1] : ts[idx];
         setSegTitle(it, k, segT0s[k] || it.start,
                     ts[idx] + (tb - ts[idx]) * frac - ts[st]);
+      } else if (ts[idx] != null) {
+        setPlayClock(it, ts[idx] + (tb - ts[idx]) * frac);
       }
       /* 车头连线 (用户设计): 线尾 (最后画到图的点) → 车头插值位, 每帧两点
          setPath —— 节流窗与步内插值两段「线追不上车头」的缝都由它补上;

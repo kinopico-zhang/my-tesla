@@ -122,8 +122,8 @@ def test_trips_page_stream_pace_pinned_at_open(auth):
     # 拖进度拖不进没下的段 (顶到已载末尾); 拖回已载区间撤「等待后续轨迹」
     assert "if (s.more && s.playT > mapDur) s.playT = mapDur;" in sess
     assert "if (s.waiting && s.playT < cap) {" in loop
-    assert "view/trips-playback-session.js?v=14" in html
-    assert "view/trips-playback-loop.js?v=12" in html
+    assert "view/trips-playback-session.js?v=15" in html   # v15: 单条时刻跟播
+    assert "view/trips-playback-loop.js?v=13" in html      # v13: 单条收尾定格回出发口径
 
 
 def test_trips_page_playbar_shown_while_map_loads(auth):

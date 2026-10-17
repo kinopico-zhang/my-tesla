@@ -92,7 +92,8 @@ def test_trips_page_playback_history_only(auth):
     assert "routePrefix: routePrefix" in anim_js
     assert "js/track-animation.js?v=3" in html
     assert "view/trips-playback-overlays.js?v=8" in html
-    assert "view/trips-playback-session.js?v=14" in html   # defer 起播: 数据会话先挂, begin 才进播放态
+    assert "view/trips-playback-session.js?v=15" in html   # v15: 单条时刻跟播 (setPlayClock);
+    #   v14: defer 起播: 数据会话先挂, begin 才进播放态
     # 断档步匀加速 (用户点名: 初速度终止速度都知道, 就匀加速播放过去):
     # 弧长进度不随时间线性 —— x/s = τ(2v0+τ(v1-v0))/(v0+v1) (纯函数, node
     # 直测); headPos 有路/弦线两处 + gapGrow 前缀一处共三处同口径
@@ -170,9 +171,41 @@ def test_trips_page_merged_seg_title_dynamic(auth):
     assert "seg_t0s: segT0s, gaps: allGaps });" in opn
     # 版本号 (改过的都带上, 老缓存不掺和; driver 2026-09-25 加功耗格常显;
     # session/loop 2026-09-25 流式节拍开播定死 —— 时间流逝不随加载变速;
-    # sheet-open/preload-vector 2026-09-25 走廊去重 + common 交还缓存策略
-    assert "view/trips-sheet-driver.js?v=16" in html   # v16: 破缓存批 (车机缓存吃了开发中间态);
+    # sheet-open/preload-vector 2026-09-25 走廊去重 + common 交还缓存策略;
+    # driver/session/loop 2026-10-17 单条时刻跟播 (setPlayClock, 单条副标题
+    # 此前停在出发时刻)
+    assert "view/trips-sheet-driver.js?v=17" in html   # v17: setPlayClock 单条时刻跟播;
+    #   v16: 破缓存批 (车机缓存吃了开发中间态);
     #   v15: 头部「详细行程」钮撤 (改第四页, 3.10.0)
-    assert "view/trips-playback-session.js?v=14" in html
-    assert "view/trips-playback-loop.js?v=12" in html
+    assert "view/trips-playback-session.js?v=15" in html
+    assert "view/trips-playback-loop.js?v=13" in html
     assert "view/trips-sheet-open.js?v=12" in html
+
+
+def test_trips_page_single_trip_clock_syncs(auth):
+    """单条行程播放时顶部时刻跟播 (2026-10-17 用户点名「播放轨迹的时候, 上面
+    的时间也要跟着一起同步」—— 合并段的副标题跟播 2026-09-25 就有, 单条的
+    副标题一直停在出发时刻): 副标题显当前点几点几分 —— 单条 ts 全程是首起的
+    原始时间戳差, 出发时刻平移行驶秒即当前点墙钟 (红灯停车都在内), 步内按
+    frac 插值同 setLive 口径; 跨零点的行程主标题日期也跟着滚 (shiftStamp
+    天然滚日, 不跨整场同串不重排); 收尾定格换回出发口径 (主/副标题一起,
+    跨零点滚过的日期一并回去)。播放/拖进度/重播统一过 apply, 一处接线
+    全覆盖 (合并段 setSegTitle 同款)。"""
+    drv = auth.get("/tesla/static/js/view/trips-sheet-driver.js").text
+    sess = auth.get("/tesla/static/js/view/trips-playback-session.js").text
+    loop = auth.get("/tesla/static/js/view/trips-playback-loop.js").text
+    # 跟播函数 (弹层头部域, 与 setSegTitle 同住): 平移 → 几点几分; 主标题
+    # 日期跟 stamp 滚 (不跨零点整场同串不重排), 写前与 DOM 现值比对
+    assert "function setPlayClock(it, elapsed) {" in drv
+    assert "const stamp = shiftStamp(it.start, elapsed);" in drv
+    assert "const txt = fmtTime(stamp);" in drv
+    assert 'const de = $("#sh-date"), d = fmtFullDate(stamp);' in drv
+    assert drv.count("if (el.textContent !== txt) el.textContent = txt;") == 2
+    # 会话侧: 合并段的 if 之外加单条 else 支路 (segStarts 单条为 null),
+    # 步末时刻 tb 提到 if 前两支共用
+    assert "} else if (ts[idx] != null) {" in sess
+    assert "setPlayClock(it, ts[idx] + (tb - ts[idx]) * frac);" in sess
+    # 收尾定格: 主/副标题换回出发口径 (合并支路照旧 mergedSub)
+    assert 'if (it.merged) $("#sh-time").textContent = mergedSub(it);' in loop
+    assert '$("#sh-date").textContent = fmtFullDate(it.start);' in loop
+    assert 'else {\n    $("#sh-date")' in loop   # 单条支路 (合并外) 才回写主标题

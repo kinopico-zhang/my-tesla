@@ -67,14 +67,18 @@ def test_guard_assets_versioned_on_shell(auth):
                    ("js/view/trips-preload-tiles.js", 3), # 只留高德: 拆 OSM 直接合成瓦片模板路
                    ("js/view/trips-preload-vector.js", 3),  # 走廊一页一会话只扫一遍 (sweptCorridors)
                    ("js/view/trips-export-video.js", 4),  # v4: Esc 收预览 (v3 只留高德)
-                   ("js/view/trips-playback-loop.js", 12),       # 恒一位小数防抖 + 流式节拍开播定死
+                   ("js/view/trips-playback-loop.js", 13),       # v13: 单条收尾定格回
+                                                               #   出发口径 (时刻跟播);
+                                                               #   v12 恒一位小数防抖
+                                                               #   + 流式节拍开播定死
                    ("js/view/trips-sheet-open.js", 12),          # v12: 破缓存批
                                                                #   (见 tesla-trips-sheet.css 行);
                                                                #   v11: openTrip 挂第四页 (gtrPageSync);
                                                                # v10: 三页独立: 直方图开弹层即取 +
                                                                # playTrack(defer) 先于地图预载
                    ("js/view/trips-playback-overlays.js", 8),
-                   ("js/view/trips-playback-session.js", 14),    # defer 起播: 数据会话先挂
+                   ("js/view/trips-playback-session.js", 15),    # v15: 单条 apply 走 setPlayClock
+                                                                  # (时刻跟播); v14: defer 起播: 数据会话先挂
                                                                   # (curSess), begin 才进播放态
                    ("js/view/trips-gap-routing.js", 3),
                    ("js/view/trips-sheet-close.js", 14),  # v14: 破缓存批 (见上);
@@ -143,7 +147,9 @@ def test_guard_assets_versioned_on_shell(auth):
                    ("js/view/live-page.js", 9),         # v9: 平均电耗/最高车速两格接线拆净;
                                                          #   v8: 表盘上限 180 (刻度角度随
                                                          #   GAUGE_MAX 算); v7: 指针 + 已行驶
-                   ("js/view/trips-sheet-driver.js", 16),  # v16: 破缓存批 (见上);
+                   ("js/view/trips-sheet-driver.js", 17),  # v17: setPlayClock 单条
+                                                          #   时刻跟播 (2026-10-17);
+                                                          #   v16: 破缓存批 (见上);
                                                           #   v15: 头部「详细行程」钮撤 (改第四页, 3.10.0);
                                                           # v14: 头部按钮版 (已出批, 随第四页方案撤回)
                                                           # v13: Esc 收选单 (v12 电耗一位/段标题)

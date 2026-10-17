@@ -6,7 +6,7 @@
    shiftStamp, fmtDur, getJSON, postJSON, driversCache: writable, openSeq,
    sheetTrip, items, listEl, renderCard, marqueeCards, toast */
 /* exported fillSheetHeader, fillSheetHeaderPending, mergedSub, setSegTitle,
-   setupDriverPicker, openDrvPick */
+   setPlayClock, setupDriverPicker, openDrvPick */
 "use strict";
 /* 弹层头部汇总 (日期/时长/里程/最高速/功耗): 单条来自卡片数据, 合并来自
    流式首行或整包缓存; 合并数据没到时先用占位, 到了再填 */
@@ -68,6 +68,21 @@ function setSegTitle(it, k, t0, elapsed) {
             + " · " + fmtFullStamp(shiftStamp(t0 || it.start, elapsed));
   const el = $("#sh-time");
   if (el.textContent !== txt) el.textContent = txt;   // 分钟/段序没滚不重排
+}
+
+/* 播放中单条行程的顶部时刻跟播 (2026-10-17 用户点名「播放轨迹的时候, 上面
+   的时间也要跟着一起同步」—— 合并段的 setSegTitle 2026-09-25 就有, 单条的
+   副标题一直停在出发时刻): 单条 ts 全程是首起的原始时间戳差, 出发时刻平移
+   行驶秒就是当前点墙钟 (红灯停车都在内); 副标题显几点几分, 跨零点的行程
+   主标题日期也跟着滚 (shiftStamp 天然滚日, 不跨就整场同串不重排); 收尾
+   setOfficial 换回出发口径 */
+function setPlayClock(it, elapsed) {
+  const stamp = shiftStamp(it.start, elapsed);
+  const txt = fmtTime(stamp);
+  const el = $("#sh-time");
+  if (el.textContent !== txt) el.textContent = txt;    // 分钟没滚不重排
+  const de = $("#sh-date"), d = fmtFullDate(stamp);
+  if (de.textContent !== d) de.textContent = d;
 }
 
 /* 合并数据在路上: 弹层先开 (阻断其他操作), 头部占位; 分组名已经知道,

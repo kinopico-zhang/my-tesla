@@ -8,8 +8,9 @@
 // 绝对行驶秒 → playT 的映射上限, 见 trips-playback-session 的节拍锚);
 // 经典脚本按 trips.html 里的顺序加载, 跨模块引用走全局), playTrack 在
 // trips-playback-session.js。
-/* global $, num, fmtDur, fmtDurLive, TripPlayback, TrackUtil, TrackAnimation,
-   mergedSub, tripMsg, pbSeek, pbToggle, pbSpeed, ICON_PAUSE, anim, animRaf: writable,
+/* global $, num, fmtDur, fmtDurLive, fmtFullDate, fmtTime, TripPlayback,
+   TrackUtil, TrackAnimation, mergedSub, tripMsg, pbSeek, pbToggle, pbSpeed,
+   ICON_PAUSE, anim, animRaf: writable,
    tripMap, zoomEaseStart, holdScreenAwake, addGap */
 /* exported animRaf, setLive, setOfficial, playbarPending, resetPlaybar,
    frameLoop, startSession */
@@ -65,8 +66,15 @@ const setOfficial = env => {
   $("#sh-pw").innerHTML = '<span class="n">' + (mp == null ? "—" :
     mp.toFixed(1)) + "</span><small>kW</small>";
   /* 副标题的动态段序 (播放中「第 x/N 段行程 · 该段日期」) 收尾定格换回
-     静态整组口径 —— 定格是全局观感, 停在「第 N 段」半路收场反而突兀 */
+     静态整组口径 —— 定格是全局观感, 停在「第 N 段」半路收场反而突兀。
+     单条的顶部时刻跟播 (2026-10-17 起 setPlayClock 播放中跟播) 收尾同款
+     定格回出发口径 —— 跨零点的行程播放中主标题日期滚过, 停表悬在次日
+     不再跟出发点对不上 */
   if (it.merged) $("#sh-time").textContent = mergedSub(it);
+  else {
+    $("#sh-date").textContent = fmtFullDate(it.start);
+    $("#sh-time").textContent = fmtTime(it.start);
+  }
 };
 
 /* 待播复位: 进度归零 + 暂停钮 (起播是自动的, 图标落在"将播/正在播"态)。
