@@ -152,4 +152,4 @@ def place_name_row(address_id: int, status: str, v: int, name: str = "",
                      district=district[:24], township=f.township[:24],
                      street=f.street[:48], number=f.number[:24],
                      road=f.road[:60], poi=f.poi[:60], adcode=f.adcode[:12],
-                     rec=f.rec[:120], raw=f.raw[:8000], status=status, v=v)
+                     rec=f.rec[:120], raw=f.raw[:65535], status=status, v=v)

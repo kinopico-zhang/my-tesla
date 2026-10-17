@@ -29,7 +29,7 @@ def _geo():
                              "streetNumber": {"street": "深南大道",
                                               "number": "88号"},
                              "adcode": "440305"},
-        "formatted_addresses": {"recommend": "广东省深圳市南山区万象城"}})
+        "formatted_address": "广东省深圳市南山区万象城"})
 
 
 def test_place_fields_extracts_components():
@@ -59,7 +59,7 @@ def test_place_fields_truncates_to_columns():
                              "streetNumber": {"street": "街" * 99,
                                               "number": "号" * 40},
                              "adcode": "1" * 20},
-        "formatted_addresses": {"recommend": "推" * 200}})
+        "formatted_address": "推" * 200})
     f = place_fields(geo)
     assert (len(f.township), len(f.street), len(f.number),
             len(f.adcode), len(f.rec)) == (24, 48, 24, 12, 120)
@@ -81,8 +81,8 @@ def test_place_name_row_packs_fields():
     old = place_name_row(8, "ok", 2, "旧名", province="广东省")
     assert old.township == "" and old.raw == "" and old.v == 2
     fat = place_name_row(9, "ok", 3, "x",
-                         fields=PlaceFields(poi="p" * 80, raw="r" * 9000))
-    assert len(fat.poi) == 60 and len(fat.raw) == 8000
+                         fields=PlaceFields(poi="p" * 80, raw="r" * 70000))
+    assert len(fat.poi) == 60 and len(fat.raw) == 65535
 
 
 # ---------------------------------------------------------------- 模板渲染

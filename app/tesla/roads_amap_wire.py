@@ -113,14 +113,6 @@ class StreetNumber(BaseModel):
     number: Annotated[str, BeforeValidator(_to_text)] = ""
 
 
-class FormattedAddresses(BaseModel):
-    """regeo 应答的 formatted_addresses 段: 高德自己拼的整串 (recommend
-    = 推荐地址, 模板变量 {推荐} 的来源; rough = 粗略地址)。"""
-
-    recommend: Annotated[str, BeforeValidator(_to_text)] = ""
-    rough: Annotated[str, BeforeValidator(_to_text)] = ""
-
-
 class AddressComponent(BaseModel):
     """regeo 应答的区划段 (空字段高德发 [] 不是 "", _to_text 收编)。
 
@@ -149,8 +141,11 @@ class Regeocode(BaseModel):
     roads: list[AmapSpot] = Field(default_factory=list)
     address: AddressComponent = Field(default_factory=AddressComponent,
                                       alias="addressComponent")
-    formatted: FormattedAddresses = Field(default_factory=FormattedAddresses,
-                                          alias="formatted_addresses")
+    # 高德拼好的标准整串 (「广东省广州市海珠区昌岗街道晓园路…」), 模板变量
+    # {推荐} 的来源。v3 首版误接 formatted_addresses.recommend —— 那是
+    # 腾讯位置服务的字段, 高德 v3 regeo 活探针实证从不返回 (2026-10-18
+    # 换源 + PLACE_NAME_V 4 重查)。
+    formatted_address: Annotated[str, BeforeValidator(_to_text)] = ""
     raw: str = ""
 
 

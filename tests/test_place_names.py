@@ -74,7 +74,8 @@ def test_regeo_parses_and_converts_to_gcj():
     段原文回填 raw (2026-10-17 完整结构化: 列只提升模板要用的字段, 原文
     整段随行落库保底 —— 以后要新组件不用重查高德)。"""
     calls: list[dict[str, str]] = []
-    seg = {"pois": [], "addressComponent": {"district": "南山区"}}
+    seg = {"pois": [], "formatted_address": "广东省深圳市南山区",
+           "addressComponent": {"district": "南山区"}}
     c = _regeo_client({"status": "1", "regeocode": seg}, calls)
     geo = c.regeo(SZ_LNG, SZ_LAT)
     assert json.loads(geo.raw) == seg   # 应答段原文 (JSON 文本) 随行带回
@@ -220,8 +221,10 @@ def test_round_backfills_then_watermark(db, owndb, monkeypatch):
     assert (info[1].province, info[1].city, info[1].district) == (
         "广东省", "", "龙岗区")
     # v3: 结构化组件随行 (镇/门牌/道路/POI/推荐串, 模板显示的原料; 假件
-    # 应答 POI 25m 在门内, roads 空且无 streetNumber → 其余组件空)
-    assert place_worker.PLACE_NAME_V == 3
+    # 应答 POI 25m 在门内, roads 空且无 streetNumber → 其余组件空);
+    # v4 (2026-10-18): {推荐} 换源 formatted_address (v3 误接腾讯字段名,
+    # 高德从不返回) —— 假件应答里也没有, rec 落空串
+    assert place_worker.PLACE_NAME_V == 4
     assert (info[1].poi, info[1].road, info[1].township,
             info[1].street, info[1].rec) == ("高德大厦", "", "", "", "")
     assert _round(monkeypatch) == (False, 0.0)     # 水位已到: 不再构造 client

@@ -23,10 +23,11 @@ from .repository.place_names import (all_address_coords, done_address_ids,
 from .roads_amap_wire import AddressComponent
 from .settings_store import amap_web_key_value
 
-PLACE_NAME_V = 3          # v3 = v2 取名+区划 + 完整结构化组件随行 (镇/门牌街/
-#                          门牌号/最近路/最近 POI/区划码/推荐串/应答原文; v2 老
-#                          行组件空, bump 全量重查补齐 —— 取名/区划没变, 只是
-#                          这轮把组件也带上)
+PLACE_NAME_V = 4          # v4 = v3 组件随行 + {推荐} 换源 formatted_address
+#                          (v3 误接腾讯位置服务的 formatted_addresses.recommend,
+#                          高德 v3 regeo 活探针实证从不返回) + 应答原文截长
+#                          8000→65535 (pois 长的应答 8000 切掉尾部字段); bump
+#                          全量重查补齐这两样, 取名/区划/组件口径没变)
 CALL_CAP_PER_DAY = 3000   # 自记账日上限 (官方个人 5000, 留余量)
 THROTTLE_S = 0.4          # 相邻 REST 调用最小间隔
 IDLE_SLEEP_S = 60         # 空转轮询 (无 key / 无待办)

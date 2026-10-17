@@ -59,7 +59,7 @@ class PlaceFields(NamedTuple):
     road: str = ""       # 最近道路名 (≤100m)
     poi: str = ""        # 最近 POI 名 (≤300m)
     adcode: str = ""     # 区划代码 (省市区三级的行政码)
-    rec: str = ""        # 高德推荐整串 (formatted_addresses.recommend)
+    rec: str = ""        # 高德拼好的标准整串 (formatted_address, {推荐} 的来源)
     raw: str = ""        # 应答 regeocode 段原文 (完整保底, 新字段不用重查)
 
 
@@ -78,8 +78,8 @@ def place_fields(geo: Regeocode | None) -> PlaceFields:
         road=road[0][:60] if road and road[0] and road[1] <= _ROAD_MAX_M else "",
         poi=poi[0][:60] if poi and poi[0] and poi[1] <= _POI_MAX_M else "",
         adcode=geo.address.adcode[:12],
-        rec=geo.formatted.recommend[:120],
-        raw=geo.raw[:8000])
+        rec=geo.formatted_address[:120],
+        raw=geo.raw[:65535])
 
 
 def render_place(tpl: str, info: "PlaceInfo | None") -> str:
