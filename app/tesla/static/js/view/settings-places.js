@@ -24,6 +24,11 @@
 // 收起键盘 (focus 跑掉), 目标得自己记 (最后点过的框, .ptpl-target 常亮
 // 蓝边与 :focus 同色); 整条格式点一下直接替换目标框 (空值 = 回默认);
 // 预览进页就跑一次 (不再是冷启动空块)。
+// v11 (2026-10-18 用户点名「回删名称的时候, 应该以最小单元来删除」): 删
+// 除键认单元 —— 光标贴着完整 {变量} / " · " 一下整删 (逐字抠既费手又留
+// 半截变量, 渲染成原样文字); 没贴着完整单元交回原生逐字符 (手打中途改
+// 错不受影响), 选区/组合键 (Ctrl+删除删词)/输入法组字不拦, 前删 Delete
+// 同口径对称。
 // 列表数据 = 行程统计的 locations 接口原样 (别名/并组/坐标都在行里)。
 /* global $, esc, getJSON, sendJSON, toast, bindGestures, registerView,
            openPlaceDetail */
@@ -184,6 +189,37 @@ function ptplInsert(txt) {   // 插进目标框光标处 (选中段一并换掉)
   ptplKick();
 }
 
+// 删除键认的最小单元 (v11): 完整闭合的 {变量} 与间隔钮插的 " · " 原样
+const PTPL_UNIT_VAR = /\{[^{}]*\}$/;   // 回删: 光标前整段闭合变量
+const PTPL_UNIT_FWD = /^\{[^{}]*\}/;   // 前删 (Delete) 同口径: 光标后整段
+const PTPL_UNIT_SEP = " · ";           // 间隔 (连两侧空格一起走)
+
+function ptplKeyDelete(el, e, back) {
+  // 删除键按最小单元: 贴着完整单元 → preventDefault 整删一键; 没贴着交回
+  // 原生逐字符 (手打中途改错不受影响 —— 单元只在完整闭合时认), 有选区/
+  // 按着组合键 (Ctrl+删除是删词)/输入法组字也交回原生。
+  if (e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
+  const at = el.selectionStart, end = el.selectionEnd;
+  if (at === null || at !== end) return;
+  let len = 0;
+  if (back) {
+    const head = el.value.slice(0, at);
+    len = PTPL_UNIT_VAR.exec(head)?.[0].length ?? 0;
+    if (!len && head.endsWith(PTPL_UNIT_SEP)) len = PTPL_UNIT_SEP.length;
+  } else {
+    const tail = el.value.slice(at);
+    len = PTPL_UNIT_FWD.exec(tail)?.[0].length ?? 0;
+    if (!len && tail.startsWith(PTPL_UNIT_SEP)) len = PTPL_UNIT_SEP.length;
+  }
+  if (!len) return;
+  e.preventDefault();
+  const cut = back ? at - len : at;
+  el.value = el.value.slice(0, cut) + el.value.slice(cut + len);
+  try { el.setSelectionRange(cut, cut); }   // 老内核不吃: 光标留末尾不碍事
+  catch { /* setSelectionRange 不支持 */ }
+  ptplKick();
+}
+
 function ptplBuildChips() {
   $("#ptpl-presets").innerHTML = PTPL_PRESETS.map(([lb, val]) =>
     `<button type="button" class="ptpl-preset" data-val="${esc(val)}">${esc(lb)}</button>`).join("");
@@ -231,6 +267,10 @@ for (const [k] of PTPL_KEYS) {
   const el = $("#ptpl-" + k);
   el.addEventListener("input", ptplKick);
   el.addEventListener("focus", () => { ptplTarget = el; ptplMark(); });
+  el.addEventListener("keydown", e => {   // v11: 删除键按最小单元整删
+    if (e.key === "Backspace") ptplKeyDelete(el, e, true);
+    else if (e.key === "Delete") ptplKeyDelete(el, e, false);
+  });
 }
 ptplTarget = $("#ptpl-trips");   // 进页默认落点 = 第一框 (点过哪框跟哪框)
 ptplMark();

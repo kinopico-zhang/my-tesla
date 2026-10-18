@@ -276,8 +276,9 @@ def test_place_template_card_wiring(auth):
     """设置页「地点显示」卡 (2026-10-18 用户点名「每个都表示什么含义要说清
     楚 + 用选择代替填空」): 三界面输入框 (80 字上限) + 点选件 (整条格式一
     键替换 / 部件每枚带一行含义插光标处) + 预览块 + 保存钮; JS 走专用端点,
-    改动停 300ms 防抖预览 (进页先跑一次), 部件落点 = 蓝框目标框, 三张列
-    表卡优先吃服务端渲染行。"""
+    改动停 300ms 防抖预览 (进页先跑一次), 部件落点 = 蓝框目标框, 删除键
+    认最小单元 (完整 {变量} / " · " 一下整删, v11), 三张列表卡优先吃服务
+    端渲染行。"""
     page = served_page(auth, "/tesla")
     for frag in ('id="ptpl-card"', "<h2>地点显示</h2>",
                  'id="ptpl-trips"', 'id="ptpl-charging"', 'id="ptpl-places"',
@@ -291,6 +292,7 @@ def test_place_template_card_wiring(auth):
                  "setTimeout(ptplPreview, 300)",
                  "PTPL_PRESETS", "PTPL_VARS", "ptplInsert", "ptpl-target",
                  "高德取的地点名", "高德完整地址",   # 部件含义随钮走 (用户点名)
+                 "PTPL_UNIT_VAR", 'e.key === "Backspace"',   # v11 回删整删
                  "地点显示已保存",
                  "it.from_place || shortPlace(it.from_region",     # 行程卡
                  "it.from_place || gtrShortPlace(it.from_region",  # 分组明细卡

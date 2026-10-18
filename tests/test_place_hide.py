@@ -164,7 +164,7 @@ def test_management_page_frontend(auth, db):
     assert "左滑可删除" not in page   # 详情层提示行 v9 退役 (唯此一段, 注释「左滑删 raw」不同串)
     assert page.index("tesla-swipe-delete.js?v=4") < \
         page.index("trips-place-detail.js?v=12") < \
-        page.index("settings-places.js?v=10")
+        page.index("settings-places.js?v=11")
     plc = auth.get("/tesla/static/js/view/settings-places.js").text
     for frag in ('sendJSON("/tesla/trips/api/stats/place-hide"',  # 只剩恢复区
                  '"/tesla/trips/api/stats/place-hidden"',
