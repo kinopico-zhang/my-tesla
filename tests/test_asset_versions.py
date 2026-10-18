@@ -235,7 +235,11 @@ def test_guard_assets_versioned_on_shell(auth):
                                                          #   补进族规则 (v8: 左缘边条 40px)
                    ("js/tesla-navigation.js", 4),       # v4: 足迹地图闸 (navigate 拦旁路);
                                                          #   v3: 视图直挂 hidden + 冷启首跳藏净
-                   ("js/tesla-drawer.js", 14),          # v14: 设置组加后台任务行;
+                   ("js/tesla-drawer.js", 15),          # v15: 设置组加地点显示行 (拆独立页
+                                                         #   入口; 10-18 批改了内容漏升号,
+                                                         #   浏览器 immutable 缓存吃旧菜单
+                                                         #   「8500 看不见新设置」即此);
+                                                         #   v14: 设置组加后台任务行;
                                                          #   v13: 大屏手机一列 (左缘呼出带
                                                          #   drawerEdgeX 列内换算);
                                                          #   v12: 悬浮菜单键 #menu-fab 接线;
