@@ -213,30 +213,45 @@ input::placeholder { color: var(--ink-3); }
 }
 .plc-hid-row:last-child { border-bottom: 0; }
 /* 地点显示模板卡 (2026-10-17 用户点名「在设置界面, 可以设置各个界面显示
-   地点的模板」; 2026-10-18 用户点名「每个都表示什么含义要说清楚 + 用选
-   择代替填空」): 手填退役 —— 整条格式/部件全是点选钮 (chips), 部件两行
-   (上行变量名 + 下行一行小字含义)。.ptpl-target = 部件落点框: 点部件会
-   收键盘, :focus 亮不住, JS 记住目标给它常亮蓝边 (与 :focus 同色, 进页
-   默认第一框); 预览块 = 样例行置顶 (拿哪条名渲染的看得见) + 三界面各一
-   行 (界面名 ink-3 + 渲染结果) */
-.ptpl-group { margin: 0 0 12px; }
+   地点的模板」; 2026-10-18 三改 用户点名「把下面的选项做成键盘, 光标进
+   去时弹出替换标准键盘, 输入时下面时时刻刻显示具体的例子」): 键盘面板
+   聚焦即开 / 失焦即收 (JS 控 hidden; display 翻转自动重跑 view-in, 与全
+   app 同一套入场动效); 面板 surface-2 底, 键 surface-3 浮起一档, 按下
+   #48484a (preventDefault 后 :active 不一定吃, .ptpl-press 兜底); 部件
+   键两行 (上行变量名 + 下行一行小字含义), 5 列栅格; 预览住进键盘常驻
+   (surface 内凹一块「屏」), 正在编辑的那行描蓝 (.ptpl-on)。 */
+.ptpl-kb {
+  margin: 2px 0 12px; padding: 12px;
+  background: var(--surface-2); border-radius: 14px;
+  animation: view-in .32s var(--ease-ios) backwards;
+}
+.ptpl-krow { margin-top: 12px; }
 .ptpl-gt { display: block; font-size: 12px; color: var(--ink-3); margin-bottom: 6px; }
 .ptpl-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.ptpl-chips button {
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  padding: 7px 14px; border-radius: 12px; background: var(--surface-2);
+.ptpl-chips .ptpl-preset {
+  display: flex; align-items: center;
+  padding: 7px 14px; border-radius: 999px; background: var(--surface-3);
   font-size: 13px; font-weight: 600; color: var(--ink-1);
 }
-.ptpl-chips button:active { background: var(--surface-3); }
-.ptpl-chips .ptpl-vcap { font-size: 11px; font-weight: 400; color: var(--ink-3); }
-#ptpl-card input.ptpl-target { border-color: var(--blue); }
+.ptpl-chips .ptpl-preset:active,
+.ptpl-chips .ptpl-preset.ptpl-press { background: #48484a; }
+.ptpl-keys { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.ptpl-key {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  min-width: 0; padding: 7px 2px; border-radius: 10px;
+  background: var(--surface-3);
+  font-size: 13px; font-weight: 600; color: var(--ink-1);
+}
+.ptpl-key:active, .ptpl-key.ptpl-press { background: #48484a; }
+.ptpl-key .ptpl-vcap { font-size: 11px; font-weight: 400; color: var(--ink-3); }
 .ptpl-vars { margin: 2px 0 10px; font-size: 12px; color: var(--ink-3); }
 .ptpl-preview {
-  margin: 0 0 10px; padding: 10px 12px;
-  background: var(--surface-2); border-radius: 10px;
+  margin: 0; padding: 10px 12px;
+  background: var(--surface); border-radius: 10px;
 }
 .ptpl-line { display: flex; gap: 8px; font-size: 13px; line-height: 1.8; }
 .ptpl-line .ptpl-lb { flex: none; color: var(--ink-3); }
+.ptpl-line.ptpl-on .ptpl-lb { color: var(--blue); }   /* 正在编辑的行 */
 .ptpl-sample { color: var(--ink-3); font-size: 12px; }
 /* ---------- 组详情页 3.4.1 (用户点名「点名称弹出页面: 上面地图, 下面真实
    地点列表, 点列表 item 地图切到这个位置」)。2026-10-06 (用户点名「不从

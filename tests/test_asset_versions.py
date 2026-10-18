@@ -196,7 +196,7 @@ def test_guard_assets_versioned_on_shell(auth):
                    ("css/tesla-pull-refresh.css", 3),   # v3: 曲线令牌采用 (ios); v1-2 历史漏钉, 本批补上
                    ("css/tesla-filter-bar.css", 6),     # 菜单圆键退役 (#menu-key 拆净,
                                                          # #bar-row.no-chips 整条收起)
-                   ("css/tesla-settings.css", 32),      # v32: 地点显示点选件 (chips + .ptpl-target);
+                   ("css/tesla-settings.css", 33),      # v33: 地点显示键盘面板 (.ptpl-kb/.ptpl-key);
                                                          #   v30: 后台任务卡 (进度条/状态行/重启钮);
                                                          #   v28: 曲线令牌采用 (ios + swipe);
                                                          #   v27: 顶置 toast 副本拆净 (base 单源);

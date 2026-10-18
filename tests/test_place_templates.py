@@ -273,26 +273,30 @@ def test_locations_template_display_only(auth, db, owndb):
 
 # ---------------------------------------------------------------- 设置页接线
 def test_place_template_card_wiring(auth):
-    """设置页「地点显示」卡 (2026-10-18 用户点名「每个都表示什么含义要说清
-    楚 + 用选择代替填空」): 三界面输入框 (80 字上限) + 点选件 (整条格式一
-    键替换 / 部件每枚带一行含义插光标处) + 预览块 + 保存钮; JS 走专用端点,
-    改动停 300ms 防抖预览 (进页先跑一次), 部件落点 = 蓝框目标框, 删除键
-    认最小单元 (完整 {变量} / " · " 一下整删, v11), 三张列表卡优先吃服务
-    端渲染行。"""
+    """设置页「地点显示」卡 (2026-10-18 三改 用户点名「把下面的选项做成键
+    盘, 光标进去时弹出替换标准键盘, 输入时下面时时刻刻显示具体的例子」):
+    三框 inputmode=none 挡系统软键盘 + 键盘面板 (整条格式一键替换 / 部件
+    键带含义落光标处 / 单元删除 / 收起) + 预览住进键盘常驻 (正在编辑的行
+    描蓝) + 保存钮; JS 走专用端点, 改动停 300ms 防抖换预览 (进页预取),
+    键区 pointerdown 不抢焦点, 物理删除键同单元口径, 三张列表卡优先吃
+    服务端渲染行。"""
     page = served_page(auth, "/tesla")
     for frag in ('id="ptpl-card"', "<h2>地点显示</h2>",
                  'id="ptpl-trips"', 'id="ptpl-charging"', 'id="ptpl-places"',
-                 'maxlength="80"',
-                 'id="ptpl-presets"', 'id="ptpl-vars"', 'class="ptpl-chips"',
-                 'class="ptpl-vars"', 'id="ptpl-preview"', 'id="ptpl-save"',
+                 'maxlength="80"', 'inputmode="none"',
+                 'id="ptpl-kb"', 'id="ptpl-presets"', 'id="ptpl-vars"',
+                 'id="ptpl-seps"', 'id="ptpl-preview"', 'id="ptpl-save"',
+                 'class="ptpl-vars"',
                  "直辖市的省市算一个", "整条留空 = 默认显示"):
         assert frag in page, f"地点显示卡缺少 {frag}"
     for frag in ('getJSON("/tesla/api/place-templates")',
                  '"/tesla/api/place-templates/preview"',
                  "setTimeout(ptplPreview, 300)",
-                 "PTPL_PRESETS", "PTPL_VARS", "ptplInsert", "ptpl-target",
-                 "高德取的地点名", "高德完整地址",   # 部件含义随钮走 (用户点名)
-                 "PTPL_UNIT_VAR", 'e.key === "Backspace"',   # v11 回删整删
+                 "PTPL_PRESETS", "PTPL_VARS", "PTPL_SEPS", "PTPL_ACTS",
+                 "ptplInsert", "ptplUnitLen", "ptplOpen", "ptplClose",
+                 '"按单元", "back"', '"关键盘", "close"',   # 动作键 (末行)
+                 "PTPL_UNIT_VAR", 'e.key === "Backspace"',
+                 "ptpl-press",          # 键区不抢焦点后按下态自己铺
                  "地点显示已保存",
                  "it.from_place || shortPlace(it.from_region",     # 行程卡
                  "it.from_place || gtrShortPlace(it.from_region",  # 分组明细卡
