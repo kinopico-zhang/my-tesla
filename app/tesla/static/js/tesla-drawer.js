@@ -43,6 +43,7 @@ const NAV_GROUPS = [
     { key: "settings-map", lb: "地图设置" },
     { key: "settings-drivers", lb: "驾驶员" },
     { key: "settings-places", lb: "常用地点" },
+    { key: "settings-place-display", lb: "地点显示" },   // 10-18 拆独立页
     { key: "settings-tasks", lb: "后台任务" },
     { key: "changelog", lb: "更新日志" },
   ] },
@@ -65,6 +66,7 @@ const DRW_ICONS = {
   "settings-map": "<line x1='21' x2='14' y1='4' y2='4' /><line x1='10' x2='3' y1='4' y2='4' /><line x1='21' x2='12' y1='12' y2='12' /><line x1='8' x2='3' y1='12' y2='12' /><line x1='21' x2='16' y1='20' y2='20' /><line x1='12' x2='3' y1='20' y2='20' /><line x1='14' x2='14' y1='2' y2='6' /><line x1='8' x2='8' y1='10' y2='14' /><line x1='16' x2='16' y1='18' y2='22' />",
   "settings-drivers": "<circle cx='12' cy='8' r='5' /><path d='M20 21a8 8 0 0 0-16 0' />",
   "settings-places": "<path d='M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z' /><circle cx='7.5' cy='7.5' r='.5' fill='currentColor' />",
+  "settings-place-display": "<polyline points='4 7 4 4 20 4 20 7' /><line x1='9' x2='15' y1='20' y2='20' /><line x1='12' x2='12' y1='4' y2='20' />",
   "settings-tasks": "<path d='M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8' /><path d='M21 3v5h-5' /><path d='M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16' /><path d='M8 16H3v5' />",
   changelog: "<path d='M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z' /><path d='M14 2v4a2 2 0 0 0 2 2h4' /><path d='M10 9H8' /><path d='M16 13H8' /><path d='M16 17H8' />",
   "grp-trips": "<circle cx='6' cy='19' r='3' /><path d='M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15' /><circle cx='18' cy='5' r='3' />",

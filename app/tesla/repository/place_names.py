@@ -69,21 +69,18 @@ def place_info_map(own: Session, ids: Iterable[int]) -> dict[int, PlaceInfo]:
     return {r[0]: PlaceInfo(*r[1:]) for r in rows}
 
 
-def sample_place_info(own: Session) -> PlaceInfo | None:
-    """模板预览的样例行 (设置页「地点显示」): 挑组件最全的 ok 行 —— POI/
-    门牌街/镇都在的先, 每个变量都渲染得出来; 一条都没有 (还没跑过命名)
-    回 None, 前端转成「暂无样例」提示。"""
-    row = own.execute(
+def sample_place_infos(own: Session, limit: int = 3) -> list[PlaceInfo]:
+    """模板示例的样例行 (设置页「地点显示」): 挑组件最全的 ok 行, 取
+    2-3 条 —— POI/门牌街/镇都在的先, 每个变量都渲染得出来; 一条都没有
+    (还没跑过命名) 回空表, 前端转成「暂无样例」提示。"""
+    rows = own.execute(
         select(PlaceName)
         .where(PlaceName.status == "ok", PlaceName.name != "")
         .order_by((PlaceName.poi != "").desc(), (PlaceName.street != "").desc(),
                   (PlaceName.township != "").desc(), PlaceName.address_id)
-        .limit(1)).scalar_one_or_none()
-    if row is None:
-        return None
-    return PlaceInfo(row.name, row.province, row.city, row.district,
-                     row.township, row.street, row.number, row.road,
-                     row.poi, row.rec)
+        .limit(limit)).scalars().all()
+    return [PlaceInfo(r.name, r.province, r.city, r.district, r.township,
+                      r.street, r.number, r.road, r.poi, r.rec) for r in rows]
 
 
 def place_search_ids(own: Session, q: str) -> list[int]:

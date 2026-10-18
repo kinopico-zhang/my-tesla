@@ -196,7 +196,8 @@ def test_guard_assets_versioned_on_shell(auth):
                    ("css/tesla-pull-refresh.css", 3),   # v3: 曲线令牌采用 (ios); v1-2 历史漏钉, 本批补上
                    ("css/tesla-filter-bar.css", 6),     # 菜单圆键退役 (#menu-key 拆净,
                                                          # #bar-row.no-chips 整条收起)
-                   ("css/tesla-settings.css", 33),      # v33: 地点显示键盘面板 (.ptpl-kb/.ptpl-key);
+                   ("css/tesla-settings.css", 34),      # v34: 地点显示独立页 tag 卡 (.ptpl-card/.ptpl-field/.ptpl-tag/.ptpl-ex);
+                                                         #   v33: 键盘面板 (.ptpl-kb/.ptpl-key);
                                                          #   v30: 后台任务卡 (进度条/状态行/重启钮);
                                                          #   v28: 曲线令牌采用 (ios + swipe);
                                                          #   v27: 顶置 toast 副本拆净 (base 单源);
@@ -225,7 +226,7 @@ def test_guard_assets_versioned_on_shell(auth):
                                                          #   .swipe-list) + .plc-sum
                                                          #   汇总行 + 红钮; v17:
                                                          #   账号三卡
-                   ("css/tesla-shell-floor.css", 13),   # v13: 后台任务页补进设置族
+                   ("css/tesla-shell-floor.css", 14),   # v14: 地点显示页进设置族 (v13: 后台任务页)
                                                          #   规则 (贴屏缘+零纵距);
                                                          #   v12: toast 重申块拆 (base 单源);
                                                          #   v11: 侧距统一 16;

@@ -11,7 +11,8 @@ from .. import (drivers_store, place_tpl_store, repository, settings_store,
 from ..place_naming import render_place
 from ..schemas import (SettingsState, SettingsUpdate, DriverInfo, DriverIn,
                        DriverUpdate, TmdbTest, TmdbTestIn,
-                       PlaceTplPreview, PlaceTplState, PlaceTplUpdate)
+                       PlaceTplExample, PlaceTplPreview, PlaceTplState,
+                       PlaceTplUpdate)
 from ...schemas import OkResponse
 
 
@@ -80,18 +81,16 @@ def save_place_templates(body: PlaceTplUpdate,
 def preview_place_templates(
         body: PlaceTplUpdate,
         own: Session = Depends(database.get_own_db)) -> PlaceTplPreview:
-    """预览: 拿缓存里组件最全的一条地名当样例, 三条候选各渲染一遍 ——
-    渲染单一源在服务端 (render_place), 前端只搬运不重抄。还没跑过命名
-    (没样例) 时 sample 空, 前端提示「暂无样例」。"""
+    """预览: 缓存里挑组件最全的 2-3 条地名当样例, 三条候选各渲染一遍 ——
+    渲染单一源在服务端 (render_place), 前端只搬运不重抄 (设置页一卡一条
+    例子区)。还没跑过命名 (没样例) 时 rows 空, 前端提示「暂无样例」。"""
 
-    info = repository.sample_place_info(own)
-    if info is None:
-        return PlaceTplPreview(sample="", trips="", charging="", places="")
-    return PlaceTplPreview(
-        sample=info.name,
-        trips=render_place(body.trips, info),
-        charging=render_place(body.charging, info),
-        places=render_place(body.places, info))
+    return PlaceTplPreview(rows=[
+        PlaceTplExample(sample=i.name,
+                        trips=render_place(body.trips, i),
+                        charging=render_place(body.charging, i),
+                        places=render_place(body.places, i))
+        for i in repository.sample_place_infos(own)])
 
 
 @settingsapi.get("/drivers")

@@ -55,7 +55,7 @@ from .place_names import (
     place_name_map,
     place_name_row,
     places_progress,
-    sample_place_info,
+    sample_place_infos,
     save_place_name,
     wipe_place_names,
 )
@@ -122,7 +122,7 @@ __all__ = [
     "monthly_stats", "parse_date_range", "parse_region", "place_hidden_set",
     "place_name_map",
     "place_name_row", "places_progress", "query_tracks",
-    "sample_place_info",
+    "sample_place_infos",
     "region_address_ids", "rename_trip_group",
     "road_row", "roads_lite",
     "roads_progress", "roads_rows", "save_fill",

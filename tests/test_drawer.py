@@ -65,17 +65,18 @@ def test_nav_groups_match_dom(auth):
         "充电": ["charging", "stats", "battery", "chargemap"],   # 电池健康度 2026-09-27
         "设置": ["settings-account", "settings-db", "settings-map",
                  # 账号 09-27 拆页居首; 常用地点 09-30 (改名管理入口);
-                 # 后台任务 10-15 (回填进度/重启面板)
-                 "settings-drivers", "settings-places", "settings-tasks",
+                 # 地点显示 10-18 拆独立页; 后台任务 10-15 (回填进度/重启面板)
+                 "settings-drivers", "settings-places",
+                 "settings-place-display", "settings-tasks",
                  "changelog"]}
-    assert sum(len(p) for _, p in groups) == 16          # 16 抽屉页零孤儿
+    assert sum(len(p) for _, p in groups) == 17          # 17 抽屉页零孤儿
     html = served_page(auth, SHELL)
     keys = [k for _, pages in groups for k in pages]
     pos = [html.index(f'data-view="{k}"') for k in keys]
     assert pos == sorted(pos), "视图顺序与 NAV_GROUPS 不符"
     # 3.10.0 分组明细「详细行程」住进行程弹层当第四页 (跟行驶轨迹/行驶数
     # 据/行驶统计并列), 不再是二级页 —— data-view 计数回到与 NAV_GROUPS 齐
-    assert html.count('data-view="') == 16               # 对账没丢页没多页
+    assert html.count('data-view="') == 17               # 对账没丢页没多页
 
 
 # ---------------------------------------------------------------- 开合与拖拽
@@ -148,8 +149,9 @@ def test_gesture_surfaces_and_edges(auth):
     类画布手势全给引擎 —— 右划开抽屉入口折到画布左缘 40px 窄条 (10-01
     用户报左缘手指常落卡外; #lv-gutter 10-04 / #cm-gutter 10-05 补缝条)。"""
     js = page_js(auth, SHELL)
-    assert js.count("{ drawer: true, ptr: true,") == 18  # 第四页 gtr-scroll 走 drawer: false (分页器内);
-                                                         # 后台任务页 task-scroll 同款绑定 (10-15)
+    assert js.count("{ drawer: true, ptr: true,") == 19  # 第四页 gtr-scroll 走 drawer: false (分页器内);
+                                                         # 后台任务页 task-scroll 同款绑定 (10-15);
+                                                         # 地点显示页 ptpl-scroll 同款 (10-18)
     for edge in ("cm-edge", "cm-gutter", "fp-edge", "fp-gutter", "lv-edge"):
         assert f'bindGestures($("#{edge}"), {{ drawer: true }});' in js, \
             f"{edge} 边条绑定缺"
@@ -224,9 +226,9 @@ def test_navigation_plain_hidden(auth):
     for gone in ("TABS", "hideGroup", "showGroup", "pagerEl", ".scrollTo("):
         assert gone not in nav, f"组路由残留: {gone}"
     html = served_page(auth, SHELL)
-    assert html.count('<section class="view"') == 16    # 16 抽屉页 (后台任务 10-15; 第四页方案前曾 +1 分组明细二级页)
+    assert html.count('<section class="view"') == 17    # 17 抽屉页 (后台任务 10-15; 地点显示 10-18)
     assert 'class="view" id="view-live" data-view="live">' in html   # 唯一亮着
-    assert len(re.findall(r'<section class="view"[^>]* hidden>', html)) == 15
+    assert len(re.findall(r'<section class="view"[^>]* hidden>', html)) == 16
 
 
 def test_boot_default_live(auth):

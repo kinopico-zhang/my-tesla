@@ -173,11 +173,12 @@ def test_place_templates_rejects_overlong(auth, owndb):
     assert auth.get(TAPI).json()["trips"] == ""      # 没存进去
 
 
-def test_place_templates_preview_renders_fullest_row(auth, db, owndb):
-    """预览拿组件最全的缓存行当样例 (每个变量都渲染得出来), 三界面各渲染
-    一行 —— 渲染单一源在服务端, 前端只搬运不重抄。"""
+def test_place_templates_preview_renders_fullest_rows(auth, db, owndb):
+    """预览 (五改后一卡带 2-3 条例子): 缓存行按组件全度排序各渲染一遍 ——
+    渲染单一源在服务端, 前端只搬运不重抄; 组件缺的行也在例子里 (渲染缺
+    谁空谁, 正好示范「没数据的部件自动留空」)。"""
     save_place_name(owndb, place_name_row(1, "ok", 3, "残行",
-                                          district="南山区"))  # 组件缺: 不挑它
+                                          district="南山区"))  # 组件缺: 排后面
     save_place_name(owndb, place_name_row(
         2, "ok", 3, "万象天地", province="广东省", city="深圳市",
         district="南山区",
@@ -186,15 +187,30 @@ def test_place_templates_preview_renders_fullest_row(auth, db, owndb):
     d = auth.post(TAPI + "/preview",
                   json={"trips": "{市}{区}", "charging": "{POI}",
                         "places": "{镇}"}).json()
-    assert d == {"sample": "万象天地", "trips": "深圳市南山区",
-                 "charging": "万象城", "places": "粤海街道"}
+    assert d["rows"][0] == {"sample": "万象天地", "trips": "深圳市南山区",
+                            "charging": "万象城", "places": "粤海街道"}
+    assert d["rows"][1]["sample"] == "残行"
+    assert d["rows"][1]["trips"] == "南山区"      # {市} 空: 只剩 {区}
+    assert d["rows"][1]["charging"] == ""         # 没组件渲染空 (回默认)
+
+
+def test_place_templates_preview_caps_three_rows(auth, owndb):
+    """例子封顶 3 条 (多了刷屏), 组件最全的先挑。"""
+    for i in range(1, 5):
+        save_place_name(owndb, place_name_row(
+            i, "ok", 3, f"地名{i}", district=f"区{i}",
+            fields=PlaceFields(poi=f"点{i}") if i <= 2 else PlaceFields()))
+    rows = auth.post(TAPI + "/preview",
+                     json={"trips": "{POI}", "charging": "", "places": ""}).json()["rows"]
+    assert [r["sample"] for r in rows] == ["地名1", "地名2", "地名3"]   # 地名4 截在门外
+    assert rows[0]["trips"] == "点1"    # poi 在的排前, 空 poi 的按 id 续排
 
 
 def test_place_templates_preview_without_rows(auth, owndb):
-    """还没跑过命名: 预览没原料, 样例空 (前端转「暂无样例」提示)。"""
+    """还没跑过命名: 例子没原料, rows 空 (前端转「还没有地名样例」提示)。"""
     d = auth.post(TAPI + "/preview",
                   json={"trips": "{区}", "charging": "", "places": ""}).json()
-    assert d == {"sample": "", "trips": "", "charging": "", "places": ""}
+    assert d == {"rows": []}
 
 
 # ---------------------------------------------------------------- 三张消费面
@@ -273,32 +289,51 @@ def test_locations_template_display_only(auth, db, owndb):
 
 # ---------------------------------------------------------------- 设置页接线
 def test_place_template_card_wiring(auth):
-    """设置页「地点显示」卡 (2026-10-18 三改 用户点名「把下面的选项做成键
-    盘, 光标进去时弹出替换标准键盘, 输入时下面时时刻刻显示具体的例子」):
-    三框 inputmode=none 挡系统软键盘 + 键盘面板 (整条格式一键替换 / 部件
-    键带含义落光标处 / 单元删除 / 收起) + 预览住进键盘常驻 (正在编辑的行
-    描蓝) + 保存钮; JS 走专用端点, 改动停 300ms 防抖换预览 (进页预取),
-    键区 pointerdown 不抢焦点, 物理删除键同单元口径, 三张列表卡优先吃
-    服务端渲染行。"""
+    """设置页「地点显示」独立页 (2026-10-18 五改, 后两改用户点名「独立配
+    置页面, 不要和常用地点放在一起」+「一界面一卡, 输入框是 tag 列表的
+    空间, 键盘上的内容就是部件」): 一界面一卡 (标题 + tag 列表输入区 +
+    2-3 条例子), 文本框整链退役 —— 模板拆成最小单元标签, 点标签即删,
+    键盘部件键接末尾; 键盘单件搬进正在编辑的卡, 保存走专用端点, 改动
+    停 300ms 防抖换例子 (进页预取), 三张列表卡优先吃服务端渲染行。"""
     page = served_page(auth, "/tesla")
-    for frag in ('id="ptpl-card"', "<h2>地点显示</h2>",
-                 'id="ptpl-trips"', 'id="ptpl-charging"', 'id="ptpl-places"',
-                 'maxlength="80"', 'inputmode="none"',
-                 'id="ptpl-kb"', 'id="ptpl-presets"', 'id="ptpl-vars"',
-                 'id="ptpl-seps"', 'id="ptpl-preview"', 'id="ptpl-save"',
-                 'class="ptpl-vars"',
+    for frag in ('data-view="settings-place-display"', 'id="ptpl-scroll"',
+                 "<h2>地点显示</h2>", "点标签可删掉",
+                 'id="ptpl-card-trips"', 'id="ptpl-card-charging"',
+                 'id="ptpl-card-places"',
+                 'id="ptpl-field-trips"', 'id="ptpl-field-charging"',
+                 'id="ptpl-field-places"',
+                 'id="ptpl-ex-trips"', 'id="ptpl-ex-charging"',
+                 'id="ptpl-ex-places"',
+                 'id="ptpl-kb"', 'id="ptpl-vars"', 'id="ptpl-acts"',
+                 'id="ptpl-save"', 'class="ptpl-vars"',
+                 "settings-place-display.js?v=1",
                  "直辖市的省市算一个", "整条留空 = 默认显示"):
-        assert frag in page, f"地点显示卡缺少 {frag}"
+        assert frag in page, f"地点显示页缺少 {frag}"
+    # 独立页住常用地点之后 (设置组里); 三张卡都在这个视图段里
+    assert page.index('data-view="settings-places"') < \
+        page.index('data-view="settings-place-display"') < \
+        page.index('id="ptpl-card-trips"') < \
+        page.index('data-view="settings-tasks"')
+    for gone in ('id="ptpl-preview"', 'id="ptpl-presets"', 'id="ptpl-seps"',
+                 'inputmode="none"', 'id="ptpl-trips"'):   # 文本框/速选/常驻预览退役
+        assert gone not in page, f"键盘化中间态残党 {gone}"
     for frag in ('getJSON("/tesla/api/place-templates")',
                  '"/tesla/api/place-templates/preview"',
                  "setTimeout(ptplPreview, 300)",
-                 "PTPL_PRESETS", "PTPL_VARS", "PTPL_SEPS", "PTPL_ACTS",
-                 "ptplInsert", "ptplUnitLen", "ptplOpen", "ptplClose",
-                 '"按单元", "back"', '"关键盘", "close"',   # 动作键 (末行)
-                 "PTPL_UNIT_VAR", 'e.key === "Backspace"',
-                 "ptpl-press",          # 键区不抢焦点后按下态自己铺
+                 "PTPL_VARS", "PTPL_SEPS", "PTPL_ACTS",
+                 "ptplParse", "ptplActivate", "ptplClose", "ptplChanged",
+                 "ptplUnits[k].splice(Number(tag.dataset.i), 1)",   # 点标签即删
+                 '"去末尾", "back"', '"回默认", "clear"',   # 动作键 (末行)
+                 '"关键盘", "close"',
+                 "$(`#ptpl-card-${k}`).appendChild(kb)",   # 键盘搬进编辑卡
+                 "hide: ptplClose",                        # 换页收键盘
+                 "d.rows.length",                          # 例子区吃 rows
                  "地点显示已保存",
                  "it.from_place || shortPlace(it.from_region",     # 行程卡
                  "it.from_place || gtrShortPlace(it.from_region",  # 分组明细卡
                  "if (it.place) return [it.place];"):              # 充电卡
         assert frag in page, f"地点显示接线缺少 {frag}"
+    # 抽屉入口: 设置组里独立行 + 图标
+    drw = auth.get("/tesla/static/js/tesla-drawer.js").text
+    assert '{ key: "settings-place-display", lb: "地点显示" }' in drw
+    assert '"settings-place-display": "<polyline' in drw

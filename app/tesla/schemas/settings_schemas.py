@@ -101,12 +101,19 @@ class PlaceTplUpdate(BaseModel):
     places: str = Field(default="", max_length=80)
 
 
-class PlaceTplPreview(BaseModel):
-    """模板预览: 拿缓存里组件最全的一条地名当样例, 三界面各渲染一遍 ——
-    渲染单一源在服务端 (place_naming.render_place), 前端不重抄一份。
-    sample 空 = 还没有可用样例 (命名没跑过), 三行渲染也随之空。"""
+class PlaceTplExample(BaseModel):
+    """单条示例: 一条真实地名样例, 三界面模板各渲染一遍 (渲染单一源在
+    服务端 place_naming.render_place, 前端不重抄一份)。"""
 
     sample: str
     trips: str
     charging: str
     places: str
+
+
+class PlaceTplPreview(BaseModel):
+    """模板预览 (2026-10-18 五改: 一卡一界面各带 2-3 条例子): 缓存里挑
+    组件最全的 2-3 条地名当样例, 每条三界面各渲染一遍。rows 空 = 还没有
+    可用样例 (命名没跑过), 前端转提示。"""
+
+    rows: list[PlaceTplExample]

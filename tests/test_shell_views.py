@@ -165,7 +165,8 @@ def test_settings_views_lifecycle(auth):
     登录。"""
     js = page_js(auth, SHELL)
     for view in ("settings-account", "settings-db", "settings-map",
-                 "settings-drivers", "settings-places"):   # 常用地点 09-30
+                 "settings-drivers", "settings-places",   # 常用地点 09-30
+                 "settings-place-display"):   # 地点显示 10-18 拆独立页
         assert f'registerView("{view}"' in js
     assert "dbLoad" in js and "mapSetLoad" in js and "loadDrivers" in js \
         and "loadPlaces" in js
@@ -189,6 +190,7 @@ def test_settings_views_lifecycle(auth):
                   'data-view="settings-account"', 'id="acct-scroll"',
                   'data-view="settings-db"', 'data-view="settings-map"',
                   'data-view="settings-drivers"', 'data-view="settings-places"',
+                  'data-view="settings-place-display"',
                   "tesla-settings.css"):
         assert token in page, f"设置组缺标记 {token}"
     assert 'id="acct-sheet"' not in page and 'id="acct-backdrop"' not in page   # 弹层拆净

@@ -38,8 +38,8 @@
 <link rel="stylesheet" href="/tesla/static/css/tesla-chargemap-map.css?v=11">
 <link rel="stylesheet" href="/tesla/static/css/tesla-live-page.css?v=4">
 <link rel="stylesheet" href="/tesla/static/css/tesla-live-driving.css?v=20">
-<link rel="stylesheet" href="/tesla/static/css/tesla-settings.css?v=33">
-<link rel="stylesheet" href="/tesla/static/css/tesla-shell-floor.css?v=13">
+<link rel="stylesheet" href="/tesla/static/css/tesla-settings.css?v=34">
+<link rel="stylesheet" href="/tesla/static/css/tesla-shell-floor.css?v=14">
 </head>
 <body>
 <!-- 大屏适配 (2026-10-12): 应用整个包在 #shell —— 手机宽 (480px) 居中一
@@ -810,39 +810,6 @@
       <div class="view-scroll" id="plc-scroll">
         <div class="sec-head"><h2>常用地点</h2></div>
 
-        <!-- 地点显示模板 (2026-10-17 用户点名「高德给的地址要完完整整的
-             结构化地存起来, 然后在设置界面, 可以设置各个界面显示地点的模
-             板」; 2026-10-18 三改: 先「含义说清楚 + 用选择代替填空」, 再
-             「回删按最小单元」, 后「把下面的选项做成键盘 —— 光标进去时
-             弹出替换标准键盘, 输入时下面时时刻刻显示具体的例子」): 三框
-             inputmode="none" 挡掉系统软键盘, 聚焦即开卡内小键盘 (整条格
-             式一键替换 / 部件与间隔点一下落光标处 / 删除键按最小单元整
-             删 / 收起键), 失焦即收; 键区 pointerdown preventDefault 叫焦
-             点留在框里 (键永远不抢焦点, :focus 蓝框即目标, 三框间切换不
-             闪); 预览住进键盘常驻 —— 输入全程看得见具体例子 (正在编辑
-             的那行描蓝)。组件缺失自动留空 (悬空分隔符扫掉), 直辖市的省
-             市算一个部件 (高德 city 层缺位, {市} 并省层), 整条留空 = 默
-             认显示 (区 · 地名)。渲染单一源在服务端, 改动停 300ms 换预览
-             (拿缓存里组件最全的一条地名当样例, 进页先预取); 保存走专用
-             端点 —— 主设置保存把空串当「保持现值」(密码语义), 这里空串
-             是合法值 (= 回默认), 两家语义不同不能合 (view/settings-places.js
-             接线) -->
-        <section class="card" id="ptpl-card">
-          <h2>地点显示</h2>
-          <p class="hint">点一下要改的行, 用弹出的键盘拼格式。</p>
-          <label><span>行程起终点</span><input type="text" id="ptpl-trips" maxlength="80" inputmode="none" autocomplete="off" spellcheck="false" placeholder="{区} · {POI}"></label>
-          <label><span>充电地点</span><input type="text" id="ptpl-charging" maxlength="80" inputmode="none" autocomplete="off" spellcheck="false" placeholder="{区} · {POI}"></label>
-          <label><span>常用地点</span><input type="text" id="ptpl-places" maxlength="80" inputmode="none" autocomplete="off" spellcheck="false" placeholder="{镇} · {路}"></label>
-          <div class="ptpl-kb" id="ptpl-kb" hidden>
-            <div class="ptpl-preview" id="ptpl-preview"></div>
-            <div class="ptpl-krow"><span class="ptpl-gt">整条格式 (一键替换)</span><div class="ptpl-chips" id="ptpl-presets"></div></div>
-            <div class="ptpl-krow"><span class="ptpl-gt">部件 (点一下落进光标处)</span><div class="ptpl-keys" id="ptpl-vars"></div></div>
-            <div class="ptpl-krow"><div class="ptpl-keys" id="ptpl-seps"></div></div>
-          </div>
-          <p class="ptpl-vars">没数据的部件自动留空; 直辖市的省市算一个; 整条留空 = 默认显示</p>
-          <button type="button" class="primary" id="ptpl-save">保存</button>
-        </section>
-
         <section class="card">
           <div id="plc-list"></div>
           <!-- 首拉加载态 (2026-10-05 用户点名「页面的响应速度太慢了, 改成
@@ -857,6 +824,51 @@
           <section class="card" id="plc-hid-card">
             <div id="plc-hid-list"></div>
           </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- 地点显示独立页 (2026-10-17 用户点名「高德给的地址要完完整整的
+         结构化地存起来, 然后在设置界面, 可以设置各个界面显示地点的模
+         板」; 2026-10-18 五改: 「含义说清楚+选择代填空」→「回删按最小
+         单元」→「做成键盘替换标准键盘+时时显示例子」→「独立配置页」→
+         「一界面一卡, 输入框是 tag 列表, 键盘上就是部件」): 三张卡各管
+         一个界面 (行程起终点/充电地点/常用地点), 卡 = 标题 + tag 列表
+         输入区 (不是文本框 —— 模板拆成最小单元的标签, {变量} 蓝标签,
+         间隔/手输残文灰标签, 点标签即删, 点卡进入编辑) + 2-3 条真实地
+         名例子 (服务端渲染, 改动停 300ms 即换); 编辑态键盘搬进正在编辑
+         的卡 (单件 #ptpl-kb appendChild, 监听不丢): 部件键接到标签列
+         表末尾, 末行 · /空格/删除 (去末尾)/清空 (回默认)/收起。组件缺
+         失自动留空 (悬空分隔符扫掉), 直辖市的省市算一个部件 (高德 city
+         层缺位, {市} 并省层), 整条留空 = 默认显示 (区 · 地名)。保存走
+         专用端点 —— 主设置保存把空串当「保持现值」(密码语义), 这里空
+         串是合法值 (= 回默认), 两家语义不同不能合
+         (view/settings-place-display.js 接线) -->
+    <section class="view" id="view-settings-place-display" data-view="settings-place-display" hidden>
+      <div class="view-scroll" id="ptpl-scroll">
+        <div class="sec-head"><h2>地点显示</h2></div>
+        <p class="hint">点一下要改的卡片, 用弹出的键盘把部件一个个接上去; 点标签可删掉。</p>
+        <section class="card ptpl-card" id="ptpl-card-trips" data-k="trips">
+          <h2>行程起终点</h2>
+          <div class="ptpl-field" id="ptpl-field-trips" role="button" aria-label="编辑行程起终点显示格式"></div>
+          <div class="ptpl-ex" id="ptpl-ex-trips"></div>
+        </section>
+        <section class="card ptpl-card" id="ptpl-card-charging" data-k="charging">
+          <h2>充电地点</h2>
+          <div class="ptpl-field" id="ptpl-field-charging" role="button" aria-label="编辑充电地点显示格式"></div>
+          <div class="ptpl-ex" id="ptpl-ex-charging"></div>
+        </section>
+        <section class="card ptpl-card" id="ptpl-card-places" data-k="places">
+          <h2>常用地点</h2>
+          <div class="ptpl-field" id="ptpl-field-places" role="button" aria-label="编辑常用地点显示格式"></div>
+          <div class="ptpl-ex" id="ptpl-ex-places"></div>
+        </section>
+        <p class="ptpl-vars">没数据的部件自动留空; 直辖市的省市算一个; 整条留空 = 默认显示</p>
+        <button type="button" class="primary" id="ptpl-save">保存</button>
+        <div class="ptpl-kb" id="ptpl-kb" hidden>
+          <div class="ptpl-krow"><span class="ptpl-gt">部件 (点一下接上去)</span></div>
+          <div class="ptpl-keys" id="ptpl-vars"></div>
+          <div class="ptpl-krow"><div class="ptpl-keys" id="ptpl-acts"></div></div>
         </div>
       </div>
     </section>
@@ -1220,7 +1232,8 @@
 <script src="/tesla/static/js/tesla-swipe-delete.js?v=4"></script>
 <script src="/tesla/static/js/view/settings-drivers.js?v=6"></script>
 <script src="/tesla/static/js/view/trips-place-detail.js?v=12"></script>
-<script src="/tesla/static/js/view/settings-places.js?v=12"></script>
+<script src="/tesla/static/js/view/settings-places.js?v=13"></script>
+<script src="/tesla/static/js/view/settings-place-display.js?v=1"></script>
 <script src="/tesla/static/js/view/settings-tasks.js?v=1"></script>
 <script src="/tesla/static/js/view/settings-account.js?v=6"></script>
 <script src="/tesla/static/js/tesla-app-boot.js?v=4"></script>

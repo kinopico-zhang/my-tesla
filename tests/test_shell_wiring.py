@@ -51,8 +51,9 @@ def test_shell_skeleton(auth):
     # 2026-09-27 账号设置拆独立页 → 12 个, 同日行程统计入行程组 → 13 个,
     # 同日电池健康度入充电组 → 14 个; 2026-09-30 常用地点入设置组 → 15 个;
     # 3.10.0 分组明细住进行程弹层当第四页 (不再是二级视图), 计数不动;
-    # 2026-10-15 后台任务入设置组 → 16 个
-    assert html.count('data-view="') == 16
+    # 2026-10-15 后台任务入设置组 → 16 个; 2026-10-18 地点显示拆独立页
+    # 入设置组 → 17 个
+    assert html.count('data-view="') == 17
 
 
 def test_zero_history_entries(auth):
@@ -137,7 +138,7 @@ def test_boot_first_navigate_hides_default_view(auth):
     assert "冷启首跳" in js
     html = served_page(auth, SHELL)
     assert 'class="view" id="view-live" data-view="live">' in html   # 唯一亮着
-    assert len(re.findall(r'<section class="view"[^>]* hidden>', html)) == 15
+    assert len(re.findall(r'<section class="view"[^>]* hidden>', html)) == 16
 
 
 def test_echarts_lazy_loaded(auth):
