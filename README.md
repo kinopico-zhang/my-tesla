@@ -9,6 +9,7 @@
 ![Python](https://img.shields.io/badge/Python-3.13%20%7C%203.14-3776AB?logo=python&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-22-339933?logo=nodedotjs&logoColor=white)
 ![OS](https://img.shields.io/badge/OS-Linux%20%7C%20Windows%20%7C%20macOS-0078D6)
+![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)
 <br>
 ![pylint](https://img.shields.io/badge/pylint-10.00%2F10-brightgreen)
 ![mypy](https://img.shields.io/badge/mypy-strict-2A6DB2)
@@ -81,6 +82,44 @@
 </p>
 
 ## 3. 部署
+
+两条路任选一条: 容器一条命令起 (推荐, 不用装 Python), 或者手动跑 (改代码时更方便)。
+
+### 3.1 Docker
+
+```sh
+git clone https://github.com/kinopico-zhang/my-tesla.git
+cd my-tesla
+mkdir -p data                     # 持久化目录, 见下
+docker compose up -d --build
+```
+
+镜像基于 `python:3.13-slim`, 装好依赖、以非 root (uid 1000) 运行,
+`HEALTHCHECK` 探活打在公开的 `/login` 上。浏览器打开
+`http://<host>:8500/`, 见到登录页 (未初始化则是四页向导) 就是服务正常。
+
+运行期只有 `./data` 一处需要持久化: 两个 SQLite 库 (`mytesla.db`、
+`users.db`)、轨迹与车速缓存, 以及首次启动自动生成的会话密钥
+`.session_secret`。删掉这个目录等于重置整个应用 (含管理员账号)。
+容器内是 uid 1000, 若宿主上 `data/` 的属主不是 1000 且不可写,
+`chown -R 1000:1000 data` 即可 (或以 `user: "<uid>:<gid>"` 覆盖)。
+
+连 TeslaMate 有两种接法:
+
+- **首启在向导里填** —— 最简单。连接值存进 `data/` 里的自有库, 之后
+  改设置页即可, 不用重启容器;
+- **启动前用环境变量预置** —— 照 `.env.example` 复制成 `.env` 填写
+  `TMDB_HOST` / `TMDB_PORT` / `TMDB_USER` / `TMDB_PASS` / `TMDB_NAME`。
+  TeslaMate 官方 compose 的服务名是 `database`, 把 `docker-compose.yml`
+  末尾那段 `networks` 注释打开 (改成自己的项目名, 默认
+  `teslamate_default`), 两者就能直连; 更省事的做法是把 `my-tesla`
+  这一段直接贴进 TeslaMate 的 compose file, 同网络自动连通。
+
+`MYTESLA_PORT` 改宿主端口, `TZ` / `TZ_NAME` 改时区 (默认 `Asia/Shanghai`)。
+容器只跑明文 HTTP; 要上 HTTPS 就在前面放反向代理, 或挂进证书目录并
+覆盖 `command` 加 `--cert-file` / `--key-file`。
+
+### 3.2 手动运行
 
 需要 Python 3.13+:
 

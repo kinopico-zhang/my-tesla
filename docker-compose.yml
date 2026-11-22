@@ -1,0 +1,50 @@
+# My Tesla 标准部署编排: 单容器应用 + 宿主目录持久化。
+#
+# 用法:
+#   mkdir -p data
+#   docker compose up -d --build
+#   浏览器打开 http://<宿主IP>:8500
+#
+# 首启会走引导页配 TeslaMate 连接与高德 Key (见 README「4. 初始化」)。
+services:
+  my-tesla:
+    build: .
+    image: my-tesla:latest
+    container_name: my-tesla
+    restart: unless-stopped
+    ports:
+      # 宿主端口可用 MYTESLA_PORT 改; 容器内恒 8500
+      - "${MYTESLA_PORT:-8500}:8500"
+    environment:
+      # 库内是 UTC 裸时间戳, 对外按这个时区渲染
+      TZ: "${TZ:-Asia/Shanghai}"
+      TZ_NAME: "${TZ_NAME:-Asia/Shanghai}"
+      # TeslaMate 连接默认留空: 首启引导页会问 (连接值存进 data/ 里的
+      # 自有库, 之后不再看 env)。想在启动前就接好, 取消下面几行注释
+      # 并填写 —— 注意不能留空字符串: TMDB_PORT 之类一旦被设为空串,
+      # 应用会把它当成明确值从而拼不出连接串。
+      #
+      # TMDB_HOST: database        # TeslaMate 官方 compose 的库服务名
+      # TMDB_PORT: "5432"
+      # TMDB_USER: teslamate
+      # TMDB_PASS: your-password
+      # TMDB_NAME: teslamate
+    volumes:
+      # 运行期唯一需要持久化的目录: 两个 SQLite 库、轨迹/车速缓存,
+      # 以及自动生成的会话密钥 (/app/data/.session_secret)。
+      # 容器内以 uid 1000 运行, 宿主目录同属主即可直接写。
+      - ./data:/app/data
+
+# ─────────────────────────────────────────────────────────────────────
+# 接现成的 TeslaMate (推荐): TeslaMate 官方 compose 会建一个
+# <项目名>_default 网络 (默认 teslamate_default), 库服务名是 database。
+# 取消下面几行注释, 把 name 换成自己的项目名, 再把上面 TMDB_HOST
+# 取消注释填成 database, 本服务就能直连 TeslaMate 的库。
+#
+# networks:
+#   default:
+#     name: teslamate_default
+#     external: true
+#
+# 反过来更省事: 把上面 my-tesla 整段贴进 TeslaMate 的 compose file,
+# 两个服务自动同网络, 连 external 都不用配。

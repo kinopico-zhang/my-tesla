@@ -56,6 +56,41 @@ jobs:
       - run: python -m pylint tests --disable=W0613,W0212,R0801,C0415,C0302
       - run: python -m mypy
 
+  # 容器: 真构建镜像再真起一次, 探活打公开的 /login。与上面三条互补 ——
+  # pip 装得上不代表镜像里跑得起来 (非 root 属主、只读层、健康探针)。
+  docker:
+    name: docker build + smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build
+        run: docker build -t my-tesla:ci .
+      - name: smoke
+        run: |
+          mkdir -p ci-data
+          docker run -d --name mytesla-ci -p 8500:8500 \
+            -v "$PWD/ci-data:/app/data" my-tesla:ci
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8500/login || true)
+            [ "$code" = "200" ] && break
+            sleep 2
+          done
+          docker logs mytesla-ci
+          test "$code" = "200"
+          # 数据卷里该有会话密钥与两个 SQLite 库 (说明非 root 也写得进去)
+          test -f ci-data/.session_secret
+          test -f ci-data/mytesla.db
+          test -f ci-data/users.db
+      - name: healthcheck
+        run: |
+          for i in $(seq 1 20); do
+            status=$(docker inspect --format '{{.State.Health.Status}}' mytesla-ci)
+            [ "$status" = "healthy" ] && break
+            sleep 3
+          done
+          docker inspect --format '{{.State.Health.Status}}' mytesla-ci
+          test "$status" = "healthy"
+
   # 前端: ESLint / tsc --checkJs / stylelint / html-validate / node --test
   # 三平台全跑; c8 覆盖率门禁 (95%) 固定在 Linux —— Windows 的路径归一化
   # 历史上有坑, 覆盖率本身与平台无关。
