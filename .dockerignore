@@ -1,0 +1,42 @@
+# 镜像只需要 app/ 与 requirements.txt, 其余一律不进构建上下文
+.git
+.github
+.venv
+.vscode
+.idea
+
+# 运行期数据 (密钥 / SQLite / 缓存) —— 必须由卷挂进来, 不烤进镜像
+data
+.session_secret
+.env
+
+# 开发工具链与产物: 前端只跑静态检查, 运行不需要 node_modules
+node_modules
+package.json
+package-lock.json
+coverage
+.pytest_cache
+.pytest-tmp
+.pytest-cache
+
+# 测试 / 文档 / 截图复刻管线
+tests
+docs
+shots
+run_tests.sh
+requirements-dev.txt
+pyproject.toml
+tsconfig.json
+eslint.config.mjs
+stylelint.config.mjs
+.htmlvalidate.json
+frontend-globals.d.ts
+.gitattributes
+.gitignore
+README.md
+LICENSE
+
+# 杂项
+**/__pycache__
+**/*.pyc
+.DS_Store
